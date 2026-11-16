@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copytrading 高手管理 - CFD 业务管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .submenu-container { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+        .modal-backdrop { transition: opacity .2s ease; }
+        .tab-btn { position: relative; cursor: pointer; }
+        .tab-btn.active { color: #3B82F6; border-bottom: 2px solid #3B82F6; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+        <div class="flex items-center text-sm text-slate-500">
+            <i class="fa-solid fa-house mr-2"></i>
+            <span>Copytrading</span>
+            <i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i>
+            <span class="text-slate-700 font-medium" data-i18n="breadcrumb_page">高手管理</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="lang-switch"></div>
+            <button class="text-slate-500 hover:text-primary transition-colors relative">
+                <i class="fa-solid fa-bell"></i>
+                <span class="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+            </button>
+            <button class="text-slate-500 hover:text-primary text-sm transition-colors">
+                <i class="fa-solid fa-right-from-bracket mr-1"></i><span data-i18n="logout">退出</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 overflow-auto p-8 bg-slate-50">
+        <!-- 页面标题 -->
+        <div class="flex items-start justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800" data-i18n="page_title">高手管理</h1>
+                <p class="text-sm text-slate-500 mt-2" data-i18n="page_desc">管理 Copytrading 高手入驻、邀请流转、隐藏与下榜风控。</p>
+                <p class="text-xs text-rose-700 mt-2" data-i18n="change_note">本次更新：一期仅使用 L1；预览分润比例只适用于新建跟随关系，存量比例不变。</p>
+            </div>
+            <button onclick="openSetupDrawer()" class="bg-primary hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-user-plus mr-1.5"></i><span data-i18n="btn_setup">人工开通高手</span>
+            </button>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-4 gap-4 mb-6" id="statCards"></div>
+
+        <!-- 筛选栏 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4 flex items-center gap-3 flex-wrap">
+            <select id="filterStatus" onchange="renderTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                <option value="" data-i18n-opt="filter_all_status">全部状态</option>
+                <option value="listed" data-i18n-opt="status_listed">上榜中</option>
+                <option value="hidden" data-i18n-opt="status_hidden">已隐藏</option>
+                <option value="delisted" data-i18n-opt="status_delisted">已下榜</option>
+            </select>
+            <select id="filterLevel" onchange="renderTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                <option value="" data-i18n-opt="filter_all_level">全部等级</option>
+                <option value="L1">Level 1</option>
+            </select>
+            <div class="relative flex-1 min-w-[150px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input id="filterUid" type="text" oninput="renderTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_uid">
+            </div>
+            <div class="relative flex-1 min-w-[150px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input id="filterAcct" type="text" oninput="renderTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_acct">
+            </div>
+            <div class="flex items-center gap-2 min-w-[260px]">
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 whitespace-nowrap"><i class="fa-regular fa-calendar"></i><span data-i18n="filter_listed_at">上榜时间</span></span>
+                <input id="filterListedStart" type="date" onchange="renderTable()" class="w-[126px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600">
+                <span class="text-slate-300">–</span>
+                <input id="filterListedEnd" type="date" onchange="renderTable()" class="w-[126px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600">
+            </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-slate-50/80 border-b border-slate-200">
+                            <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_uid">UID</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_nick">昵称</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_master_tags">高手标签</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_acct">Acct.No</th>
+                            <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_level">等级</th>
+                            <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_settlement_currency">结算币种</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_balance">余额 (USD)</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_roi">30D 收益率</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_drawdown">30D 回撤</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_win_rate">胜率</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_trades">30D 交易次数</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_followers">跟随者数</th>
+                            <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_aum">AUM (USD)</th>
+                            <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_status">状态</th>
+                            <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_listed_time">上榜时间</th>
+                            <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_actions">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- 详情抽屉 -->
+<div id="detailBackdrop" class="drawer-backdrop fixed inset-0 bg-black/40 z-40 hidden opacity-0" onclick="closeDetailDrawer()"></div>
+<div id="detailPanel" class="drawer-panel fixed top-0 right-0 h-full w-[640px] bg-white shadow-2xl z-50 flex flex-col">
+    <div class="shrink-0 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800" data-i18n="detail_title">高手详情</h2>
+        <button onclick="closeDetailDrawer()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 space-y-6" id="detailContent"></div>
+</div>
+
+<!-- 编辑高手标签抽屉 -->
+<div id="editTagsBackdrop" class="drawer-backdrop fixed inset-0 bg-black/40 z-40 hidden opacity-0" onclick="closeEditTagsDrawer()"></div>
+<div id="editTagsPanel" class="drawer-panel fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-50 flex flex-col">
+    <div class="shrink-0 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800" data-i18n="edit_master_title">编辑高手资料</h2>
+        <button onclick="closeEditTagsDrawer()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="col-span-2 flex items-center gap-3"><span id="editProfileAvatar" class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 inline-flex items-center justify-center font-bold"></span><div><span class="text-slate-500">UID</span><p id="editTagsUid" class="mt-1 font-mono font-semibold text-slate-800"></p></div></div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_profile_avatar">客户头像</span> <span class="text-rose-500">*</span></label>
+            <div class="flex items-center gap-3"><span id="editAvatarPreview" class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 inline-flex items-center justify-center font-bold"></span><input id="editAvatarFile" type="file" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200"></div>
+        </div>
+        <div><label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_nickname">昵称</span> <span class="text-rose-500">*</span></label><input id="editNickname" type="text" maxlength="24" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+        <div>
+            <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-sm font-medium text-slate-700"><span data-i18n="f_master_tags">高手标签</span> <span class="text-rose-500">*</span></label>
+                <span class="text-[11px] text-slate-400" data-i18n="f_master_tags_limit">Select 1–3</span>
+            </div>
+            <div id="editMasterTagSelector" class="grid grid-cols-2 gap-2"></div>
+            <p class="text-xs text-slate-500 mt-2" data-i18n="f_master_tags_hint">预设标签由运营维护，前台同时展示 English 与 العربية，不构成收益或风险承诺。</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_strategy_overview_en">策略简介 (English)</span> <span class="text-rose-500">*</span></label>
+            <textarea id="editStrategyEn" rows="3" maxlength="240" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm leading-relaxed" data-i18n-ph="ph_strategy_overview_en"></textarea>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_strategy_overview_ar">策略简介 (العربية)</span> <span class="text-rose-500">*</span></label>
+            <textarea id="editStrategyAr" dir="rtl" rows="3" maxlength="240" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm leading-relaxed text-right" data-i18n-ph="ph_strategy_overview_ar"></textarea>
+            <p class="text-xs text-slate-500 mt-2" data-i18n="f_strategy_overview_hint">展示在 APP 高手详情页；请使用客观的策略描述，避免收益或低风险承诺。</p>
+        </div>
+    </div>
+    <div class="shrink-0 px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button onclick="closeEditTagsDrawer()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg" data-i18n="btn_cancel">取消</button>
+        <button onclick="confirmEditTags()" class="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-blue-600 rounded-lg" data-i18n="btn_save">保存</button>
+    </div>
+</div>
+
+<!-- 人工开通抽屉 -->
+<div id="setupBackdrop" class="drawer-backdrop fixed inset-0 bg-black/40 z-40 hidden opacity-0" onclick="closeSetupDrawer()"></div>
+<div id="setupPanel" class="drawer-panel fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-50 flex flex-col">
+    <div class="shrink-0 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800" data-i18n="setup_title">人工开通高手</h2>
+        <button onclick="closeSetupDrawer()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_uid">用户 UID</span> <span class="text-rose-500">*</span></label>
+            <div class="flex gap-2">
+                <input id="s-uid" type="text" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" placeholder="UID_xxxxx" value="UID_NEW001">
+                <button onclick="fetchAccounts()" class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-600 rounded-lg" data-i18n="btn_fetch">查询</button>
+            </div>
+        </div>
+        <div id="setupProfileSection" class="hidden rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <div class="flex items-center justify-between"><span class="text-sm font-medium text-slate-700" data-i18n="f_public_profile">客户公开资料</span><span class="text-[11px] text-slate-400" data-i18n="f_public_profile_hint">将展示在 APP 高手大厅</span></div>
+            <div class="flex items-center gap-3"><span id="setupAvatarPreview" class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 inline-flex items-center justify-center font-bold"></span><span class="text-xs text-slate-500" data-i18n="f_avatar_source">使用客户当前头像</span></div>
+            <div><label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_nickname">昵称</span> <span class="text-rose-500">*</span></label><input id="s-nickname" type="text" maxlength="24" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+            <p class="text-xs text-slate-500" data-i18n="f_profile_confirm_hint">请确认头像和昵称；默认生成的昵称应在开通前修改。</p>
+        </div>
+        <!-- 账号列表（查询后显示） -->
+        <div id="acctListSection" class="hidden">
+            <label class="block text-sm font-medium text-slate-700 mb-2"><span data-i18n="f_acct_select">关联账号</span> <span class="text-rose-500">*</span></label>
+            <div id="acctList" class="space-y-2 max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50/50"></div>
+            <p class="text-xs text-slate-500 mt-1.5" data-i18n="f_acct_hint">一个 UID 只能选择一个账号开通高手；Demo 账号与 Copytrading 跟单账号不可开通高手。</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_level">初始等级</span> <span class="text-rose-500">*</span></label>
+            <select id="s-level" onchange="updateLevelPreview()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                <option value="L1">Level 1</option>
+            </select>
+        </div>
+        <div id="settlementCurrencySection" class="hidden">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_settlement_currency">结算币种</span> <span class="text-rose-500">*</span></label>
+            <input id="s-settlementCurrency" type="text" readonly class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono text-slate-700 cursor-not-allowed">
+            <p class="text-xs text-slate-500 mt-1.5" data-i18n="f_settlement_currency_hint">随所选带单 MT5 账号币种自动带出，不支持修改。</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-sm font-medium text-slate-700"><span data-i18n="f_master_tags">高手标签</span> <span class="text-rose-500">*</span></label>
+                <span class="text-[11px] text-slate-400" data-i18n="f_master_tags_limit">Select 1–3</span>
+            </div>
+            <div id="masterTagSelector" class="grid grid-cols-2 gap-2"></div>
+            <p class="text-xs text-slate-500 mt-2" data-i18n="f_master_tags_hint">预设标签由运营维护，前台同时展示 English 与 العربية，不构成收益或风险承诺。</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_strategy_overview_en">策略简介 (English)</span> <span class="text-rose-500">*</span></label>
+            <textarea id="s-strategyEn" rows="3" maxlength="240" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm leading-relaxed" data-i18n-ph="ph_strategy_overview_en"></textarea>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_strategy_overview_ar">策略简介 (العربية)</span> <span class="text-rose-500">*</span></label>
+            <textarea id="s-strategyAr" dir="rtl" rows="3" maxlength="240" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm leading-relaxed text-right" data-i18n-ph="ph_strategy_overview_ar"></textarea>
+            <p class="text-xs text-slate-500 mt-2" data-i18n="f_strategy_overview_hint">展示在 APP 高手详情页；请使用客观的策略描述，避免收益或低风险承诺。</p>
+        </div>
+        <!-- 等级福利预览 -->
+        <div id="levelPreview" class="bg-sky-50/60 border border-sky-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-sky-800 mb-3"><i class="fa-solid fa-gift mr-1.5"></i><span data-i18n="level_benefits">等级福利预览</span></h4>
+            <p class="text-xs text-rose-700 mb-3" data-i18n="benefit_rate_hint">更新：分润比例以跟随关系创建时的配置为准；后续修改不影响已有关系。</p>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-white rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-500 mb-1" data-i18n="benefit_profit_share">分润比例</div>
+                    <div id="preview-profitShare" class="text-lg font-bold text-emerald-600 font-mono">20%</div>
+                </div>
+                <div class="bg-white rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-500 mb-1" data-i18n="benefit_max_followers">跟随者数上限</div>
+                    <div id="preview-maxFollowers" class="text-lg font-bold text-blue-600 font-mono">1,000</div>
+                </div>
+                <div class="bg-white rounded-lg p-3 text-center">
+                    <div class="text-xs text-slate-500 mb-1" data-i18n="benefit_max_capacity">最大可投资金额 (USD)</div>
+                    <div id="preview-maxCapacity" class="text-lg font-bold text-purple-600 font-mono">500,000</div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-amber-50/60 border border-amber-200 rounded-lg p-3">
+            <p class="text-xs text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i> <span data-i18n="setup_warn">此操作将豁免所有准入门槛，直接开通高手身份并上榜展示。</span></p>
+        </div>
+    </div>
+    <div class="shrink-0 px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button onclick="closeSetupDrawer()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg" data-i18n="btn_cancel">取消</button>
+        <button onclick="confirmSetup()" class="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-blue-600 rounded-lg" data-i18n="btn_confirm_setup">确认开通</button>
+    </div>
+</div>
+
+<!-- 手动下榜弹窗 -->
+<div id="delistModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeDelistModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl w-[460px] p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                <i class="fa-solid fa-user-minus text-rose-500"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800" data-i18n="delist_title">手动下榜</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-4" id="delistMsg"></p>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5"><span data-i18n="f_reason">下榜理由</span> <span class="text-rose-500">*</span></label>
+            <textarea id="delistReason" rows="3" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" data-i18n-ph="ph_reason"></textarea>
+        </div>
+        <div class="flex items-center justify-end gap-3">
+            <button onclick="closeDelistModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg" data-i18n="btn_cancel">取消</button>
+            <button onclick="confirmDelist()" class="px-4 py-2 text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 rounded-lg" data-i18n="btn_confirm_delist">确认下榜</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 right-6 z-[60] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg"></div>
+
+<script src="sidebar.js?v=202607231100"></script>
+<script src="lang-switch.js?v=202607241800"></script>
+<script>
+const LANG = () => localStorage.getItem('cfd-lang') || 'zh';
+const isZh = () => LANG() === 'zh';
+
+const I18N = {
+    breadcrumb_page: { zh: '高手管理', en: 'Master Management' },
+    logout: { zh: '退出', en: 'Logout' },
+    page_title: { zh: '高手管理', en: 'Master Management' },
+    page_desc: { zh: '管理 Copytrading 高手入驻、邀请流转、隐藏与下榜风控。', en: 'Manage Copytrading master onboarding, invite flow, hidden and delist risk control.' },
+    change_note: { zh: '本次更新：一期仅使用 L1；预览分润比例只适用于新建跟随关系，存量比例不变。', en: 'Updated: Phase 1 uses L1 only. The preview rate applies to new copy relationships; existing rates stay locked.' },
+    benefit_rate_hint: { zh: '更新：分润比例以跟随关系创建时的配置为准；后续修改不影响已有关系。', en: 'Updated: the rate is locked when the copy relationship starts. Later changes do not affect existing relationships.' },
+    btn_setup: { zh: '人工开通高手', en: 'Direct Setup Master' },
+    th_uid: { zh: 'UID', en: 'UID' },
+    th_nick: { zh: '昵称', en: 'Nick Name' },
+    th_master_tags: { zh: '高手标签', en: 'Master Tags' },
+    th_acct: { zh: 'Acct.No', en: 'Acct.No' },
+    th_level: { zh: '等级', en: 'Level' },
+    th_settlement_currency: { zh: '结算币种', en: 'Settlement Currency' },
+    th_balance: { zh: '余额 (USD)', en: 'Balance (USD)' },
+    th_roi: { zh: '30D 收益率', en: '30D ROI' },
+    th_drawdown: { zh: '30D 回撤', en: '30D Drawdown' },
+    th_win_rate: { zh: '胜率', en: 'Win rate' },
+    th_trades: { zh: '30D 交易次数', en: '30D Trades' },
+    th_followers: { zh: '跟随者数', en: 'Followers' },
+    th_aum: { zh: 'AUM (USD)', en: 'AUM (USD)' },
+    th_status: { zh: '状态', en: 'Status' },
+    th_listed_time: { zh: '上榜时间', en: 'Listed At' },
+    th_actions: { zh: '操作', en: 'Actions' },
+    status_listed: { zh: '上榜中', en: 'Listed' },
+    status_hidden: { zh: '已隐藏', en: 'Hidden' },
+    status_delisted: { zh: '已下榜', en: 'Delisted' },
+    filter_all_status: { zh: '全部状态', en: 'All Status' },
+    filter_all_level: { zh: '全部等级', en: 'All Levels' },
+    filter_listed_at: { zh: '上榜时间', en: 'Listed At' },
+    ph_search_uid: { zh: '搜索 UID', en: 'Search UID' },
+    ph_search_acct: { zh: '搜索 Acct.No', en: 'Search Acct.No' },
+    detail_title: { zh: '高手详情', en: 'Master Detail' },
+    setup_title: { zh: '人工开通高手', en: 'Direct Setup Master' },
+    f_uid: { zh: '用户 UID', en: 'User UID' },
+    f_public_profile: { zh: '客户公开资料', en: 'Client Public Profile' },
+    f_public_profile_hint: { zh: '将展示在 APP 高手大厅', en: 'Shown in the App master hall' },
+    f_profile_avatar: { zh: '客户头像', en: 'Client Avatar' },
+    f_avatar_source: { zh: '使用客户当前头像', en: 'Use current client avatar' },
+    f_nickname: { zh: '昵称', en: 'Nickname' },
+    f_profile_confirm_hint: { zh: '请确认头像和昵称；默认生成的昵称应在开通前修改。', en: 'Confirm the avatar and nickname. Registration-generated default nicknames must be changed before setup.' },
+    f_acct: { zh: 'Acct.No', en: 'Acct.No' },
+    f_acct_select: { zh: '关联账号', en: 'Linked Accounts' },
+    f_acct_hint: { zh: '一个 UID 只能选择一个账号开通高手；Demo 账号与 Copytrading 跟单账号不可开通高手。', en: 'Only one account per UID can be set up as master. Demo and Copytrading accounts cannot be set up as masters.' },
+    btn_fetch: { zh: '查询', en: 'Fetch' },
+    l1_check_pass: { zh: '符合 L1 要求', en: 'Meets L1 Requirements' },
+    l1_check_fail: { zh: '不符合 L1 要求', en: 'Does Not Meet L1 Requirements' },
+    no_accounts: { zh: '该 UID 下无关联账号', en: 'No linked accounts under this UID' },
+    f_level: { zh: '初始等级', en: 'Initial Level' },
+    f_settlement_currency: { zh: '结算币种', en: 'Settlement Currency' },
+    f_settlement_currency_hint: { zh: '随所选带单 MT5 账号币种自动带出，不支持修改。', en: 'Automatically set from the selected master MT5 account currency and cannot be changed.' },
+    f_master_tags: { zh: '高手标签', en: 'Master Tags' },
+    f_master_tags_limit: { zh: '选择 1–3 个', en: 'Select 1–3' },
+    f_master_tags_hint: { zh: '预设标签由运营维护，前台同时展示 English 与 العربية，不构成收益或风险承诺。', en: 'Controlled tags maintained by Operations; English and العربية are displayed in the App and do not constitute return or risk promises.' },
+    no_account_currency: { zh: '所选带单 MT5 账号暂无有效币种，无法开通高手', en: 'The selected master MT5 account has no valid currency and cannot be set up.' },
+    level_benefits: { zh: '等级福利预览', en: 'Level Benefits Preview' },
+    benefit_profit_share: { zh: '分润比例', en: 'Profit Share' },
+    benefit_max_followers: { zh: '跟随者数上限', en: 'Max Followers' },
+    benefit_max_capacity: { zh: '最大可投资金额 (USD)', en: 'Max Investment (USD)' },
+    label_pending_reservations: { zh: '待支付预留', en: 'Pending Reservations' },
+    label_reserved_capacity: { zh: '预留金额', en: 'Reserved Capacity' },
+    label_available_capacity: { zh: '可复制金额', en: 'Available Capacity' },
+    setup_warn: { zh: '此操作将豁免所有准入门槛，直接开通高手身份并上榜展示。', en: 'This action bypasses all admission thresholds and directly creates a master with public listing.' },
+    btn_cancel: { zh: '取消', en: 'Cancel' },
+    btn_confirm_setup: { zh: '确认开通', en: 'Confirm Setup' },
+    delist_title: { zh: '手动下榜', en: 'Manual Delist' },
+    f_reason: { zh: '下榜理由', en: 'Delist Reason' },
+    ph_reason: { zh: '请输入下榜理由（必填）', en: 'Enter delist reason (required)' },
+    btn_confirm_delist: { zh: '确认下榜', en: 'Confirm Delist' },
+    btn_delist: { zh: '下榜', en: 'Delist' },
+    btn_view: { zh: '查看详情', en: 'View Details' },
+    btn_edit: { zh: '编辑', en: 'Edit' },
+    edit_master_title: { zh: '编辑高手资料', en: 'Edit Master Profile' },
+    btn_save: { zh: '保存', en: 'Save' },
+    f_strategy_overview_en: { zh: '策略简介 (English)', en: 'Trading Overview (English)' },
+    f_strategy_overview_ar: { zh: '策略简介 (العربية)', en: 'Trading Overview (العربية)' },
+    ph_strategy_overview_en: { zh: '例如：Focuses on gold and major FX pairs…', en: 'e.g. Focuses on gold and major FX pairs…' },
+    ph_strategy_overview_ar: { zh: 'مثال: يركز على الذهب وأزواج الفوركس الرئيسية…', en: 'مثال: يركز على الذهب وأزواج الفوركس الرئيسية…' },
+    f_strategy_overview_hint: { zh: '展示在 APP 高手详情页；请使用客观的策略描述，避免收益或低风险承诺。', en: 'Displayed in the App master profile. Keep it factual and avoid return or low-risk promises.' },
+    toast_setup_ok: { zh: '高手开通成功', en: 'Master setup successful' },
+    toast_delisted: { zh: '已下榜', en: 'Delisted' },
+    toast_delisted_readonly: { zh: '已下榜高手仅支持查看详情', en: 'Delisted masters are view-only' },
+    toast_reason_required: { zh: '请输入下榜理由', en: 'Please enter delist reason' },
+    toast_tags_required: { zh: '请选择至少一个高手标签', en: 'Select at least one master tag' },
+    toast_tags_limit: { zh: '最多选择 3 个高手标签', en: 'Select up to 3 master tags' },
+    toast_tags_saved: { zh: '高手标签已更新', en: 'Master tags updated' },
+    toast_strategy_required: { zh: '请填写英语和阿拉伯语策略简介', en: 'Enter the trading overview in both English and Arabic' },
+    toast_nickname_required: { zh: '请填写昵称', en: 'Enter a nickname' },
+    stat_total: { zh: '总高手数', en: 'Total Masters' },
+    stat_listed: { zh: '上榜中', en: 'Listed' },
+    stat_hidden: { zh: '已隐藏', en: 'Hidden' },
+    stat_delisted: { zh: '已下榜', en: 'Delisted' },
+    section_basic: { zh: '基本信息', en: 'Basic Info' },
+    section_trading: { zh: '实时交易数据', en: 'Live Trading Data' },
+    section_public: { zh: '前台公开累计数据', en: 'Public Profile Totals' },
+    label_listed_for: { zh: '本次上榜天数', en: 'Listed for' },
+    label_copiers: { zh: '历史跟随者', en: 'Copiers' },
+    label_copy_volume: { zh: '历史复制金额', en: 'Copy volume' },
+    section_followers: { zh: '伞下跟单关系', en: 'Follower Relations' },
+    section_timeline: { zh: '状态时间线', en: 'Status Timeline' },
+    section_impact: { zh: '下榜影响', en: 'Delist Impact' },
+    section_delist_audit: { zh: '下榜审计', en: 'Delist Audit' },
+    delist_source: { zh: '下榜来源', en: 'Delist Source' },
+    delist_source_manual: { zh: '手工下榜', en: 'Manual Delist' },
+    delist_source_auto: { zh: '自动下榜', en: 'Auto Delisted' },
+    delist_batch_process: { zh: '风险跑批过程', en: 'Risk Batch Process' },
+    delist_batch_job: { zh: '跑批编号', en: 'Job ID' },
+    delist_batch_roi: { zh: '触发时 30D ROI', en: '30D ROI at Trigger' },
+    delist_batch_hidden_days: { zh: '连续隐藏天数', en: 'Consecutive Hidden Days' },
+    delist_batch_change: { zh: '状态变更', en: 'Status Change' },
+    delist_operator: { zh: '操作人', en: 'Operator' },
+    delist_reason: { zh: '下榜理由', en: 'Delist Reason' },
+    delist_relation: { zh: '跟单关系处理', en: 'Follower Handling' },
+    timeline_listed: { zh: '上榜', en: 'Listed' },
+    timeline_hidden: { zh: '隐藏', en: 'Hidden' },
+    timeline_delisted: { zh: '下榜', en: 'Delisted' },
+    no_followers: { zh: '暂无跟单关系', en: 'No follower relations' },
+};
+
+function t(key) { const e = I18N[key]; return e ? e[LANG()] || e.zh : key; }
+function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.getAttribute('data-i18n')); if (v) el.innerHTML = v; });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = t(el.getAttribute('data-i18n-ph')); if (v) el.placeholder = v; });
+    // Update select options
+    document.querySelectorAll('[data-i18n-opt]').forEach(el => { const v = t(el.getAttribute('data-i18n-opt')); if (v) el.textContent = v; });
+}
+
+// ── Mock Data ──
+// Mock: 等级配置（用于等级福利预览）
+const mockLevels = [
+    { id: 'L1', nameEn: 'Gold', nameAr: 'ذهبي', profitShare: 20, maxFollowers: 1000, maxCapacity: 500000 },
+];
+
+// 前台展示标签：受控预设、多选 1–3 个；后台同时维护 English 与 العربية。
+const MASTER_TAGS = [
+    { id: 'steady_trading', en: 'Steady Trading', ar: 'تداول متزن' },
+    { id: 'gold_focus', en: 'Gold Focus', ar: 'تركيز الذهب' },
+    { id: 'fx_focus', en: 'FX Focus', ar: 'تركيز الفوركس' },
+    { id: 'indices_focus', en: 'Indices Focus', ar: 'تركيز المؤشرات' },
+    { id: 'short_term', en: 'Short-Term', ar: 'قصير الأجل' },
+    { id: 'intraday', en: 'Intraday', ar: 'داخل اليوم' },
+    { id: 'swing_trading', en: 'Swing Trading', ar: 'تداول متأرجح' },
+    { id: 'trend_following', en: 'Trend Following', ar: 'تتبع الاتجاه' },
+    { id: 'scalping', en: 'Scalping', ar: 'سكالبينج' },
+    { id: 'multi_asset', en: 'Multi-Asset', ar: 'متعدد الأصول' },
+    { id: 'low_frequency', en: 'Low Frequency', ar: 'تداول منخفض التكرار' },
+    { id: 'diversified', en: 'Diversified', ar: 'متنوع' },
+];
+
+// Mock: 高手列表
+const mockMasters = [
+    { uid: 'UID_88021', nick: 'TraderKing', nickZh: '交易之王', nickAr: 'ملك التداول', avatar: 'TK', tags: ['gold_focus', 'intraday'], strategyEn: 'Focuses on momentum-led opportunities in gold and major FX pairs, using short swing positions with disciplined exposure management.', strategyAr: 'يركز على فرص الزخم في الذهب وأزواج الفوركس الرئيسية، مع صفقات متأرجحة قصيرة وإدارة منضبطة للتعرض.', acct: '8802917', level: 'L1', levelName: 'Level 1', settlementCurrency: 'USD', balance: 15230, roi: 18.5, drawdown: 6.82, winRate: 76, trades: 67, followers: 12, aum: 84000, pendingReservations: 1, pendingReservedAmount: 4200, copiers: 1286, copyVolume: 2480000, listedFor: '164 days', status: 'listed', listedAt: '2026-03-15 10:30:00', hiddenDays: 0 },
+    { uid: 'UID_77432', nick: 'GoldHunter', nickZh: '黄金猎手', nickAr: 'صائد الذهب', avatar: 'GH', tags: ['gold_focus', 'trend_following'], strategyEn: 'Tracks established gold trends and manages entries across major market sessions.', strategyAr: 'يتابع اتجاهات الذهب القائمة ويدير نقاط الدخول عبر جلسات السوق الرئيسية.', acct: '7743201', level: 'L1', levelName: 'Level 1', settlementCurrency: 'USD', balance: 42800, roi: 25.3, drawdown: 5.10, winRate: 72, trades: 134, followers: 38, aum: 320000, copiers: 2480, copyVolume: 4820000, listedFor: '279 days', status: 'listed', listedAt: '2025-11-20 14:00:00', hiddenDays: 0 },
+    { uid: 'UID_65890', nick: 'FXMaster', nickZh: '外汇大师', nickAr: 'خبير الفوركس', avatar: 'FX', tags: ['fx_focus', 'steady_trading'], strategyEn: 'Focuses on liquid major FX pairs with a measured trade frequency and defined exposure.', strategyAr: 'يركز على أزواج الفوركس الرئيسية السائلة مع وتيرة تداول محسوبة وتعرض محدد.', acct: '6589034', level: 'L1', levelName: 'Level 1', settlementCurrency: 'AED', balance: 3200, roi: -2.1, drawdown: 7.48, winRate: 58, trades: 28, followers: 5, aum: 12000, copiers: 316, copyVolume: 790000, listedFor: '117 days', status: 'hidden', listedAt: '2026-05-01 09:00:00', hiddenDays: 8 },
+    { uid: 'UID_91234', nick: 'CryptoWolf', nickZh: '加密之狼', nickAr: 'ذئب الأسواق', avatar: 'CW', tags: ['short_term', 'multi_asset'], strategyEn: 'Uses short-term setups across selected CFD markets with active position monitoring.', strategyAr: 'يستخدم إعدادات قصيرة الأجل عبر أسواق عقود الفروقات المختارة مع متابعة نشطة للمراكز.', acct: '9123456', level: 'L1', levelName: 'Level 1', settlementCurrency: 'USD', balance: 890, roi: -8.7, drawdown: 12.36, winRate: 49, trades: 15, followers: 2, aum: 3500, copiers: 144, copyVolume: 286000, listedFor: '77 days', status: 'hidden', listedAt: '2026-06-10 16:20:00', hiddenDays: 3 },
+    { uid: 'UID_44567', nick: 'PipScalper', nickZh: '点数猎人', nickAr: 'متداول النقاط', avatar: 'PS', tags: ['fx_focus', 'scalping'], strategyEn: 'Trades short-duration setups in major FX pairs with frequent market monitoring.', strategyAr: 'يتداول إعدادات قصيرة المدة في أزواج الفوركس الرئيسية مع متابعة متكررة للسوق.', acct: '4456789', level: 'L1', levelName: 'Level 1', settlementCurrency: 'USD', balance: 8500, roi: -15.2, drawdown: 18.94, winRate: 43, trades: 89, followers: 0, aum: 0, copiers: 672, copyVolume: 1190000, listedFor: '305 days', status: 'delisted', listedAt: '2025-08-15 11:00:00', hiddenDays: 0, delistSource: 'auto', delistTime: '2026-06-15 00:00:00', delistOperator: 'system', delistReason: '连续 14 天 30D 收益率 ≤ 0，自动下榜', delistRiskBatch: { jobId: 'RISK_D_20260615_001', roi: -4.80, hiddenDays: 14, statusChange: 'Hidden → Delisted' }, impactRelations: '停止新开仓；存量持仓继续跟随平仓' },
+    { uid: 'UID_33210', nick: 'SwingPro', nickZh: '波段专家', nickAr: 'محترف الصفقات المتأرجحة', avatar: 'SP', tags: ['swing_trading', 'indices_focus'], strategyEn: 'Uses multi-day swing setups focused on major index CFDs and defined holding windows.', strategyAr: 'يستخدم إعدادات تداول متأرجح متعددة الأيام تركز على عقود فروقات المؤشرات الرئيسية وفترات احتفاظ محددة.', acct: '3321045', level: 'L1', levelName: 'Level 1', settlementCurrency: 'AED', balance: 1500, roi: 7.2, drawdown: 4.72, winRate: 66, trades: 31, followers: 8, aum: 22000, copiers: 428, copyVolume: 861000, listedFor: '56 days', status: 'listed', listedAt: '2026-07-01 08:00:00', hiddenDays: 0 },
+];
+
+// Mock: 用户关联账号（用于人工开通时查询）
+const mockUserAccounts = {
+    'UID_88021': [
+        { acct: '8802917', currency: 'USD', balance: 15230, trades30d: 67, roi30d: 18.5, meetsL1: true },
+        { acct: '8802918', currency: 'AED', balance: 3200, trades30d: 12, roi30d: 5.2, meetsL1: true },
+    ],
+    'UID_77432': [
+        { acct: '7743201', currency: 'USD', balance: 42800, trades30d: 134, roi30d: 25.3, meetsL1: true },
+    ],
+    'UID_65890': [
+        { acct: '6589034', currency: 'AED', balance: 3200, trades30d: 28, roi30d: -2.1, meetsL1: true },
+        { acct: '6589035', currency: 'USD', balance: 150, trades30d: 3, roi30d: -15.0, meetsL1: false },
+    ],
+    'UID_NEW001': [
+        { acct: '1002345', currency: 'USD', balance: 8500, trades30d: 45, roi30d: 12.3, meetsL1: true },
+        { acct: '1002346', currency: 'AED', balance: 28000, trades30d: 89, roi30d: 22.1, meetsL1: true },
+        { acct: '1002347', currency: 'USD', balance: 500, trades30d: 5, roi30d: -8.5, meetsL1: false },
+    ],
+};
+
+// 客户公开资料：头像与昵称在 Master 开通前确认，昵称支持 English / العربية。
+const mockClientProfiles = {
+    'UID_88021': { avatar: 'TK', nickEn: 'TraderKing', nickAr: 'ملك التداول' },
+    'UID_77432': { avatar: 'GH', nickEn: 'GoldHunter', nickAr: 'صائد الذهب' },
+    'UID_65890': { avatar: 'FX', nickEn: 'FXMaster', nickAr: 'خبير الفوركس' },
+    'UID_91234': { avatar: 'CW', nickEn: 'CryptoWolf', nickAr: 'ذئب الأسواق' },
+    'UID_44567': { avatar: 'PS', nickEn: 'PipScalper', nickAr: 'متداول النقاط' },
+    'UID_33210': { avatar: 'SP', nickEn: 'SwingPro', nickAr: 'محترف الصفقات المتأرجحة' },
+    'UID_NEW001': { avatar: 'AN', nickEn: 'Arden Nash', nickAr: 'آردن ناش' },
+};
+
+let selectedAcct = null;
+let selectedSettlementCurrency = null;
+let selectedMasterTags = [];
+let tagSelectorTarget = 'masterTagSelector';
+let editingMasterIndex = -1;
+let detailMasterIndex = -1;
+
+// ── Render ──
+function renderStatCards() {
+    const total = mockMasters.length;
+    const listed = mockMasters.filter(m => m.status === 'listed').length;
+    const hidden = mockMasters.filter(m => m.status === 'hidden').length;
+    const delisted = mockMasters.filter(m => m.status === 'delisted').length;
+    const cards = [
+        { label: t('stat_total'), value: total, icon: 'fa-users', color: 'slate' },
+        { label: t('stat_listed'), value: listed, icon: 'fa-circle-check', color: 'emerald' },
+        { label: t('stat_hidden'), value: hidden, icon: 'fa-eye-slash', color: 'amber' },
+        { label: t('stat_delisted'), value: delisted, icon: 'fa-circle-xmark', color: 'rose' },
+    ];
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-${c.color}-50 flex items-center justify-center">
+                <i class="fa-solid ${c.icon} text-${c.color}-500"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-slate-800 font-mono">${c.value}</p>
+                <p class="text-xs text-slate-500">${c.label}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderTable() {
+    const statusFilter = document.getElementById('filterStatus').value;
+    const levelFilter = document.getElementById('filterLevel').value;
+    const searchUid = document.getElementById('filterUid').value.toLowerCase();
+    const searchAcct = document.getElementById('filterAcct').value.toLowerCase();
+    const listedStart = document.getElementById('filterListedStart').value;
+    const listedEnd = document.getElementById('filterListedEnd').value;
+
+    let data = mockMasters.filter(m => {
+        if (statusFilter && m.status !== statusFilter) return false;
+        if (levelFilter && m.level !== levelFilter) return false;
+        if (searchUid && !m.uid.toLowerCase().includes(searchUid)) return false;
+        if (searchAcct && !m.acct.includes(searchAcct)) return false;
+        const listedDate = m.listedAt.slice(0, 10);
+        if (listedStart && listedDate < listedStart) return false;
+        if (listedEnd && listedDate > listedEnd) return false;
+        return true;
+    });
+
+    const statusMeta = {
+        listed:  { label: t('status_listed'),  dot: 'bg-emerald-500', cls: 'bg-emerald-50 text-emerald-700' },
+        hidden:  { label: t('status_hidden'),  dot: 'bg-amber-500',   cls: 'bg-amber-50 text-amber-700' },
+        delisted:{ label: t('status_delisted'), dot: 'bg-rose-500',    cls: 'bg-rose-50 text-rose-600' },
+    };
+
+    document.getElementById('masterTableBody').innerHTML = data.map((m, i) => {
+        const sm = statusMeta[m.status];
+        const nick = m.nick;
+        const canDelist = m.status === 'listed' || m.status === 'hidden';
+        const canEdit = m.status !== 'delisted';
+        return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-primary cursor-pointer hover:underline" onclick="showUidToast('${m.uid}')">${m.uid}</td>
+            <td class="px-4 py-3 font-medium text-slate-800">${nick}</td>
+            <td class="px-4 py-3">${renderMasterTags(m.tags, true)}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600">${m.acct}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-600">${m.levelName}</span>
+            </td>
+            <td class="px-4 py-3 text-center"><span class="font-mono text-xs font-semibold text-slate-700">${m.settlementCurrency}</span></td>
+            <td class="px-4 py-3 text-right font-mono">${m.balance.toLocaleString()}</td>
+            <td class="px-4 py-3 text-right font-mono ${m.roi >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${m.roi > 0 ? '+' : ''}${m.roi}%</td>
+            <td class="px-4 py-3 text-right font-mono text-amber-700">${m.drawdown.toFixed(2)}%</td>
+            <td class="px-4 py-3 text-right font-mono">${m.winRate}%</td>
+            <td class="px-4 py-3 text-right font-mono">${m.trades}</td>
+            <td class="px-4 py-3 text-right font-mono">${m.followers}</td>
+            <td class="px-4 py-3 text-right font-mono">${m.aum.toLocaleString()}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold ${sm.cls}">
+                    <span class="status-dot ${sm.dot}"></span>${sm.label}
+                </span>
+            </td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">${m.listedAt}</td>
+            <td class="px-4 py-3 text-center">
+                <div class="flex items-center justify-center gap-1">
+                    <button onclick="openDetailDrawer(${mockMasters.indexOf(m)})" class="text-primary hover:underline font-medium text-xs">${t('btn_view')}</button>
+                    ${canEdit ? `<span class="text-slate-300 mx-1">|</span><button onclick="openEditTagsDrawer(${mockMasters.indexOf(m)})" class="text-primary hover:underline font-medium text-xs">${t('btn_edit')}</button>` : ''}
+                    ${canDelist ? `<span class="text-slate-300 mx-1">|</span><button onclick="openDelistModal(${mockMasters.indexOf(m)})" class="text-rose-600 hover:underline font-medium text-xs">${t('btn_delist')}</button>` : ''}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function renderMasterTags(tagIds = [], compact = false) {
+    const limit = compact ? 2 : 3;
+    return tagIds.slice(0, limit).map(id => {
+        const tag = MASTER_TAGS.find(item => item.id === id);
+        if (!tag) return '';
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 mr-1 mb-1 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100"><span>${tag.en}</span><span class="text-violet-400" dir="rtl">${tag.ar}</span></span>`;
+    }).join('') || '<span class="text-xs text-slate-400">—</span>';
+}
+
+function renderMasterTagSelector(containerId = tagSelectorTarget) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = MASTER_TAGS.map(tag => {
+        const checked = selectedMasterTags.includes(tag.id);
+        return `<label class="flex items-center gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-primary/40'}">
+            <input type="checkbox" class="w-3.5 h-3.5 accent-primary" ${checked ? 'checked' : ''} onchange="toggleMasterTag('${tag.id}', this.checked)">
+            <span class="min-w-0"><span class="block text-xs font-semibold text-slate-700 truncate">${tag.en}</span><span class="block text-[10px] text-slate-400 truncate" dir="rtl">${tag.ar}</span></span>
+        </label>`;
+    }).join('');
+}
+
+
+function toggleMasterTag(id, checked) {
+    if (checked && !selectedMasterTags.includes(id)) {
+        if (selectedMasterTags.length >= 3) { showToast(t('toast_tags_limit')); renderMasterTagSelector(); return; }
+        selectedMasterTags.push(id);
+    }
+    if (!checked) selectedMasterTags = selectedMasterTags.filter(tagId => tagId !== id);
+    renderMasterTagSelector();
+}
+
+function openEditTagsDrawer(index) {
+    const m = mockMasters[index];
+    if (!m) return;
+    if (m.status === 'delisted') { showToast(t('toast_delisted_readonly')); return; }
+    editingMasterIndex = index;
+    selectedMasterTags = [...(m.tags || [])];
+    tagSelectorTarget = 'editMasterTagSelector';
+    document.getElementById('editTagsUid').textContent = m.uid;
+    document.getElementById('editProfileAvatar').textContent = m.avatar || 'AN';
+    document.getElementById('editAvatarPreview').textContent = m.avatar || 'AN';
+    document.getElementById('editAvatarFile').value = '';
+    document.getElementById('editNickname').value = m.nick || '';
+    document.getElementById('editStrategyEn').value = m.strategyEn || '';
+    document.getElementById('editStrategyAr').value = m.strategyAr || '';
+    renderMasterTagSelector();
+    const bd = document.getElementById('editTagsBackdrop');
+    const pn = document.getElementById('editTagsPanel');
+    bd.classList.remove('hidden');
+    requestAnimationFrame(() => { bd.classList.add('opacity-100'); pn.classList.add('open'); });
+}
+
+function closeEditTagsDrawer() {
+    const bd = document.getElementById('editTagsBackdrop');
+    const pn = document.getElementById('editTagsPanel');
+    bd.classList.remove('opacity-100'); pn.classList.remove('open');
+    setTimeout(() => bd.classList.add('hidden'), 300);
+    editingMasterIndex = -1;
+}
+
+function confirmEditTags() {
+    const master = mockMasters[editingMasterIndex];
+    if (!master) return;
+    if (master.status === 'delisted') { closeEditTagsDrawer(); showToast(t('toast_delisted_readonly')); return; }
+    if (selectedMasterTags.length === 0) { showToast(t('toast_tags_required')); return; }
+    const strategyEn = document.getElementById('editStrategyEn').value.trim();
+    const strategyAr = document.getElementById('editStrategyAr').value.trim();
+    if (!strategyEn || !strategyAr) { showToast(t('toast_strategy_required')); return; }
+    const nickname = document.getElementById('editNickname').value.trim();
+    if (!nickname) { showToast(t('toast_nickname_required')); return; }
+    master.tags = [...selectedMasterTags];
+    master.nick = nickname;
+    master.strategyEn = strategyEn;
+    master.strategyAr = strategyAr;
+    renderTable();
+    closeEditTagsDrawer();
+    if (detailMasterIndex >= 0) openDetailDrawer(detailMasterIndex);
+    showToast(t('toast_tags_saved'));
+}
+
+// ── Detail Drawer ──
+function openDetailDrawer(index) {
+    const m = mockMasters[index];
+    detailMasterIndex = index;
+    const statusMeta = {
+        listed:  { label: t('status_listed'),  cls: 'bg-emerald-50 text-emerald-700' },
+        hidden:  { label: t('status_hidden'),  cls: 'bg-amber-50 text-amber-700' },
+        delisted:{ label: t('status_delisted'), cls: 'bg-rose-50 text-rose-600' },
+    };
+    const sm = statusMeta[m.status];
+    const levelConfig = mockLevels.find(level => level.id === m.level);
+    const pendingReservations = m.pendingReservations || 0;
+    const pendingReservedAmount = m.pendingReservedAmount || 0;
+    const availableCapacity = Math.max(0, (levelConfig?.maxCapacity || 0) - m.aum - pendingReservedAmount);
+    const isDelisted = m.status === 'delisted';
+    const delistSource = m.delistSource === 'manual' ? t('delist_source_manual') : t('delist_source_auto');
+
+    let html = `
+    <!-- 基本信息 -->
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_basic')}</h3>
+        <div class="bg-slate-50 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="col-span-2 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><span class="w-10 h-10 rounded-full bg-sky-100 text-sky-700 inline-flex items-center justify-center font-bold">${m.avatar || 'AN'}</span><div><span class="text-slate-500">UID</span><p class="font-mono font-semibold text-slate-800">${m.uid}</p></div><div class="border-l border-slate-200 pl-3"><span class="text-slate-500">${isZh() ? '昵称' : 'Nick Name'}</span><p class="font-semibold text-slate-800">${m.nick}</p></div></div>${isDelisted ? `<span class="text-xs font-medium text-slate-400">${t('toast_delisted_readonly')}</span>` : `<button onclick="openEditTagsDrawer(${index})" class="text-primary hover:underline font-medium text-xs">${t('btn_edit')}</button>`}</div>
+            <div class="col-span-2"><span class="text-slate-500">${t('th_master_tags')}</span><p class="mt-1">${renderMasterTags(m.tags)}</p></div>
+            <div class="col-span-2"><span class="text-slate-500">${t('f_strategy_overview_en')}</span><p class="mt-1 text-slate-700 leading-relaxed">${m.strategyEn || '—'}</p></div>
+            <div class="col-span-2"><span class="text-slate-500">${t('f_strategy_overview_ar')}</span><p class="mt-1 text-slate-700 leading-relaxed text-right" dir="rtl">${m.strategyAr || '—'}</p></div>
+            <div><span class="text-slate-500">Acct.No</span><p class="font-mono font-semibold text-slate-800">${m.acct}</p></div>
+            <div><span class="text-slate-500">${t('th_level')}</span><p><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600">${m.levelName}</span></p></div>
+            <div><span class="text-slate-500">${t('th_settlement_currency')}</span><p class="font-mono font-semibold text-slate-800">${m.settlementCurrency}</p></div>
+            <div><span class="text-slate-500">${t('th_status')}</span><p><span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold ${sm.cls}">${sm.label}</span></p></div>
+            <div><span class="text-slate-500">${t('th_listed_time')}</span><p class="font-mono text-xs text-slate-700">${m.listedAt}</p></div>
+            <div><span class="text-slate-500">${t('label_listed_for')}</span><p class="font-mono text-xs text-slate-700">${m.listedFor}</p></div>
+        </div>
+    </div>
+
+    <!-- 实时交易数据 -->
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_trading')}</h3>
+        <div class="grid grid-cols-4 gap-3">
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_balance')}</p>
+                <p class="text-lg font-bold font-mono text-slate-800">${m.balance.toLocaleString()}</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_roi')}</p>
+                <p class="text-lg font-bold font-mono ${m.roi >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${m.roi > 0 ? '+' : ''}${m.roi}%</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_drawdown')}</p>
+                <p class="text-lg font-bold font-mono text-amber-700">${m.drawdown.toFixed(2)}%</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_win_rate')}</p>
+                <p class="text-lg font-bold font-mono text-slate-800">${m.winRate}%</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_followers')}</p>
+                <p class="text-lg font-bold font-mono text-slate-800">${m.followers}</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('th_aum')}</p>
+                <p class="text-lg font-bold font-mono text-slate-800">${m.aum.toLocaleString()}</p>
+            </div>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+            <div><p class="text-xs text-amber-700">${t('label_pending_reservations')}</p><p class="mt-1 font-mono font-bold text-slate-800">${pendingReservations}</p></div>
+            <div><p class="text-xs text-amber-700">${t('label_reserved_capacity')}</p><p class="mt-1 font-mono font-bold text-slate-800">${pendingReservedAmount.toLocaleString()} USD</p></div>
+            <div><p class="text-xs text-amber-700">${t('label_available_capacity')}</p><p class="mt-1 font-mono font-bold text-slate-800">${availableCapacity.toLocaleString()} USD</p></div>
+        </div>
+        <p class="mt-2 text-xs text-slate-400">${isZh() ? '可复制金额 = 最大可投资金额 − 跟随资金规模 − 待支付预留金额。待支付不计入跟随者数和 AUM。' : 'Available Capacity = Max Capacity − Copying AUM − Pending Reserved Amount. Pending payments are excluded from Followers and AUM.'}</p>
+    </div>
+
+    <!-- 前台公开累计数据 -->
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_public')}</h3>
+        <div class="grid grid-cols-3 gap-3">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('label_listed_for')}</p>
+                <p class="text-base font-bold font-mono text-slate-800">${m.listedFor}</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('label_copiers')}</p>
+                <p class="text-base font-bold font-mono text-slate-800">${m.copiers.toLocaleString()}</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                <p class="text-xs text-slate-500 mb-1">${t('label_copy_volume')}</p>
+                <p class="text-base font-bold font-mono text-slate-800">$${m.copyVolume.toLocaleString()}</p>
+            </div>
+        </div>
+        <p class="mt-2 text-xs text-slate-400">${isZh() ? 'Copiers 与历史复制金额不因重新上榜清零。' : 'Copiers and Copy volume are not reset when re-listed.'}</p>
+    </div>
+
+    <!-- 状态时间线 -->
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_timeline')}</h3>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
+                <div>
+                    <p class="text-sm font-medium text-slate-700">${t('timeline_listed')}</p>
+                    <p class="text-xs font-mono text-slate-400">${m.listedAt}</p>
+                </div>
+            </div>
+            ${m.status === 'hidden' ? `
+            <div class="flex items-start gap-3">
+                <div class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div>
+                    <p class="text-sm font-medium text-slate-700">${t('timeline_hidden')}</p>
+                    <p class="text-xs font-mono text-slate-400">${isZh() ? `已隐藏 ${m.hiddenDays} 天` : `Hidden for ${m.hiddenDays} days`}</p>
+                    <p class="text-xs text-amber-600 mt-0.5">${isZh() ? `连续 ${m.hiddenDays} 天 30D 收益率 ≤ 0` : `30D ROI ≤ 0 for ${m.hiddenDays} consecutive days`}</p>
+                </div>
+            </div>` : ''}
+            ${m.status === 'delisted' ? `
+            <div class="flex items-start gap-3">
+                <div class="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
+                <div>
+                    <p class="text-sm font-medium text-slate-700">${t('timeline_delisted')}</p>
+                    <p class="text-xs font-mono text-slate-400">${m.delistTime || '—'}</p>
+                    <p class="text-xs text-rose-600 mt-0.5">${m.delistReason || (isZh() ? '下榜理由未记录' : 'No delist reason recorded')}</p>
+                </div>
+            </div>` : ''}
+        </div>
+    </div>
+
+    <!-- 伞下跟单关系 -->
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_followers')}</h3>
+        ${m.followers > 0 ? `
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <table class="w-full text-xs">
+                <thead><tr class="bg-slate-50 border-b border-slate-200">
+                    <th class="text-left px-3 py-2 text-slate-500">${t('th_uid')}</th>
+                    <th class="text-right px-3 py-2 text-slate-500">${isZh() ? '投资金额' : 'Invest Amount'}</th>
+                    <th class="text-center px-3 py-2 text-slate-500">${t('th_status')}</th>
+                </tr></thead>
+                <tbody>
+                    <tr class="border-b border-slate-100"><td class="px-3 py-2 font-mono">UID_10001</td><td class="px-3 py-2 text-right font-mono">2,500</td><td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">${isZh() ? '投资中' : 'Active'}</span></td></tr>
+                    <tr class="border-b border-slate-100"><td class="px-3 py-2 font-mono">UID_10002</td><td class="px-3 py-2 text-right font-mono">5,000</td><td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">${isZh() ? '投资中' : 'Active'}</span></td></tr>
+                    ${m.followers > 2 ? `<tr class="border-b border-slate-100"><td class="px-3 py-2 font-mono">UID_10003</td><td class="px-3 py-2 text-right font-mono">1,200</td><td class="px-3 py-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">${isZh() ? '结束中' : 'Closing'}</span></td></tr>` : ''}
+                </tbody>
+            </table>
+        </div>` : `<div class="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-6 text-center text-sm text-slate-400">${t('no_followers')}</div>`}
+    </div>
+
+    ${m.status === 'delisted' ? `
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">${t('section_delist_audit')}</h3>
+        <div class="bg-rose-50/50 border border-rose-100 rounded-lg p-4 space-y-2 text-sm">
+            <div class="flex justify-between gap-4"><span class="text-slate-500">${t('delist_source')}</span><span class="font-medium text-slate-700">${delistSource}</span></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">${t('delist_operator')}</span><span class="font-mono text-slate-700">${m.delistOperator || '—'}</span></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">${t('delist_reason')}</span><span class="text-right text-slate-700">${m.delistReason || '—'}</span></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">${t('delist_relation')}</span><span class="text-right text-slate-700">${m.impactRelations || '—'}</span></div>
+        </div>
+        ${m.delistSource === 'auto' && m.delistRiskBatch ? `<div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4"><p class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">${t('delist_batch_process')}</p><div class="grid grid-cols-2 gap-x-5 gap-y-3 text-sm"><div><p class="text-xs text-slate-500">${t('delist_batch_job')}</p><p class="mt-1 font-mono text-xs font-semibold text-slate-700">${m.delistRiskBatch.jobId}</p></div><div><p class="text-xs text-slate-500">${t('delist_batch_change')}</p><p class="mt-1 font-medium text-slate-700">${m.delistRiskBatch.statusChange}</p></div><div><p class="text-xs text-slate-500">${t('delist_batch_roi')}</p><p class="mt-1 font-mono font-semibold text-rose-600">${m.delistRiskBatch.roi}%</p></div><div><p class="text-xs text-slate-500">${t('delist_batch_hidden_days')}</p><p class="mt-1 font-mono font-semibold text-slate-700">${m.delistRiskBatch.hiddenDays} / 14</p></div></div></div>` : ''}
+    </div>` : ''}`;
+
+    document.getElementById('detailContent').innerHTML = html;
+    const bd = document.getElementById('detailBackdrop');
+    const pn = document.getElementById('detailPanel');
+    bd.classList.remove('hidden');
+    requestAnimationFrame(() => { bd.classList.add('opacity-100'); pn.classList.add('open'); });
+}
+
+function closeDetailDrawer() {
+    const bd = document.getElementById('detailBackdrop');
+    const pn = document.getElementById('detailPanel');
+    bd.classList.remove('opacity-100'); pn.classList.remove('open');
+    setTimeout(() => bd.classList.add('hidden'), 300);
+    detailMasterIndex = -1;
+}
+
+// ── Level Preview ──
+function updateLevelPreview() {
+    const level = document.getElementById('s-level').value;
+    const lv = mockLevels.find(l => l.id === level);
+    if (lv) {
+        document.getElementById('preview-profitShare').textContent = lv.profitShare + '%';
+        document.getElementById('preview-maxFollowers').textContent = lv.maxFollowers.toLocaleString();
+        document.getElementById('preview-maxCapacity').textContent = lv.maxCapacity.toLocaleString();
+    }
+}
+
+// ── Setup Drawer ──
+function openSetupDrawer() {
+    document.getElementById('s-uid').value = 'UID_NEW001';
+    document.getElementById('s-level').value = 'L1';
+    document.getElementById('acctListSection').classList.add('hidden');
+    document.getElementById('settlementCurrencySection').classList.add('hidden');
+    document.getElementById('s-settlementCurrency').value = '';
+    document.getElementById('setupProfileSection').classList.add('hidden');
+    document.getElementById('acctList').innerHTML = '';
+    selectedAcct = null;
+    selectedSettlementCurrency = null;
+    selectedMasterTags = ['gold_focus'];
+    tagSelectorTarget = 'masterTagSelector';
+    document.getElementById('s-strategyEn').value = '';
+    document.getElementById('s-strategyAr').value = '';
+    document.getElementById('s-nickname').value = '';
+    renderMasterTagSelector();
+    updateLevelPreview();
+    const bd = document.getElementById('setupBackdrop');
+    const pn = document.getElementById('setupPanel');
+    bd.classList.remove('hidden');
+    requestAnimationFrame(() => { bd.classList.add('opacity-100'); pn.classList.add('open'); });
+    // Auto-fetch accounts for default UID
+    setTimeout(() => fetchAccounts(), 300);
+}
+function closeSetupDrawer() {
+    const bd = document.getElementById('setupBackdrop');
+    const pn = document.getElementById('setupPanel');
+    bd.classList.remove('opacity-100'); pn.classList.remove('open');
+    setTimeout(() => bd.classList.add('hidden'), 300);
+}
+function fetchAccounts() {
+    const uid = document.getElementById('s-uid').value.trim();
+    const section = document.getElementById('acctListSection');
+    const list = document.getElementById('acctList');
+    if (!uid) { showToast(isZh() ? '请输入 UID' : 'Please enter UID'); return; }
+    const accounts = mockUserAccounts[uid];
+    if (!accounts || accounts.length === 0) {
+        section.classList.remove('hidden');
+        document.getElementById('settlementCurrencySection').classList.add('hidden');
+        document.getElementById('setupProfileSection').classList.add('hidden');
+        selectedSettlementCurrency = null;
+        list.innerHTML = `<div class="text-center py-4 text-sm text-slate-500"><i class="fa-solid fa-inbox mr-1.5"></i>${t('no_accounts')}</div>`;
+        return;
+    }
+    selectedAcct = null;
+    renderSetupProfile(uid);
+    document.getElementById('settlementCurrencySection').classList.add('hidden');
+    selectedSettlementCurrency = null;
+    section.classList.remove('hidden');
+    list.innerHTML = accounts.map(a => `
+        <label class="flex items-center gap-3 p-2.5 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+            <input type="radio" name="acctSelect" value="${a.acct}" class="w-4 h-4 text-primary accent-primary" onchange="selectSetupAccount('${a.acct}')">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-mono font-semibold text-slate-800">Acct.No ${a.acct}</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">${a.currency}</span>
+                    ${a.meetsL1 
+                        ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700"><i class="fa-solid fa-check mr-0.5"></i>${t('l1_check_pass')}</span>`
+                        : `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-600"><i class="fa-solid fa-xmark mr-0.5"></i>${t('l1_check_fail')}</span>`
+                    }
+                </div>
+                <div class="text-xs text-slate-500 mt-0.5 font-mono">
+                    ${isZh() ? '余额' : 'Balance'}: ${a.balance.toLocaleString()} ${a.currency} · ${isZh() ? '30D交易' : '30D Trades'}: ${a.trades30d} · ${isZh() ? '30D收益率' : '30D ROI'}: ${a.roi30d > 0 ? '+' : ''}${a.roi30d}%
+                </div>
+            </div>
+        </label>
+    `).join('');
+}
+function renderSetupProfile(uid) {
+    const profile = mockClientProfiles[uid] || { avatar: 'AN', nickEn: 'New Master', nickAr: 'متداول جديد' };
+    document.getElementById('setupAvatarPreview').textContent = profile.avatar || 'AN';
+    document.getElementById('s-nickname').value = profile.nickEn || '';
+    document.getElementById('setupProfileSection').classList.remove('hidden');
+}
+function selectSetupAccount(acct) {
+    selectedAcct = acct;
+    const uid = document.getElementById('s-uid').value.trim();
+    const account = (mockUserAccounts[uid] || []).find(a => a.acct === acct);
+    const section = document.getElementById('settlementCurrencySection');
+    const input = document.getElementById('s-settlementCurrency');
+    if (!account || !account.currency) {
+        section.classList.add('hidden');
+        input.value = '';
+        selectedSettlementCurrency = null;
+        return;
+    }
+    selectedSettlementCurrency = account.currency;
+    input.value = account.currency;
+    section.classList.remove('hidden');
+}
+function confirmSetup() {
+    const uid = document.getElementById('s-uid').value.trim();
+    if (!uid || !selectedAcct) { showToast(isZh() ? '请选择关联账号' : 'Please select an account'); return; }
+    if (!selectedSettlementCurrency) { showToast(t('no_account_currency')); return; }
+    const nickname = document.getElementById('s-nickname').value.trim();
+    if (!nickname) { showToast(t('toast_nickname_required')); return; }
+    if (selectedMasterTags.length === 0) { showToast(t('toast_tags_required')); return; }
+    if (!document.getElementById('s-strategyEn').value.trim() || !document.getElementById('s-strategyAr').value.trim()) { showToast(t('toast_strategy_required')); return; }
+    closeSetupDrawer();
+    showToast(t('toast_setup_ok'));
+}
+
+// ── Delist Modal ──
+let delistTargetIndex = -1;
+function openDelistModal(index) {
+    delistTargetIndex = index;
+    const m = mockMasters[index];
+    document.getElementById('delistMsg').textContent = isZh() ? `确认将 ${m.nickZh} (${m.uid}) 手动下榜？` : `Confirm delist ${m.nick} (${m.uid})?`;
+    document.getElementById('delistReason').value = '';
+    document.getElementById('delistModal').classList.remove('hidden');
+}
+function closeDelistModal() { document.getElementById('delistModal').classList.add('hidden'); delistTargetIndex = -1; }
+function confirmDelist() {
+    const reason = document.getElementById('delistReason').value.trim();
+    if (!reason) { showToast(t('toast_reason_required')); return; }
+    if (delistTargetIndex >= 0) {
+        const target = mockMasters[delistTargetIndex];
+        target.status = 'delisted';
+        target.delistSource = 'manual';
+        target.delistTime = '2026-08-05 10:00:00';
+        target.delistOperator = 'Admin Super';
+        target.delistReason = reason;
+        target.impactRelations = '停止新开仓；存量持仓继续跟随平仓';
+        renderTable();
+        renderStatCards();
+    }
+    closeDelistModal();
+    showToast(t('toast_delisted'));
+}
+
+function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function showUidToast(uid) {
+    window.location.href = `${isZh() ? '客户管理.html' : 'clients.html'}?uid=${encodeURIComponent(uid)}`;
+}
+
+function init() {
+    const lang = LANG();
+    injectSidebar({ activePath: isZh() ? 'Copytrading / 高手管理' : 'Copytrading / Master Management', lang });
+    applyI18n();
+    renderStatCards();
+    renderTable();
+}
+init();
+</script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFD 业务管理后台</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        sidebar: '#0B1120',      // 深色侧边栏背景
+                        sidebarHover: '#1E293B', // 侧边栏悬浮色
+                        primary: '#3B82F6',      // 主题蓝
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定义滚动条样式，让侧边栏更优雅 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* 菜单折叠动画过渡 */
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .submenu-container.expanded {
+            max-height: 1000px; /* 足够大的高度以容纳子菜单 */
+            opacity: 1;
+        }
+        .chevron {
+            transition: transform 0.3s ease;
+        }
+        .chevron.rotated {
+            transform: rotate(90deg);
+        }
+        
+        /* 菜单层级缩进基准 */
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        /* 右侧滑出抽屉过渡动画 */
+        .drawer-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .drawer-content {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <!-- 面包屑导航 -->
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">资金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">出入金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">通道管理</span>
+            </div>
+
+            <!-- 右侧工具栏 -->
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                <button class="hover:text-red-500 transition-colors text-sm font-medium flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 提示通知组件 -->
+        <div id="toast" class="fixed top-20 right-8 z-50 transform translate-y-[-20px] opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-lg shadow-xl text-sm font-medium">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-base" id="toast-icon"></i>
+            <span id="toast-message">操作成功</span>
+        </div>
+
+        <!-- 实际页面内容承载区 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50" id="page-content">
+            
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">通道管理</h1>
+                    <p class="text-sm text-slate-500 mt-2">配置与管理系统全局的出入金支付通道及限额费率规则。</p>
+                </div>
+                <button onclick="openFormDrawer('create')" class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm shadow-blue-500/30 transition-all flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-plus"></i> 新建通道
+                </button>
+            </div>
+
+            <!-- 数据列表卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <!-- 表头 -->
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs tracking-wider border-b border-slate-200">
+                                <th class="px-4 py-4 font-semibold text-center w-28" title="决定前台 App 中的展示顺序，数字越小越靠前">前台排序</th>
+                                <th class="px-6 py-4 font-semibold">通道ID</th>
+                                <th class="px-6 py-4 font-semibold">通道底层</th>
+                                <th class="px-6 py-4 font-semibold">对外名称</th>
+                                <th class="px-6 py-4 font-semibold">入金限额</th>
+                                <th class="px-6 py-4 font-semibold text-center">支持出金</th>
+                                <th class="px-6 py-4 font-semibold">出金费率</th>
+                                <th class="px-6 py-4 font-semibold text-center">状态</th>
+                                <th class="px-6 py-4 font-semibold text-right">操作</th>
+                            </tr>
+                        </thead>
+                        
+                        <tbody class="text-sm divide-y divide-slate-100" id="gateways-table-body">
+                            <!-- 通道 1： USDT (正常状态) -->
+                            <tr class="hover:bg-slate-50 transition-colors group">
+                                <td class="px-3 py-4 text-center align-middle">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span class="order-num inline-flex w-7 h-7 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-mono text-xs font-bold">1</span>
+                                        <div class="flex flex-col gap-0.5">
+                                            <button onclick="moveRow(this,'up')" class="btn-up w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500" title="上移"><i class="fas fa-chevron-up text-[10px]"></i></button>
+                                            <button onclick="moveRow(this,'down')" class="btn-down w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500" title="下移"><i class="fas fa-chevron-down text-[10px]"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded">GW_U_TRC20</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-600">Tether Network</td>
+                                <td class="px-6 py-4 font-medium text-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        <span>USDT-TRC20</span>
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-600 border border-rose-100 rounded text-[10px] font-bold tracking-wide"><i class="fa-solid fa-star text-[8px]"></i>Hot</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col gap-1 font-mono text-xs">
+                                        <div><span class="text-slate-400 w-8 inline-block">USD:</span> <span class="text-slate-700">10.00 - 100,000.00</span></div>
+                                        <div><span class="text-slate-400 w-8 inline-block">AED:</span> <span class="text-slate-700">36.00 - 367,000.00</span></div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md text-xs font-medium">支持</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-600 font-mono text-xs">
+                                    最低 $1.00 / 3.60 AED + 0%
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium"><i class="fa-solid fa-circle-check text-[10px] mr-1.5"></i>正常</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="openFormDrawer('edit', 'GW_U_TRC20')" class="text-primary hover:text-blue-700 font-medium transition-colors cursor-pointer">编辑</button>
+                                        <div class="w-px h-3 bg-slate-300"></div>
+                                        <button class="text-slate-500 hover:text-slate-700 font-medium transition-colors cursor-pointer">停用</button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 通道 2： Bank Transfer (正常状态) -->
+                            <tr class="hover:bg-slate-50 transition-colors group">
+                                <td class="px-3 py-4 text-center align-middle">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span class="order-num inline-flex w-7 h-7 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-mono text-xs font-bold">2</span>
+                                        <div class="flex flex-col gap-0.5">
+                                            <button onclick="moveRow(this,'up')" class="btn-up w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500" title="上移"><i class="fas fa-chevron-up text-[10px]"></i></button>
+                                            <button onclick="moveRow(this,'down')" class="btn-down w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500" title="下移"><i class="fas fa-chevron-down text-[10px]"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded">GW_B_AED</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-600">FAB Bank API</td>
+                                <td class="px-6 py-4 font-medium text-slate-800">Bank Transfer (AED)</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col gap-1 font-mono text-xs">
+                                        <div><span class="text-slate-400 w-8 inline-block">USD:</span> <span class="text-slate-700">50.00 - 500,000.00</span></div>
+                                        <div><span class="text-slate-400 w-8 inline-block">AED:</span> <span class="text-slate-700">180.00 - 1,800,000.00</span></div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md text-xs font-medium">支持</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-600 font-mono text-xs">
+                                    最低 $15.00 / 55.00 AED + 1.5%
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium"><i class="fa-solid fa-circle-check text-[10px] mr-1.5"></i>正常</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="openFormDrawer('edit', 'GW_B_AED')" class="text-primary hover:text-blue-700 font-medium transition-colors cursor-pointer">编辑</button>
+                                        <div class="w-px h-3 bg-slate-300"></div>
+                                        <button class="text-slate-500 hover:text-slate-700 font-medium transition-colors cursor-pointer">停用</button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 通道 3： Stripe (停用灰度状态) -->
+                            <tr class="hover:bg-slate-50 transition-colors group bg-slate-50/50">
+                                <td class="px-3 py-4 text-center align-middle">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span class="order-num inline-flex w-7 h-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 font-mono text-xs font-bold">3</span>
+                                        <div class="flex flex-col gap-0.5">
+                                            <button onclick="moveRow(this,'up')" class="btn-up w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400" title="上移"><i class="fas fa-chevron-up text-[10px]"></i></button>
+                                            <button onclick="moveRow(this,'down')" class="btn-down w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400" title="下移"><i class="fas fa-chevron-down text-[10px]"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-mono text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">GW_C_VISA</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-400">Stripe Payments</td>
+                                <td class="px-6 py-4 font-medium text-slate-400">Visa / Mastercard</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col gap-1 font-mono text-xs opacity-60">
+                                        <div><span class="text-slate-400 w-8 inline-block">USD:</span> <span class="text-slate-500">20.00 - 5,000.00</span></div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-md text-xs font-medium">不支持</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-400 font-mono text-xs">
+                                    免手续费
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium"><i class="fa-solid fa-ban text-[10px] mr-1.5"></i>停用</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="openFormDrawer('edit', 'GW_C_VISA')" class="text-primary hover:text-blue-700 font-medium transition-colors cursor-pointer">编辑</button>
+                                        <div class="w-px h-3 bg-slate-300"></div>
+                                        <button class="text-emerald-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer">启用</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 表格底部分页区域 -->
+                <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span class="text-sm text-slate-500" id="table-totals">共 3 条通道配置</span>
+                    <div class="flex gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:bg-slate-200 disabled:opacity-50" disabled><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-medium text-sm shadow-sm">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 font-medium text-sm">2</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ==================== 右侧新建/编辑配置抽屉 ==================== -->
+        <div id="drawer-container" class="fixed inset-0 z-50 pointer-events-none hidden">
+            <!-- 遮罩背景 -->
+            <div id="drawer-overlay" class="drawer-overlay absolute inset-0 bg-slate-900/40 backdrop-blur-xs opacity-0 pointer-events-auto transition-opacity duration-300" onclick="closeFormDrawer()"></div>
+            
+            <!-- 抽屉内容容器 -->
+            <div id="drawer-content" class="drawer-content absolute top-0 right-0 bottom-0 w-full max-w-xl bg-white shadow-2xl flex flex-col h-full pointer-events-auto transform translate-x-full duration-300 border-l border-slate-200">
+                
+                <!-- 抽屉头部 -->
+                <div class="h-16 px-6 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900" id="drawer-title">新建通道配置</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">请谨慎配置交易限额与阶梯费率参数</p>
+                    </div>
+                    <button onclick="closeFormDrawer()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- 抽屉表单区 (可滚动) -->
+                <form id="gateway-form" class="flex-1 overflow-y-auto p-6 space-y-6" onsubmit="handleFormSubmit(event)">
+                    <!-- 隐藏 ID，标记编辑状态 -->
+                    <input type="hidden" id="form-gateway-id" />
+
+                    <!-- 第一分区：通道基本信息 -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-1 bg-primary h-4 rounded-full"></span>
+                            <h4 class="text-xs font-bold tracking-wider text-slate-400">基本配置</h4>
+                        </div>
+
+                        <!-- 底层通道 & 对外名称 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1.5">
+                                <label class="block text-xs font-semibold text-slate-600">选择通道 <span class="text-rose-500">*</span></label>
+                                <select id="form-provider" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium" required>
+                                    <option value="" disabled selected>请选择对接底层</option>
+                                    <option value="pay2tech">pay2tech API</option>
+                                    <option value="Tether Network">Tether TRC20 Network</option>
+                                    <option value="FAB Bank API">FAB Bank API</option>
+                                    <option value="Stripe Payments">Stripe Gateway</option>
+                                    <option value="Checkout_v2">Checkout Ltd.</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="block text-xs font-semibold text-slate-600">通道对外名称 <span class="text-rose-500">*</span></label>
+                                <input type="text" id="form-display-name" placeholder="前台用户看到的名称, e.g. pay2tech" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium" required />
+                            </div>
+                        </div>
+
+                        <!-- 通道 Logo（前台展示） -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-slate-600">通道 Logo <span class="text-slate-400 font-normal">（用于前台展示）</span></label>
+                            <div class="flex items-center gap-4">
+                                <div id="form-logo-preview" class="shrink-0 w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                                    <i class="fa-regular fa-image text-2xl text-slate-300"></i>
+                                </div>
+                                <div class="flex-1 space-y-1.5">
+                                    <label for="form-logo-input" class="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-700 cursor-pointer hover:border-primary hover:text-primary transition-colors">
+                                        <i class="fa-solid fa-upload text-[11px]"></i>
+                                        <span id="form-logo-btn-text">上传 Logo</span>
+                                    </label>
+                                    <input type="file" id="form-logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden" onchange="previewLogo(event)" />
+                                    <button type="button" id="form-logo-clear" class="hidden ml-2 text-[11px] text-slate-500 hover:text-rose-600 font-medium" onclick="clearLogo()">
+                                        <i class="fa-solid fa-xmark mr-0.5"></i>移除
+                                    </button>
+                                    <p class="text-[10px] text-slate-400 leading-relaxed">建议 <span class="font-mono text-slate-500">160×160</span> 或 1:1 方图 · 支持 PNG / JPG / SVG / WebP · 单文件 ≤ 200KB</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 通道状态 -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-slate-600">通道状态 <span class="text-rose-500">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-xs font-medium cursor-pointer hover:border-slate-300 w-full justify-center">
+                                    <input type="radio" name="form-status" value="active" checked class="w-4 h-4 text-primary" />
+                                    <span class="text-slate-700">正常</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-xs font-medium cursor-pointer hover:border-slate-300 w-full justify-center">
+                                    <input type="radio" name="form-status" value="inactive" class="w-4 h-4 text-slate-400" />
+                                    <span class="text-slate-700">停用</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 是否推荐该通道 -->
+                        <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                            <div>
+                                <h5 class="text-xs font-bold text-slate-700">是否推荐该通道</h5>
+                                <p class="text-[10px] text-slate-400 mt-0.5">开启后前台将展示推荐标签（例如 Hot），支持多语言文案。</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="form-is-recommended" class="sr-only peer" onchange="toggleRecommendConfig()" />
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+
+                        <!-- 推荐文案（多语言） -->
+                        <div id="recommend-text-wrapper" class="space-y-3 p-4 bg-rose-50/40 border border-rose-100 rounded-xl transition-all duration-300 hidden">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-star text-rose-500"></i> 推荐标签文案</h5>
+                                <span class="text-[10px] text-rose-600 bg-rose-100 px-2 py-0.5 rounded font-bold">前台显示</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                                        <i class="fa-solid fa-earth-americas text-slate-400 text-[10px]"></i>
+                                        英文文案 (English) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="form-recommend-en" maxlength="16" placeholder="e.g. Hot" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                                        <i class="fa-solid fa-earth-asia text-slate-400 text-[10px]"></i>
+                                        阿拉伯语文案 (العربية) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="form-recommend-ar" maxlength="16" placeholder="مثال: مميز" dir="rtl" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-circle-info text-slate-400 mr-1"></i> 建议 1~8 个字符的短标签，例如 Hot / Best / Recommended，前台会显示为醒目角标。</p>
+                        </div>
+                    </div>
+
+                    <!-- 第二分区：支持币种 & 入金限额 -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-1 bg-primary h-4 rounded-full"></span>
+                            <h4 class="text-xs font-bold tracking-wider text-slate-400">币种与额度</h4>
+                        </div>
+
+                        <!-- 结算币种选择 (多选) -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-slate-600">支持结算币种 <span class="text-rose-500">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-medium cursor-pointer hover:border-slate-300 w-full">
+                                    <input type="checkbox" id="currency-usd" class="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300" onchange="toggleCurrencyConfig()" checked />
+                                    <span class="text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-dollar-sign text-slate-400"></i> USD 结算</span>
+                                </label>
+                                <label class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-medium cursor-pointer hover:border-slate-300 w-full">
+                                    <input type="checkbox" id="currency-aed" class="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300" onchange="toggleCurrencyConfig()" />
+                                    <span class="text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-coins text-slate-400"></i> AED 结算</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 联动入金金额设置 (USD) -->
+                        <div id="usd-limits-wrapper" class="space-y-2 p-4 bg-blue-50/40 border border-blue-100 rounded-xl transition-all duration-300">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-blue-500"></i> USD 入金限额配置</h5>
+                                <span class="text-[10px] text-primary bg-blue-100 px-2 py-0.5 rounded font-bold font-mono">USD MATCH</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500">单笔最小入金 (USD) *</label>
+                                    <input type="number" id="form-usd-min" step="0.01" min="0" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary font-mono" required />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500">单笔最大入金 (USD) *</label>
+                                    <input type="number" id="form-usd-max" step="0.01" min="0" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary font-mono" required />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 联动入金金额设置 (AED) -->
+                        <div id="aed-limits-wrapper" class="space-y-2 p-4 bg-amber-50/40 border border-amber-100 rounded-xl transition-all duration-300 hidden">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-amber-500"></i> AED 入金限额配置</h5>
+                                <span class="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-bold font-mono">AED MATCH</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500">单笔最小入金 (AED) *</label>
+                                    <input type="number" id="form-aed-min" step="0.01" min="0" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500">单笔最大入金 (AED) *</label>
+                                    <input type="number" id="form-aed-max" step="0.01" min="0" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 第三分区：出金功能 & 阶梯手续费 -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-1 bg-primary h-4 rounded-full"></span>
+                            <h4 class="text-xs font-bold tracking-wider text-slate-400">出金配置</h4>
+                        </div>
+
+                        <!-- 是否支持出金 -->
+                        <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                            <div>
+                                <h5 class="text-xs font-bold text-slate-700">是否支持出金</h5>
+                                <p class="text-[10px] text-slate-400 mt-0.5">开启后此通道将同时对前台提款业务开放</p>
+                            </div>
+                            <!-- 滑动开关 -->
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="form-support-withdrawal" class="sr-only peer" onchange="toggleWithdrawalConfig()" checked />
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+
+                        <!-- 出金配置容器 (当开启出金后显形) -->
+                        <div id="withdrawal-config-group" class="space-y-4 transition-all duration-300">
+                            
+                            <!-- 可出金币种 -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                                <h5 class="text-xs font-bold text-slate-700 mb-3">可出金币种 <span class="text-rose-500">*</span></h5>
+                                <p class="text-[10px] text-slate-400 mb-3">选择此通道支持出金的币种，勾选后需配置对应币种的可出金范围与最低手续费</p>
+                                <div class="flex gap-6">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="withdraw-currency-usd" class="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300" onchange="toggleWithdrawCurrencies()" checked />
+                                        <span class="text-xs font-semibold text-slate-700">USD (美元)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="withdraw-currency-aed" class="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300" onchange="toggleWithdrawCurrencies()" />
+                                        <span class="text-xs font-semibold text-slate-700">AED (迪拉姆)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 各币种出金参数 -->
+                            <div id="withdraw-currency-params" class="space-y-3">
+                                <!-- USD 参数 -->
+                                <div id="withdraw-usd-params" class="p-4 border border-slate-200 rounded-xl bg-white space-y-3">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        <h6 class="text-[11px] font-bold text-slate-700">USD 出金参数</h6>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="space-y-1">
+                                            <label class="text-[11px] font-semibold text-slate-500">可出金范围 (USD) *</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="relative">
+                                                    <input type="number" id="form-usd-min-withdraw" step="0.01" min="0" placeholder="最小值" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs focus:outline-none focus:border-primary font-mono" required />
+                                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">MIN</span>
+                                                </div>
+                                                <div class="relative">
+                                                    <input type="number" id="form-usd-max-withdraw" step="0.01" min="0" placeholder="最大值" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs focus:outline-none focus:border-primary font-mono" required />
+                                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">MAX</span>
+                                                </div>
+                                            </div>
+                                            <p class="text-[10px] text-slate-400 mt-1">用户单笔出金金额需在此区间内（含最小值与最大值）</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- AED 参数 -->
+                                <div id="withdraw-aed-params" class="p-4 border border-slate-200 rounded-xl bg-white space-y-3 hidden">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                        <h6 class="text-[11px] font-bold text-slate-700">AED 出金参数</h6>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="space-y-1">
+                                            <label class="text-[11px] font-semibold text-slate-500">可出金范围 (AED) *</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="relative">
+                                                    <input type="number" id="form-aed-min-withdraw" step="0.01" min="0" placeholder="最小值" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono" />
+                                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">MIN</span>
+                                                </div>
+                                                <div class="relative">
+                                                    <input type="number" id="form-aed-max-withdraw" step="0.01" min="0" placeholder="最大值" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono" />
+                                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">MAX</span>
+                                                </div>
+                                            </div>
+                                            <p class="text-[10px] text-slate-400 mt-1">用户单笔出金金额需在此区间内（含最小值与最大值）</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 是否收取手续费 -->
+                            <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                                <div>
+                                    <h5 class="text-xs font-bold text-slate-700">出金是否收取手续费</h5>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">若开启则在提款金额中自动扣除对应手续费</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="form-charge-fee" class="sr-only peer" onchange="toggleFeeConfig()" checked />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+
+                            <!-- 阶梯手续费输入组 -->
+                            <div id="fee-inputs-wrapper" class="space-y-4 p-4 border border-slate-200 rounded-xl transition-all duration-300">
+                                <!-- 各币种最低手续费（按可出金币种联动显示） -->
+                                <div id="min-fee-per-currency" class="space-y-3">
+                                    <div class="text-[11px] font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                                        <i class="fa-solid fa-coins text-primary text-[10px]"></i> 各币种最低手续费
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div id="min-fee-usd-wrapper" class="space-y-1">
+                                            <label class="text-[11px] font-semibold text-slate-500">最低手续费 (USD) *</label>
+                                            <div class="relative">
+                                                <input type="number" id="form-usd-min-fee" step="0.01" min="0" placeholder="1.00" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-12 py-2 text-xs focus:outline-none focus:border-primary font-mono" required />
+                                                <span class="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold">USD</span>
+                                            </div>
+                                        </div>
+                                        <div id="min-fee-aed-wrapper" class="space-y-1 hidden">
+                                            <label class="text-[11px] font-semibold text-slate-500">最低手续费 (AED) *</label>
+                                            <div class="relative">
+                                                <input type="number" id="form-aed-min-fee" step="0.01" min="0" placeholder="3.60" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-12 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono" />
+                                                <span class="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold">AED</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400">当计算手续费小于最低手续费时，按最低手续费收取。</p>
+                                </div>
+
+                                <div class="border-t border-slate-200/60 pt-4 grid grid-cols-2 gap-4">
+                                    <!-- 超额费率 -->
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-slate-500">超额费率 (%) *</label>
+                                        <div class="relative">
+                                            <input type="number" id="form-excess-fee-percent" step="0.01" min="0" max="100" placeholder="1.50" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs focus:outline-none focus:border-primary font-mono" required oninput="calculatePreviewFee()" />
+                                            <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold">%</span>
+                                        </div>
+                                    </div>
+                                    <!-- 超过多少金额免收（按币种） -->
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label class="text-[11px] font-semibold text-slate-500">超过此金额免收手续费 <span class="text-[10px] text-slate-400 font-normal">(选填 / 按币种)</span></label>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">仅当对应币种被勾选为可出金时才需要填写；单笔出金超过此金额时，该币种免收手续费</p>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div id="fee-free-usd-wrapper" class="space-y-1 hidden">
+                                                <label class="text-[10px] font-semibold text-slate-500 flex items-center gap-1"><i class="fa-solid fa-dollar-sign text-slate-400 text-[9px]"></i>USD 免收门槛</label>
+                                                <div class="relative">
+                                                    <input type="number" id="form-fee-free-threshold-usd" step="0.01" min="0" placeholder="10000.00" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-12 py-2 text-xs focus:outline-none focus:border-primary font-mono" />
+                                                    <span class="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold">USD</span>
+                                                </div>
+                                            </div>
+                                            <div id="fee-free-aed-wrapper" class="space-y-1 hidden">
+                                                <label class="text-[10px] font-semibold text-slate-500 flex items-center gap-1"><i class="fa-solid fa-dollar-sign text-slate-400 text-[9px]"></i>AED 免收门槛</label>
+                                                <div class="relative">
+                                                    <input type="number" id="form-fee-free-threshold-aed" step="0.01" min="0" placeholder="36000.00" class="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-12 py-2 text-xs focus:outline-none focus:border-primary font-mono" />
+                                                    <span class="absolute right-3 top-2.5 text-[10px] text-slate-400 font-bold">AED</span>
+                                                </div>
+                                            </div>
+                                            <p id="fee-free-empty-hint" class="text-[10px] text-slate-400 italic col-span-2">请先勾选可出金币种</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 💡 独家功能：交互式手续费计算演示沙盒 -->
+                                <div class="mt-2 bg-indigo-50/50 rounded-lg p-3 border border-indigo-100/60">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-bold text-indigo-950 flex items-center gap-1.5"><i class="fa-solid fa-calculator text-indigo-500"></i> 手续费扣除规则演示</span>
+                                        <span class="text-[9px] text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded font-semibold">演示沙盒</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 leading-normal mb-3">规则：<code>提款金额 * 费率</code>。若大于最低费则按比例收；否则收取最低保底费。手续费直接从申请出金金额中扣除。</p>
+                                    
+                                    <div class="grid grid-cols-3 gap-3 items-center">
+                                        <div class="space-y-0.5">
+                                            <span class="text-[9px] text-slate-400 font-medium">输入测试提款 (USD)</span>
+                                            <input type="number" id="test-calc-amount" value="500" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold" oninput="calculatePreviewFee()" />
+                                        </div>
+                                        <div class="space-y-0.5">
+                                            <span class="text-[9px] text-slate-400 font-medium">计算出金手续费</span>
+                                            <div class="bg-indigo-100/50 rounded px-2 py-1 text-xs font-mono text-indigo-700 font-bold" id="test-calc-fee">$1.00</div>
+                                        </div>
+                                        <div class="space-y-0.5">
+                                            <span class="text-[9px] text-slate-400 font-medium">客户实际到账金额</span>
+                                            <div class="bg-emerald-100/50 rounded px-2 py-1 text-xs font-mono text-emerald-700 font-bold" id="test-calc-net">$499.00</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 第四分区：到账时间 -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-1 bg-primary h-4 rounded-full"></span>
+                            <h4 class="text-xs font-bold tracking-wider text-slate-400">到账时间提示</h4>
+                        </div>
+                        <div class="space-y-3 p-4 bg-blue-50/40 border border-blue-100 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-clock text-blue-500"></i> 到账时间 <span class="text-[10px] text-slate-400 font-normal">(选填)</span></h5>
+                                <span class="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded font-bold">前台显示</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                                        <i class="fa-solid fa-earth-americas text-slate-400 text-[10px]"></i>
+                                        英文文案 (English)
+                                    </label>
+                                    <input id="form-arrival-time-en" type="text" maxlength="60" placeholder="e.g. Usually 1-3 min / T+1 business day" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                                        <i class="fa-solid fa-earth-asia text-slate-400 text-[10px]"></i>
+                                        阿拉伯语文案 (العربية)
+                                    </label>
+                                    <input id="form-arrival-time-ar" type="text" maxlength="60" placeholder="مثال: عادة 1-3 دقائق / يوم عمل T+1" dir="rtl" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-circle-info text-slate-400 mr-1"></i> 前台将根据用户当前语言展示对应文案。留空则不显示到账时间提示。</p>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- 抽屉脚部 -->
+                <div class="h-16 px-6 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                    <button type="button" onclick="closeFormDrawer()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold rounded-lg cursor-pointer">取消</button>
+                    <button type="submit" form="gateway-form" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-xs font-bold rounded-lg shadow-md shadow-blue-500/20 cursor-pointer">保存配置</button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- 共用侧栏（单一信息源；新增页面只需改 sidebar.js 即可） -->
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        injectSidebar({ activePath: "资金管理 / 出入金管理 / 通道管理" });
+
+        // ========== 前台排序（上下移） ==========
+        function moveRow(btn, dir) {
+            const tr = btn.closest('tr');
+            const tbody = tr.parentNode;
+            const sibling = dir === 'up' ? tr.previousElementSibling : tr.nextElementSibling;
+            if (!sibling) return;
+            if (dir === 'up') tbody.insertBefore(tr, sibling);
+            else tbody.insertBefore(sibling, tr);
+            refreshOrderNumbers(tbody);
+            showSortToast('前台排序已更新，C 端将按新顺序展示');
+        }
+        function refreshOrderNumbers(tbody) {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+                const span = tr.querySelector('.order-num');
+                if (span) span.textContent = i + 1;
+                const up = tr.querySelector('.btn-up');
+                const down = tr.querySelector('.btn-down');
+                if (up) { up.classList.toggle('opacity-30', i === 0); up.classList.toggle('pointer-events-none', i === 0); }
+                if (down) { down.classList.toggle('opacity-30', i === rows.length - 1); down.classList.toggle('pointer-events-none', i === rows.length - 1); }
+            });
+        }
+        function showSortToast(msg) {
+            let t = document.getElementById('sort-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'sort-toast';
+                t.className = 'fixed top-6 right-6 z-50 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-xl opacity-0 translate-y-[-8px] transition-all duration-200 flex items-center gap-2';
+                t.innerHTML = '<i class="fas fa-check-circle text-emerald-400"></i><span id="sort-toast-msg"></span>';
+                document.body.appendChild(t);
+            }
+            t.querySelector('#sort-toast-msg').textContent = msg;
+            requestAnimationFrame(() => { t.classList.remove('opacity-0', 'translate-y-[-8px]'); });
+            clearTimeout(t._h);
+            t._h = setTimeout(() => { t.classList.add('opacity-0', 'translate-y-[-8px]'); }, 2200);
+        }
+        // 初始化：刷新首末行的箭头禁用态
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('table tbody').forEach(tb => refreshOrderNumbers(tb));
+        });
+    </script>
+
+    <!-- JavaScript 导航与表格交互业务 -->
+    <script>
+
+        // 模拟数据库数据 (存储通道配置)
+        let mockGateways = [
+            {
+                id: 'GW_U_TRC20',
+                provider: 'Tether Network',
+                displayName: 'USDT-TRC20',
+                currencies: ['USD', 'AED'],
+                limits: {
+                    USD: { min: 10.00, max: 100000.00 },
+                    AED: { min: 36.00, max: 367000.00 }
+                },
+                supportWithdrawal: true,
+                withdrawCurrencies: ['USD', 'AED'],
+                withdrawRanges: {
+                    USD: { min: 100.00, max: 50000.00 },
+                    AED: { min: 360.00, max: 180000.00 }
+                },
+                chargeFee: true,
+                fees: {
+                    USD: 1.00,
+                    AED: 3.60,
+                    percent: 0.00
+                },
+                feeFreeThreshold: { USD: 0, AED: 0 },
+                arrivalTime: { en: 'Usually 1-3 min', ar: 'عادة 1-3 دقائق' },
+                isRecommended: true,
+                recommendText: { en: 'Hot', ar: 'الأكثر شعبية' },
+                status: 'active'
+            },
+            {
+                id: 'GW_B_AED',
+                provider: 'FAB Bank API',
+                displayName: 'Bank Transfer (AED)',
+                currencies: ['USD', 'AED'],
+                limits: {
+                    USD: { min: 50.00, max: 500000.00 },
+                    AED: { min: 180.00, max: 1800000.00 }
+                },
+                supportWithdrawal: true,
+                withdrawCurrencies: ['USD', 'AED'],
+                withdrawRanges: {
+                    USD: { min: 500.00, max: 200000.00 },
+                    AED: { min: 1800.00, max: 750000.00 }
+                },
+                chargeFee: true,
+                fees: {
+                    USD: 15.00,
+                    AED: 55.00,
+                    percent: 1.50
+                },
+                feeFreeThreshold: { USD: 10000.00, AED: 36000.00 },
+                arrivalTime: { en: 'T+1 business day', ar: 'يوم عمل T+1' },
+                isRecommended: false,
+                recommendText: { en: '', ar: '' },
+                status: 'active'
+            },
+            {
+                id: 'GW_C_VISA',
+                provider: 'Stripe Payments',
+                displayName: 'Visa / Mastercard',
+                currencies: ['USD'],
+                limits: {
+                    USD: { min: 20.00, max: 5000.00 }
+                },
+                supportWithdrawal: false,
+                withdrawCurrencies: [],
+                withdrawRanges: {},
+                chargeFee: false,
+                fees: {
+                    USD: 0,
+                    percent: 0
+                },
+                feeFreeThreshold: { USD: 0, AED: 0 },
+                arrivalTime: { en: 'Instant', ar: 'فوري' },
+                isRecommended: false,
+                recommendText: { en: '', ar: '' },
+                status: 'inactive'
+            }
+        ];
+
+        // 重新渲染表格函数
+        function renderGatewaysTable() {
+            const tbody = document.getElementById('gateways-table-body');
+            tbody.innerHTML = '';
+
+            mockGateways.forEach(gw => {
+                const isInactive = gw.status === 'inactive';
+                const statusBadge = isInactive 
+                    ? `<span class="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium"><i class="fa-solid fa-ban text-[10px] mr-1.5"></i>停用</span>`
+                    : `<span class="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium"><i class="fa-solid fa-circle-check text-[10px] mr-1.5"></i>正常</span>`;
+
+                const withdrawalBadge = gw.supportWithdrawal 
+                    ? `<span class="inline-flex items-center justify-center px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md text-xs font-medium">支持</span>`
+                    : `<span class="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-md text-xs font-medium">不支持</span>`;
+
+                // 拼装出金费率文案
+                let feeText = '--';
+                if (gw.supportWithdrawal) {
+                    if (gw.chargeFee) {
+                        const parts = [];
+                        const withdrawCurrencies = gw.withdrawCurrencies || [];
+                        if (withdrawCurrencies.includes('USD') && gw.fees.USD > 0) parts.push(`$${gw.fees.USD.toFixed(2)}`);
+                        if (withdrawCurrencies.includes('AED') && gw.fees.AED > 0) parts.push(`${gw.fees.AED.toFixed(2)} AED`);
+                        const保底Text = parts.length > 0 ? `最低 ${parts.join(' / ')}` : '';
+                        const比例Text = gw.fees.percent > 0 ? `+ ${gw.fees.percent}%` : '+ 免税(0%)';
+                        feeText = `${保底Text} ${比例Text}`;
+                        if (gw.feeFreeThreshold && typeof gw.feeFreeThreshold === 'object') {
+                            const freeParts = [];
+                            if (withdrawCurrencies.includes('USD') && gw.feeFreeThreshold.USD > 0) freeParts.push(`$${gw.feeFreeThreshold.USD.toFixed(2)}`);
+                            if (withdrawCurrencies.includes('AED') && gw.feeFreeThreshold.AED > 0) freeParts.push(`${gw.feeFreeThreshold.AED.toFixed(2)} AED`);
+                            if (freeParts.length > 0) feeText += ` | 超 ${freeParts.join(' / ')} 免收`;
+                        }
+                    } else {
+                        feeText = '免手续费';
+                    }
+                }
+
+                // 拼装限额文本
+                let limitsHTML = '';
+                if (gw.currencies.includes('USD') && gw.limits.USD) {
+                    limitsHTML += `<div><span class="text-slate-400 w-8 inline-block">USD:</span> <span class="text-slate-700">${gw.limits.USD.min.toFixed(2)} - ${gw.limits.USD.max.toFixed(2)}</span></div>`;
+                }
+                if (gw.currencies.includes('AED') && gw.limits.AED) {
+                    limitsHTML += `<div><span class="text-slate-400 w-8 inline-block">AED:</span> <span class="text-slate-700">${gw.limits.AED.min.toFixed(2)} - ${gw.limits.AED.max.toFixed(2)}</span></div>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors group ${isInactive ? 'bg-slate-50/50' : ''}">
+                        <td class="px-6 py-4">
+                            <span class="font-mono text-xs ${isInactive ? 'text-slate-400' : 'text-slate-600'} bg-slate-100 px-2 py-1 rounded">${gw.id}</span>
+                        </td>
+                        <td class="px-6 py-4 ${isInactive ? 'text-slate-400' : 'text-slate-600'}">${gw.provider}</td>
+                        <td class="px-6 py-4 font-medium ${isInactive ? 'text-slate-400' : 'text-slate-800'}">
+                            <div class="flex items-center gap-2">
+                                <span>${gw.displayName}</span>
+                                ${gw.isRecommended && gw.recommendText && gw.recommendText.en
+                                    ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-50 text-rose-600 border border-rose-100 rounded text-[10px] font-bold tracking-wide"><i class="fa-solid fa-star text-[8px]"></i>${gw.recommendText.en}</span>`
+                                    : ''}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col gap-1 font-mono text-xs ${isInactive ? 'opacity-60' : ''}">
+                                ${limitsHTML}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            ${withdrawalBadge}
+                        </td>
+                        <td class="px-6 py-4 ${isInactive ? 'text-slate-400' : 'text-slate-600'} font-mono text-xs">
+                            ${feeText}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            ${statusBadge}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="openFormDrawer('edit', '${gw.id}')" class="text-primary hover:text-blue-700 font-medium transition-colors cursor-pointer">编辑</button>
+                                <div class="w-px h-3 bg-slate-300"></div>
+                                <button onclick="toggleGatewayStatus('${gw.id}')" class="${isInactive ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-500 hover:text-slate-700'} font-medium transition-colors cursor-pointer">
+                                    ${isInactive ? '启用' : '停用'}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // 统计卡片与总计更新
+            document.getElementById('table-totals').innerText = `共 ${mockGateways.length} 条通道配置`;
+        }
+
+        // 初始化载入表格
+        window.addEventListener('load', () => {
+            // 注释掉 JS 渲染以防覆盖上方直接写入的 HTML 静态数据
+            // renderGatewaysTable();
+        });
+
+        // 快速状态切换
+        function toggleGatewayStatus(id) {
+            const gw = mockGateways.find(g => g.id === id);
+            if (gw) {
+                gw.status = gw.status === 'active' ? 'inactive' : 'active';
+                renderGatewaysTable();
+                showToast(`通道状态更新为 [${gw.status === 'active' ? '正常' : '停用'}]`);
+            }
+        }
+
+        // 提示框逻辑 (避免使用 Browser alert)
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.innerText = message;
+            if (type === "success") {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-500 text-base";
+            }
+
+            toast.classList.remove('pointer-events-none', 'opacity-0', 'translate-y-[-20px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('pointer-events-none', 'opacity-0', 'translate-y-[-20px]');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        // ==================== 抽屉联动交互逻辑 ====================
+
+        // 打开抽屉
+        function openFormDrawer(mode = 'create', id = null) {
+            const container = document.getElementById('drawer-container');
+            const overlay = document.getElementById('drawer-overlay');
+            const content = document.getElementById('drawer-content');
+            const form = document.getElementById('gateway-form');
+
+            form.reset();
+            document.getElementById('form-gateway-id').value = '';
+
+            if (mode === 'create') {
+                document.getElementById('drawer-title').innerText = '新建通道配置';
+                // 恢复默认的联动展示状态
+                document.getElementById('currency-usd').checked = true;
+                document.getElementById('currency-aed').checked = false;
+                document.getElementById('form-support-withdrawal').checked = true;
+                document.getElementById('form-charge-fee').checked = true;
+                document.getElementById('form-usd-min').value = '';
+                document.getElementById('form-usd-max').value = '';
+                document.getElementById('form-aed-min').value = '';
+                document.getElementById('form-aed-max').value = '';
+                // 出金币种默认 USD
+                document.getElementById('withdraw-currency-usd').checked = true;
+                document.getElementById('withdraw-currency-aed').checked = false;
+                document.getElementById('form-usd-min-withdraw').value = '';
+                document.getElementById('form-usd-max-withdraw').value = '';
+                document.getElementById('form-aed-min-withdraw').value = '';
+                document.getElementById('form-aed-max-withdraw').value = '';
+                document.getElementById('form-usd-min-fee').value = '1.00';
+                document.getElementById('form-aed-min-fee').value = '3.60';
+                document.getElementById('form-excess-fee-percent').value = '1.50';
+                document.getElementById('form-fee-free-threshold-usd').value = '';
+                document.getElementById('form-fee-free-threshold-aed').value = '';
+                document.getElementById('form-is-recommended').checked = false;
+                document.getElementById('form-recommend-en').value = '';
+                document.getElementById('form-recommend-ar').value = '';
+                document.getElementById('form-arrival-time-en').value = '';
+                document.getElementById('form-arrival-time-ar').value = '';
+                // Logo 重置
+                clearLogo();
+            } else {
+                document.getElementById('drawer-title').innerText = '编辑通道配置';
+                const gw = mockGateways.find(g => g.id === id);
+                if (gw) {
+                    document.getElementById('form-gateway-id').value = gw.id;
+                    document.getElementById('form-provider').value = gw.provider;
+                    document.getElementById('form-display-name').value = gw.displayName;
+
+                    // Logo 回显
+                    if (gw.logoDataUrl) {
+                        setLogoPreview(gw.logoDataUrl, gw.logoName || 'existing-logo');
+                    } else {
+                        clearLogo();
+                    }
+                    
+                    document.getElementById('currency-usd').checked = gw.currencies.includes('USD');
+                    document.getElementById('currency-aed').checked = gw.currencies.includes('AED');
+
+                    if (gw.limits.USD) {
+                        document.getElementById('form-usd-min').value = gw.limits.USD.min;
+                        document.getElementById('form-usd-max').value = gw.limits.USD.max;
+                    }
+                    if (gw.limits.AED) {
+                        document.getElementById('form-aed-min').value = gw.limits.AED.min;
+                        document.getElementById('form-aed-max').value = gw.limits.AED.max;
+                    }
+
+                    document.getElementById('form-support-withdrawal').checked = gw.supportWithdrawal;
+                    document.getElementById('form-charge-fee').checked = gw.chargeFee;
+
+                    // 出金币种
+                    const withdrawCurrencies = gw.withdrawCurrencies || ['USD'];
+                    document.getElementById('withdraw-currency-usd').checked = withdrawCurrencies.includes('USD');
+                    document.getElementById('withdraw-currency-aed').checked = withdrawCurrencies.includes('AED');
+                    if (gw.withdrawRanges) {
+                        document.getElementById('form-usd-min-withdraw').value = gw.withdrawRanges.USD?.min ?? '';
+                        document.getElementById('form-usd-max-withdraw').value = gw.withdrawRanges.USD?.max ?? '';
+                        document.getElementById('form-aed-min-withdraw').value = gw.withdrawRanges.AED?.min ?? '';
+                        document.getElementById('form-aed-max-withdraw').value = gw.withdrawRanges.AED?.max ?? '';
+                    }
+
+                    document.getElementById('form-usd-min-fee').value = gw.fees.USD || '1.00';
+                    document.getElementById('form-aed-min-fee').value = gw.fees.AED || '3.60';
+                    document.getElementById('form-excess-fee-percent').value = gw.fees.percent || '0';
+                    const freeObj = (gw.feeFreeThreshold && typeof gw.feeFreeThreshold === 'object') ? gw.feeFreeThreshold : {};
+                    document.getElementById('form-fee-free-threshold-usd').value = freeObj.USD > 0 ? freeObj.USD : '';
+                    document.getElementById('form-fee-free-threshold-aed').value = freeObj.AED > 0 ? freeObj.AED : '';
+
+                    // 到账时间（多语言）
+                    const arrival = gw.arrivalTime || { en: '', ar: '' };
+                    document.getElementById('form-arrival-time-en').value = arrival.en || '';
+                    document.getElementById('form-arrival-time-ar').value = arrival.ar || '';
+
+                    // 是否推荐 & 推荐文案
+                    const isRec = !!gw.isRecommended;
+                    document.getElementById('form-is-recommended').checked = isRec;
+                    const recText = gw.recommendText || { en: '', ar: '' };
+                    document.getElementById('form-recommend-en').value = recText.en || '';
+                    document.getElementById('form-recommend-ar').value = recText.ar || '';
+
+                    // 单选按钮状态
+                    document.querySelector(`input[name="form-status"][value="${gw.status}"]`).checked = true;
+                }
+            }
+
+            // 执行联动刷新
+            toggleCurrencyConfig();
+            toggleWithdrawalConfig();
+            toggleFeeConfig();
+            toggleRecommendConfig();
+            calculatePreviewFee();
+
+            // 显示并动画进入
+            container.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                content.classList.remove('translate-x-full');
+            }, 50);
+        }
+
+        // 关闭抽屉
+        function closeFormDrawer() {
+            const container = document.getElementById('drawer-container');
+            const overlay = document.getElementById('drawer-overlay');
+            const content = document.getElementById('drawer-content');
+
+            overlay.classList.add('opacity-0');
+            content.classList.add('translate-x-full');
+
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 300);
+        }
+
+        // 【联动逻辑 A】: 支持币种对入金限额的限制
+        function toggleCurrencyConfig() {
+            const isUsdChecked = document.getElementById('currency-usd').checked;
+            const isAedChecked = document.getElementById('currency-aed').checked;
+
+            const usdWrapper = document.getElementById('usd-limits-wrapper');
+            const aedWrapper = document.getElementById('aed-limits-wrapper');
+
+            const usdMinInput = document.getElementById('form-usd-min');
+            const usdMaxInput = document.getElementById('form-usd-max');
+            const aedMinInput = document.getElementById('form-aed-min');
+            const aedMaxInput = document.getElementById('form-aed-max');
+
+            // 联动：USD 入金
+            if (isUsdChecked) {
+                usdWrapper.classList.remove('hidden');
+                usdMinInput.required = true;
+                usdMaxInput.required = true;
+            } else {
+                usdWrapper.classList.add('hidden');
+                usdMinInput.required = false;
+                usdMaxInput.required = false;
+            }
+
+            // 联动：AED 入金
+            if (isAedChecked) {
+                aedWrapper.classList.remove('hidden');
+                aedMinInput.required = true;
+                aedMaxInput.required = true;
+            } else {
+                aedWrapper.classList.add('hidden');
+                aedMinInput.required = false;
+                aedMaxInput.required = false;
+            }
+
+            // 边界约束：必须选一个币种
+            if (!isUsdChecked && !isAedChecked) {
+                document.getElementById('currency-usd').checked = true;
+                toggleCurrencyConfig();
+                showToast("支持币种不能为空，已默认勾选 [USD]", "error");
+            }
+        }
+
+        // 【联动逻辑 B】: 开闭出金配置区
+        function toggleWithdrawalConfig() {
+            const isSupport = document.getElementById('form-support-withdrawal').checked;
+            const configGroup = document.getElementById('withdrawal-config-group');
+
+            if (isSupport) {
+                configGroup.classList.remove('hidden');
+                toggleWithdrawCurrencies(); // 初始化出金币种显隐
+                toggleFeeConfig(); // 级联刷新
+            } else {
+                configGroup.classList.add('hidden');
+                disableWithdrawalValidators(true);
+            }
+        }
+
+        // 【联动逻辑 B2】: 可出金币种切换显隐对应参数块
+        function toggleWithdrawCurrencies() {
+            const isUsdChecked = document.getElementById('withdraw-currency-usd').checked;
+            const isAedChecked = document.getElementById('withdraw-currency-aed').checked;
+
+            const usdParams = document.getElementById('withdraw-usd-params');
+            const aedParams = document.getElementById('withdraw-aed-params');
+            const usdMinFeeWrapper = document.getElementById('min-fee-usd-wrapper');
+            const aedMinFeeWrapper = document.getElementById('min-fee-aed-wrapper');
+            const usdFeeFreeWrapper = document.getElementById('fee-free-usd-wrapper');
+            const aedFeeFreeWrapper = document.getElementById('fee-free-aed-wrapper');
+            const feeFreeEmptyHint = document.getElementById('fee-free-empty-hint');
+
+            const usdMinWithdraw = document.getElementById('form-usd-min-withdraw');
+            const usdMinFee = document.getElementById('form-usd-min-fee');
+            const aedMinWithdraw = document.getElementById('form-aed-min-withdraw');
+            const aedMinFee = document.getElementById('form-aed-min-fee');
+
+            if (isUsdChecked) {
+                usdParams.classList.remove('hidden');
+                usdMinFeeWrapper.classList.remove('hidden');
+                usdFeeFreeWrapper.classList.remove('hidden');
+                usdMinWithdraw.required = true;
+                usdMinFee.required = true;
+            } else {
+                usdParams.classList.add('hidden');
+                usdMinFeeWrapper.classList.add('hidden');
+                usdFeeFreeWrapper.classList.add('hidden');
+                usdMinWithdraw.required = false;
+                usdMinFee.required = false;
+                document.getElementById('form-fee-free-threshold-usd').value = '';
+            }
+
+            if (isAedChecked) {
+                aedParams.classList.remove('hidden');
+                aedMinFeeWrapper.classList.remove('hidden');
+                aedFeeFreeWrapper.classList.remove('hidden');
+                aedMinWithdraw.required = true;
+                aedMinFee.required = true;
+            } else {
+                aedParams.classList.add('hidden');
+                aedMinFeeWrapper.classList.add('hidden');
+                aedFeeFreeWrapper.classList.add('hidden');
+                aedMinWithdraw.required = false;
+                aedMinFee.required = false;
+                document.getElementById('form-fee-free-threshold-aed').value = '';
+            }
+
+            // 免收门槛占位提示
+            if (feeFreeEmptyHint) {
+                feeFreeEmptyHint.classList.toggle('hidden', isUsdChecked || isAedChecked);
+            }
+
+            // 边界约束：至少选一个出金币种
+            if (!isUsdChecked && !isAedChecked) {
+                document.getElementById('withdraw-currency-usd').checked = true;
+                toggleWithdrawCurrencies();
+                showToast("可出金币种不能为空，已默认勾选 [USD]", "error");
+            }
+        }
+
+        // 【联动逻辑 C+】: 通道 Logo 上传预览
+        let currentLogoDataUrl = '';
+        let currentLogoName = '';
+        function previewLogo(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 200 * 1024) {
+                showToast('Logo 文件过大（' + (file.size / 1024).toFixed(0) + 'KB），请压缩至 200KB 以内', 'error');
+                e.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                setLogoPreview(ev.target.result, file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+        function setLogoPreview(dataUrl, name) {
+            currentLogoDataUrl = dataUrl;
+            currentLogoName = name || '';
+            const box = document.getElementById('form-logo-preview');
+            box.innerHTML = '<img src="' + dataUrl + '" alt="logo" class="w-full h-full object-contain" />';
+            box.classList.remove('border-dashed', 'bg-slate-50');
+            box.classList.add('border-solid', 'border-slate-200', 'bg-white');
+            document.getElementById('form-logo-btn-text').innerText = '重新上传';
+            document.getElementById('form-logo-clear').classList.remove('hidden');
+        }
+        function clearLogo() {
+            currentLogoDataUrl = '';
+            currentLogoName = '';
+            const box = document.getElementById('form-logo-preview');
+            box.innerHTML = '<i class="fa-regular fa-image text-2xl text-slate-300"></i>';
+            box.classList.add('border-dashed', 'bg-slate-50');
+            box.classList.remove('border-solid', 'bg-white');
+            const input = document.getElementById('form-logo-input');
+            if (input) input.value = '';
+            document.getElementById('form-logo-btn-text').innerText = '上传 Logo';
+            document.getElementById('form-logo-clear').classList.add('hidden');
+        }
+
+        // 【联动逻辑 D】: 是否推荐通道 → 显示 / 隐藏推荐文案输入
+        function toggleRecommendConfig() {
+            const isRecommended = document.getElementById('form-is-recommended').checked;
+            const wrapper = document.getElementById('recommend-text-wrapper');
+            const enInput = document.getElementById('form-recommend-en');
+            const arInput = document.getElementById('form-recommend-ar');
+
+            if (isRecommended) {
+                wrapper.classList.remove('hidden');
+                enInput.required = true;
+                arInput.required = true;
+            } else {
+                wrapper.classList.add('hidden');
+                enInput.required = false;
+                arInput.required = false;
+            }
+        }
+
+        // 【联动逻辑 C】: 开闭手续费细节
+        function toggleFeeConfig() {
+            const isSupport = document.getElementById('form-support-withdrawal').checked;
+            const isCharge = document.getElementById('form-charge-fee').checked;
+            const feeInputsWrapper = document.getElementById('fee-inputs-wrapper');
+
+            if (isSupport && isCharge) {
+                feeInputsWrapper.classList.remove('hidden');
+                disableWithdrawalValidators(false);
+            } else {
+                feeInputsWrapper.classList.add('hidden');
+                disableWithdrawalValidators(true);
+            }
+        }
+
+        // 统一控制验证器
+        function disableWithdrawalValidators(shouldDisable) {
+            const isUsdChecked = document.getElementById('withdraw-currency-usd').checked;
+            const isAedChecked = document.getElementById('withdraw-currency-aed').checked;
+
+            document.getElementById('form-usd-min-withdraw').required = !shouldDisable && isUsdChecked;
+            document.getElementById('form-usd-max-withdraw').required = !shouldDisable && isUsdChecked;
+            document.getElementById('form-usd-min-fee').required = !shouldDisable && isUsdChecked;
+            document.getElementById('form-aed-min-withdraw').required = !shouldDisable && isAedChecked;
+            document.getElementById('form-aed-max-withdraw').required = !shouldDisable && isAedChecked;
+            document.getElementById('form-aed-min-fee').required = !shouldDisable && isAedChecked;
+            document.getElementById('form-excess-fee-percent').required = !shouldDisable;
+        }
+
+        // 【动态费率演示沙盒算法】：手续费 = Max(提金金额 * 费率, 最低手续费)
+        function calculatePreviewFee() {
+            const amountInput = document.getElementById('test-calc-amount');
+            const amount = parseFloat(amountInput.value) || 0;
+            
+            const isUsdChecked = document.getElementById('withdraw-currency-usd').checked;
+            const minFeeUsd = parseFloat(document.getElementById('form-usd-min-fee').value) || 1.00;
+            const minFeeAed = parseFloat(document.getElementById('form-aed-min-fee').value) || 3.60;
+            const percent = parseFloat(document.getElementById('form-excess-fee-percent').value) || 0;
+            const freeThresholdUsd = parseFloat(document.getElementById('form-fee-free-threshold-usd').value) || 0;
+            const freeThresholdAed = parseFloat(document.getElementById('form-fee-free-threshold-aed').value) || 0;
+            const freeThreshold = isUsdChecked ? freeThresholdUsd : freeThresholdAed;
+
+            const isSupport = document.getElementById('form-support-withdrawal').checked;
+            const isCharge = document.getElementById('form-charge-fee').checked;
+
+            let finalFee = 0;
+            let displaySymbol = isUsdChecked ? '$' : 'AED ';
+
+            if (isSupport && isCharge) {
+                // 超过免收门槛则免收
+                if (freeThreshold > 0 && amount > freeThreshold) {
+                    finalFee = 0;
+                } else {
+                    const targetMinFee = isUsdChecked ? minFeeUsd : minFeeAed;
+                    // 计算比例手续费
+                    const pctCalculated = amount * (percent / 100);
+                    // 取 Max 判定
+                    finalFee = Math.max(pctCalculated, targetMinFee);
+                }
+            }
+
+            const finalNet = Math.max(0, amount - finalFee);
+
+            // 更新显示
+            document.getElementById('test-calc-fee').innerText = isUsdChecked 
+                ? `$${finalFee.toFixed(2)}` 
+                : `${finalFee.toFixed(2)} AED`;
+
+            document.getElementById('test-calc-net').innerText = isUsdChecked 
+                ? `$${finalNet.toFixed(2)}` 
+                : `${finalNet.toFixed(2)} AED`;
+        }
+
+        // 提交表单创建或编辑
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const isUsdChecked = document.getElementById('currency-usd').checked;
+            const isAedChecked = document.getElementById('currency-aed').checked;
+            const isWithdrawUsdChecked = document.getElementById('withdraw-currency-usd').checked;
+            const isWithdrawAedChecked = document.getElementById('withdraw-currency-aed').checked;
+
+            const limits = {};
+            if (isUsdChecked) {
+                limits.USD = {
+                    min: parseFloat(document.getElementById('form-usd-min').value),
+                    max: parseFloat(document.getElementById('form-usd-max').value)
+                };
+            }
+            if (isAedChecked) {
+                limits.AED = {
+                    min: parseFloat(document.getElementById('form-aed-min').value),
+                    max: parseFloat(document.getElementById('form-aed-max').value)
+                };
+            }
+
+            const currencies = [];
+            if (isUsdChecked) currencies.push('USD');
+            if (isAedChecked) currencies.push('AED');
+
+            const withdrawCurrencies = [];
+            if (isWithdrawUsdChecked) withdrawCurrencies.push('USD');
+            if (isWithdrawAedChecked) withdrawCurrencies.push('AED');
+
+            const id = document.getElementById('form-gateway-id').value;
+            const supportWithdrawal = document.getElementById('form-support-withdrawal').checked;
+            const chargeFee = document.getElementById('form-charge-fee').checked;
+
+            const gatewayData = {
+                id: id || `GW_M_${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                provider: document.getElementById('form-provider').value,
+                displayName: document.getElementById('form-display-name').value,
+                logoDataUrl: currentLogoDataUrl,
+                logoName: currentLogoName,
+                currencies: currencies,
+                limits: limits,
+                supportWithdrawal: supportWithdrawal,
+                withdrawCurrencies: withdrawCurrencies,
+                withdrawRanges: {
+                    USD: isWithdrawUsdChecked ? {
+                        min: parseFloat(document.getElementById('form-usd-min-withdraw').value) || 0,
+                        max: parseFloat(document.getElementById('form-usd-max-withdraw').value) || 0
+                    } : null,
+                    AED: isWithdrawAedChecked ? {
+                        min: parseFloat(document.getElementById('form-aed-min-withdraw').value) || 0,
+                        max: parseFloat(document.getElementById('form-aed-max-withdraw').value) || 0
+                    } : null
+                },
+                chargeFee: chargeFee,
+                fees: {
+                    USD: parseFloat(document.getElementById('form-usd-min-fee').value) || 0,
+                    AED: parseFloat(document.getElementById('form-aed-min-fee').value) || 0,
+                    percent: parseFloat(document.getElementById('form-excess-fee-percent').value) || 0
+                },
+                feeFreeThreshold: {
+                    USD: parseFloat(document.getElementById('form-fee-free-threshold-usd').value) || 0,
+                    AED: parseFloat(document.getElementById('form-fee-free-threshold-aed').value) || 0
+                },
+                arrivalTime: {
+                    en: document.getElementById('form-arrival-time-en').value.trim(),
+                    ar: document.getElementById('form-arrival-time-ar').value.trim()
+                },
+                isRecommended: document.getElementById('form-is-recommended').checked,
+                recommendText: {
+                    en: document.getElementById('form-recommend-en').value.trim(),
+                    ar: document.getElementById('form-recommend-ar').value.trim()
+                },
+                status: document.querySelector('input[name="form-status"]:checked').value
+            };
+
+            if (id) {
+                // 编辑模式
+                const index = mockGateways.findIndex(g => g.id === id);
+                mockGateways[index] = gatewayData;
+                showToast("通道配置更新成功！");
+            } else {
+                // 创建模式
+                mockGateways.unshift(gatewayData);
+                showToast("新支付通道创建成功！");
+            }
+
+            renderGatewaysTable();
+            closeFormDrawer();
+        }
+
+        // 左侧菜单的折叠展开 / 跳转交由 sidebar.js 统一处理，本文件不再保留 toggleMenu。
+    </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

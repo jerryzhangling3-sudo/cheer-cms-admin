@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入金管理 - CFD 业务管理后台</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        sidebar: '#0B1120',      
+                        sidebarHover: '#1E293B', 
+                        primary: '#3B82F6',      
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .submenu-container.expanded {
+            max-height: 1000px;
+            opacity: 1;
+        }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+        
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">资金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">出入金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">入金管理</span>
+            </div>
+
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 实际页面内容承载区 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+            
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">入金管理</h1>
+                <p class="text-sm text-slate-500 mt-2">资金充值总台账，展示客户通过各类支付通道充值入账的具体明细。仅供记录展示，无后台审批操作。</p>
+            </div>
+
+            <!-- 筛选查询区 -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-end">
+                <div class="space-y-1.5 w-48">
+                    <label class="text-xs font-semibold text-slate-600">客户ID</label>
+                    <input type="text" placeholder="精确查询客户ID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans">
+                </div>
+                <div class="space-y-1.5 w-56">
+                    <label class="text-xs font-semibold text-slate-600">流水 ID (TxID)</label>
+                    <input type="text" placeholder="内部资金单号" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans">
+                </div>
+                <div class="space-y-1.5 w-64">
+                    <label class="text-xs font-semibold text-slate-600">申请时间</label>
+                    <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <i class="fa-regular fa-calendar text-slate-400 mr-2 text-sm"></i>
+                        <input type="text" placeholder="开始日期 - 结束日期" class="w-full bg-transparent text-sm focus:outline-none text-slate-600" value="2026-06-01 to 2026-06-27">
+                    </div>
+                </div>
+                <div class="space-y-1.5 w-40">
+                    <label class="text-xs font-semibold text-slate-600">状态</label>
+                    <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                        <option value="all" selected>全部</option>
+                        <option value="processing">处理中</option>
+                        <option value="success">已到账</option>
+                        <option value="failed">已失败</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center gap-3 ml-auto">
+                    <button class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right text-xs"></i> 重置
+                    </button>
+                    <button class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i> 查询
+                    </button>
+                </div>
+            </div>
+
+            <!-- 数据列表卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <!-- 表头 -->
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] tracking-wider border-b border-slate-200">
+                                <th class="px-5 py-3.5 font-semibold">流水ID (TxID)</th>
+                                <th class="px-5 py-3.5 font-semibold">客户ID</th>
+                                <th class="px-5 py-3.5 font-semibold">申请时间</th>
+                                <th class="px-5 py-3.5 font-semibold">完成时间</th>
+                                <th class="px-5 py-3.5 font-semibold">支付通道</th>
+                                <th class="px-5 py-3.5 font-semibold">币种</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">提交金额</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">到账金额</th>
+                                <th class="px-5 py-3.5 font-semibold">上游三方单号</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">状态</th>
+                            </tr>
+                        </thead>
+                        
+                        <!-- 纯静态硬编码数据展示区 -->
+                        <tbody class="text-[13px] divide-y divide-slate-100">
+                            
+                            <!-- 模拟数据 1：已到账 -->
+                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="px-5 py-4 font-mono text-slate-500">DEP_260627_0083</td>
+                                <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline cursor-pointer">88102934</span></td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-xs">2026-06-27<br>10:15:22</td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-xs">2026-06-27<br>10:18:05</td>
+                                <td class="px-5 py-4 text-slate-700 font-medium">USDT-TRC20</td>
+                                <td class="px-5 py-4 font-medium text-slate-600">USD</td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-right">5,000.00</td>
+                                <td class="px-5 py-4 font-mono font-bold text-emerald-600 text-right text-sm bg-emerald-50/30">+ 5,000.00</td>
+                                <td class="px-5 py-4 font-mono text-slate-400 text-xs">TRX_a9f8...b3c9</td>
+                                <td class="px-5 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[11px] font-bold tracking-wide">
+                                        <i class="fa-solid fa-check mr-1.5 text-[10px]"></i>已到账
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <!-- 模拟数据 2：处理中 -->
+                            <tr class="hover:bg-slate-50/70 transition-colors bg-amber-50/10">
+                                <td class="px-5 py-4 font-mono text-slate-500">DEP_260627_0091</td>
+                                <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline cursor-pointer">99201140</span></td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-xs">2026-06-27<br>14:20:00</td>
+                                <td class="px-5 py-4 font-mono text-slate-400 text-xs flex items-center gap-2 mt-1.5"><i class="fa-solid fa-minus"></i> --</td>
+                                <td class="px-5 py-4 text-slate-700 font-medium">Bank Wire (FAB)</td>
+                                <td class="px-5 py-4 font-medium text-slate-600">AED</td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-right">150,000.00</td>
+                                <td class="px-5 py-4 font-mono font-medium text-slate-400 text-right text-sm">--</td>
+                                <td class="px-5 py-4 font-mono text-slate-400 text-xs">BW_PENDING_8812</td>
+                                <td class="px-5 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-amber-50 text-amber-600 border border-amber-100 rounded-md text-[11px] font-bold tracking-wide">
+                                        <i class="fa-solid fa-circle-notch fa-spin mr-1.5 text-[10px]"></i>处理中
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <!-- 模拟数据 3：已失败 -->
+                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="px-5 py-4 font-mono text-slate-500">DEP_260626_0992</td>
+                                <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline cursor-pointer">10293845</span></td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-xs">2026-06-26<br>23:45:10</td>
+                                <td class="px-5 py-4 font-mono text-slate-500 text-xs">2026-06-26<br>23:45:12</td>
+                                <td class="px-5 py-4 text-slate-700 font-medium">Stripe Card</td>
+                                <td class="px-5 py-4 font-medium text-slate-600">USD</td>
+                                <td class="px-5 py-4 font-mono text-slate-400 text-right line-through">1,500.00</td>
+                                <td class="px-5 py-4 font-mono font-medium text-slate-400 text-right text-sm">0.00</td>
+                                <td class="px-5 py-4 font-mono text-rose-400 text-xs" title="ERR_INSUFFICIENT_FUNDS">ch_3M...99x <i class="fa-solid fa-circle-info cursor-help ml-1"></i></td>
+                                <td class="px-5 py-4 text-center">
+                                    <span class="inline-flex items-center justify-center px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-100 rounded-md text-[11px] font-bold tracking-wide">
+                                        <i class="fa-solid fa-xmark mr-1.5 text-[10px]"></i>已失败
+                                    </span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 表格底部分页区域 -->
+                <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span class="text-sm text-slate-500">共 3 条入金流水</span>
+                    <div class="flex gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:bg-slate-200 disabled:opacity-50" disabled><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-medium text-sm shadow-sm">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 font-medium text-sm">2</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        // 接入共用侧栏：声明本页所在的叶子节点路径即可；
+        // 菜单结构与跨页 href 全部由 sidebar.js 统一维护。
+        injectSidebar({ activePath: "资金管理 / 出入金管理 / 入金管理" });
+    </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Balance Adjustment - CFD Admin Portal</title>
+ <script src="https://cdn.tailwindcss.com"></script>
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+ <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+ <script>
+ tailwind.config = {
+ theme: {
+ extend: {
+ fontFamily: { sans: ['Inter', 'sans-serif'] },
+ colors: { sidebar: '#0B1120', sidebarHover: '#1E293B', primary: '#3B82F6' }
+ }
+ }
+ }
+ </script>
+ <style>
+ ::-webkit-scrollbar { width: 6px; height: 6px; }
+ ::-webkit-scrollbar-track { background: transparent; }
+ ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+ ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+ .submenu-container {
+ transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+ max-height: 0; opacity: 0; overflow: hidden;
+ }
+ .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+ .chevron { transition: transform 0.3s ease; }
+ .chevron.rotated { transform: rotate(90deg); }
+ .menu-level-1 { padding-left: 1rem; }
+ .menu-level-2 { padding-left: 2.75rem; }
+ .menu-level-3 { padding-left: 4.5rem; }
+ .menu-level-4 { padding-left: 6.25rem; }
+
+ .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+ .toast.show { transform: translateY(0); opacity: 1; }
+
+ /* Modal & Drawer */
+ .modal-overlay { transition: opacity .25s ease; }
+ .modal-panel { transition: transform .25s ease, opacity .25s ease; }
+ .modal-overlay.hidden-state { opacity: 0; pointer-events: none; }
+ .modal-overlay.hidden-state .modal-panel { transform: translateY(20px) scale(.97); opacity: 0; }
+
+ /* Right-side detail drawer */
+ .drawer-overlay { transition: opacity .25s ease; }
+ .drawer-panel { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+ .drawer-overlay.hidden-state { opacity: 0; pointer-events: none; }
+ .drawer-overlay.hidden-state .drawer-panel { transform: translateX(100%); }
+ /* Timeline dot */
+ .timeline-dot { width: 10px; height: 10px; border-radius: 999px; border: 2px solid; }
+
+ /* Highlight pending rows */
+ tr.pending-row { background: linear-gradient(90deg, rgba(245,158,11,.07) 0%, rgba(245,158,11,0) 60%); }
+ tr.pending-row td:first-child { border-left: 3px solid #f59e0b; }
+
+ /* Long-text truncate */
+ .truncate-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+ <!-- Left navigation sidebar -->
+<div id="sidebar-root"></div>
+
+<!-- Main content -->
+ <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+ <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+ <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+ <span class="text-slate-400">System</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-slate-400">Funding</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-slate-400">Balances</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-primary font-semibold">Balance Adjustment</span>
+ </div>
+ <div class="flex items-center gap-5 text-slate-500">
+ <div id="lang-switch"></div>
+ <button class="hover:text-primary transition-colors relative">
+ <i class="fa-regular fa-bell text-lg"></i>
+ <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+ </button>
+ <button class="hover:text-primary transition-colors cursor-pointer">
+ <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out
+ </button>
+ </div>
+ </header>
+
+ <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+ <div class="flex justify-between items-end mb-6">
+ <div>
+ <h1 class="text-2xl font-bold text-slate-800">Balance Adjustment</h1>
+ <p class="text-sm text-slate-500 mt-2 max-w-3xl">For customer compensation, Offline wire, fund adjustment tickets for special scenarios such as compliance debit. After submit enters Maker-Checker Approval, After approval the system runs the dual-ledger routing automatically Funding / Acct. Ledger routing. </p>
+ </div>
+ <button onclick="openCreateModal()" class="bg-primary hover:bg-blue-600 transition-colors text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30 flex items-center gap-2">
+ <i class="fa-solid fa-plus text-[12px]"></i> New Adjustment
+ </button>
+ </div>
+
+ <!-- Filter section -->
+ <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+ <div class="grid grid-cols-6 gap-4">
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">TxID</label>
+ <input id="filter-txid" type="text" placeholder="ADJ_20260629_..." class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">UID</label>
+ <input id="filter-user" type="text" placeholder="Exact match" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Direction</label>
+ <select id="filter-direction" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+ <option value="">All</option>
+ <option value="credit">Credit (Credit)</option>
+ <option value="debit">Debit (Debit)</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Review Status</label>
+ <select id="filter-status" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+ <option value="">All</option>
+ <option value="pending">Pending (Pending)</option>
+ <option value="completed">Approved (Approved)</option>
+ <option value="rejected">Rejected (Rejected)</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Funding Processing Status</label>
+ <select id="filter-funding-status" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+ <option value="">All</option>
+ <option value="processing">Processing</option>
+ <option value="success">Success</option>
+ <option value="failed">Failed</option>
+ <option value="partial">Partially Successful</option>
+ <option value="unprocessed">Not Processed</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Value Date</label>
+ <input id="filter-value-date" type="text" placeholder="2026-06-01 ~ 2026-06-29" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ </div>
+ </div>
+ <div class="flex justify-end gap-3 mt-5">
+ <button onclick="resetFilters()" class="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">Reset</button>
+ <button onclick="applyFilters()" class="bg-primary hover:bg-blue-600 transition-colors text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30">Search</button>
+ </div>
+ </div>
+
+ <!-- List -->
+ <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+ <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center">
+ <div class="text-[13px] text-slate-500">Total <span id="total-count" class="font-semibold text-slate-700">0</span> · Pending tickets pinned and highlighted</div>
+ </div>
+ <div class="overflow-x-auto">
+ <table class="w-full text-sm">
+ <thead class="bg-slate-50/80 border-y border-slate-200">
+ <tr class="text-[11px] tracking-wider font-semibold text-slate-500">
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">LedgerID</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">UID</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Target Account</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Direction</th>
+ <th class="text-right px-5 py-3.5 whitespace-nowrap">Amount</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Value Date</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Internal Remark</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Customer Remark</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Maker</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Checker</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Review Status</th>
+ <th class="text-left px-5 py-3.5 whitespace-nowrap">Funding Processing Status</th>
+ <th class="text-right px-5 py-3.5 whitespace-nowrap pr-6">Actions</th>
+ </tr>
+ </thead>
+ <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+ </table>
+ </div>
+ </div>
+
+ </div>
+
+ <!-- New Adjustment Modal -->
+ <div id="modal-create" class="modal-overlay hidden-state fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50">
+ <div class="modal-panel bg-white rounded-xl shadow-2xl w-[640px] max-h-[88vh] overflow-hidden flex flex-col">
+ <!-- Tab Switch -->
+ <div class="border-b border-slate-200 px-6 pt-5">
+ <div class="flex items-center justify-between mb-4">
+ <h3 class="text-lg font-bold text-slate-800">New Adjustment</h3>
+ <button onclick="closeCreateModal()" class="text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100">
+ <i class="fa-solid fa-xmark"></i>
+ </button>
+ </div>
+ <div class="flex gap-1 text-sm">
+ <button class="px-4 py-2 border-b-2 border-primary text-primary font-semibold">Manual Entry</button>
+ <button class="px-4 py-2 border-b-2 border-transparent text-slate-400 cursor-not-allowed" title="Batch upload coming next phase">
+ Batch Upload <span class="ml-1 text-[10px] px-1.5 py-[1px] rounded bg-slate-100">next phase</span>
+ </button>
+ </div>
+ </div>
+
+ <!-- Form -->
+ <form id="create-form" class="flex-1 overflow-y-auto px-6 py-5 space-y-5" onsubmit="return false;">
+ <!-- Target Type -->
+ <div class="space-y-2">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Target Type <span class="text-rose-500">*</span></label>
+ <div class="flex gap-2">
+ <label class="flex-1 cursor-pointer">
+ <input type="radio" name="target_type" value="funding" class="peer hidden" checked onchange="onTargetTypeChange()"/>
+ <div class="px-4 py-3 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-primary peer-checked:bg-blue-50/40 peer-checked:text-primary peer-checked:font-semibold transition-colors">
+ <i class="fa-solid fa-wallet mr-2"></i> only Funding
+ </div>
+ </label>
+ <label class="flex-1 cursor-pointer">
+ <input type="radio" name="target_type" value="funding_mt5" class="peer hidden" onchange="onTargetTypeChange()"/>
+ <div class="px-4 py-3 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-primary peer-checked:bg-blue-50/40 peer-checked:text-primary peer-checked:font-semibold transition-colors">
+ <i class="fa-solid fa-link mr-2"></i> Funding + Acct. (Link) 
+ </div>
+ </label>
+ </div>
+ </div>
+
+ <!-- UID -->
+ <div class="space-y-1.5">
+ <label id="lbl-user" class="text-[11px] tracking-wider font-semibold text-slate-500">UID <span class="text-rose-500">*</span></label>
+ <textarea id="f-user" rows="2" placeholder="UID_558012 Use comma to separate multiple: UID_558012, UID_445118" oninput="if(document.querySelector('input[name=target_type]:checked').value==='funding_mt5')refreshMt5Panel()" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"></textarea>
+ <p id="hint-user" class="text-[11px] text-slate-400 leading-relaxed hidden">Link Acct. mode supports single only UID, Required for exact validation Acct. No ownership. </p>
+ </div>
+
+ <!-- Acct. No (Conditional display) -->
+ <div id="row-mt5" class="space-y-2 hidden">
+   <div class="flex items-center justify-between">
+     <label class="text-[11px] tracking-wider font-semibold text-slate-500">Acct. No (select per account) <span class="text-rose-500">*</span></label>
+   </div>
+   <div id="mt5-empty" class="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-[12px] text-slate-400">
+     <div class="mt5-empty-msg">Please enter Client ID (UID) first to load all Acct. No under this client.</div>
+   
+                        <div id="mt5-nohit" class="hidden text-[12px] text-rose-500 border border-rose-100 rounded-lg px-3 py-3 bg-rose-50/40">
+                            <i class="fa-solid fa-circle-exclamation mr-1.5"></i>No Acct. No found for entered Client ID.
+                        </div></div>
+   <div id="mt5-table" class="hidden rounded-lg border border-slate-200 overflow-hidden">
+     <table class="w-full text-[12px]">
+       <thead class="bg-slate-50 text-slate-500">
+         <tr>
+           <th class="px-4 py-2 w-8"></th>
+           <th class="text-left font-semibold">Acct.No</th>
+           <th class="text-right font-semibold">Equity</th>
+           <th class="text-center font-semibold">Margin Ratio</th>
+           <th class="text-left font-semibold">Account Type</th>
+           <th class="text-right font-semibold w-40">Amount to Adjust</th>
+         </tr>
+       </thead>
+       <tbody id="mt5-tbody" class="bg-white"></tbody>
+     </table>
+   </div>
+   <div id="mt5-total-row" class="hidden flex items-center justify-between rounded-lg bg-slate-50/60 px-3 py-2">
+     <span class="text-[11px] font-semibold text-slate-500">Total Deduction Amount</span>
+     <span id="mt5-total" class="font-mono text-sm font-bold text-rose-600"><span id="mt5-total-cur" class="text-[11px] text-slate-400 ml-1"></span>-</span>
+   </div>
+ </div>
+
+ <!-- Direction + Amount + Currency -->
+ <div class="grid grid-cols-3 gap-4">
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Direction <span class="text-rose-500">*</span></label>
+ <div class="flex gap-2">
+ <label class="flex-1 cursor-pointer">
+ <input type="radio" name="direction" value="credit" class="peer hidden" checked/>
+ <div class="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50/40 peer-checked:text-emerald-600 peer-checked:font-semibold transition-colors">
+ <i class="fa-solid fa-plus mr-1 text-xs"></i> Credit
+ </div>
+ </label>
+ <label class="flex-1 cursor-pointer">
+ <input type="radio" name="direction" value="debit" class="peer hidden"/>
+ <div class="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-rose-500 peer-checked:bg-rose-50/40 peer-checked:text-rose-600 peer-checked:font-semibold transition-colors">
+ <i class="fa-solid fa-minus mr-1 text-xs"></i> Debit
+ </div>
+ </label>
+ </div>
+ </div>
+ <div id="row-amount" class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Amount <span class="text-rose-500">*</span></label>
+ <input id="f-amount" type="number" min="0.01" step="0.01" placeholder="0.00" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ </div>
+ <div id="row-currency" class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Currency <span class="text-rose-500">*</span></label>
+ <select id="f-currency" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+ <option value="USD">USD</option>
+ <option value="AED">AED</option>
+ <option value="USDT">USDT</option>
+ <option value="CNY">CNY</option>
+ </select>
+ </div>
+ </div>
+
+ <!-- Value Date -->
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Value Date (Value Date) <span class="text-rose-500">*</span></label>
+ <input id="f-valuedate" type="date" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ <p class="text-[11px] text-slate-400">Used for accounting period assignment; Defaults to today. </p>
+ </div>
+
+ <!-- Customer Remark -->
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Customer Remark <span class="text-rose-500">*</span></label>
+ <select id="f-customer-remark" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+ <option value="">Please choose...</option>
+ <option value="cash_bonus">Cash Bonus</option>
+ <option value="promo">Promotion</option>
+ <option value="compensation">Compensation</option>
+ <option value="deposit_correction">Deposit Correction</option>
+ <option value="ib_commission">IB Commission</option>
+ <option value="master_commission">Master Commission</option>
+ <option value="negative_balance">Negative Balance</option>
+                            <option value="abnormal_profit">Abnormal Profit</option>
+ </select>
+ <p class="text-[11px] text-slate-400">Will be shown on the customer ledger. </p>
+ </div>
+
+ <!-- Internal Remark -->
+ <div class="space-y-1.5">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Internal Remark <span class="text-rose-500">*</span></label>
+ <input id="f-internal-remark" type="text" placeholder="Required: Ticket Ticket ID or approver, e.g. TICKET-3308 / supervisor wang batch" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+ <p class="text-[11px] text-slate-400">Backend-only, for review evidence. </p>
+ </div>
+
+ <!-- Validation hint -->
+ <div id="form-error" class="hidden bg-rose-50 border border-rose-200 text-rose-600 text-sm px-4 py-3 rounded-lg flex items-start gap-2">
+ <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+ <span id="form-error-msg"></span>
+ </div>
+ </form>
+
+ <div class="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 bg-slate-50/60">
+ <button onclick="closeCreateModal()" class="px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+ <button onclick="submitCreate()" class="bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30 transition-colors">
+ <i class="fa-solid fa-paper-plane mr-1.5 text-xs"></i> Submit for Review
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Generic confirm dialog -->
+ <div id="modal-confirm" class="modal-overlay hidden-state fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50">
+ <div class="modal-panel bg-white rounded-xl shadow-2xl w-[520px] overflow-hidden">
+ <div class="px-6 pt-6 pb-2">
+ <div class="flex items-start gap-4">
+ <div id="confirm-icon" class="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
+ <i class="fa-solid fa-check"></i>
+ </div>
+ <div class="flex-1">
+ <h4 id="confirm-title" class="text-base font-bold text-slate-800">Confirm executing this fund adjustment?? </h4>
+ <p id="confirm-desc" class="text-sm text-slate-500 mt-1.5 leading-relaxed">After approval, dual-ledger routing will be executed immediately. </p>
+ </div>
+ </div>
+ <!-- Approval snapshot -->
+ <div id="confirm-snapshot" class="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+ <div class="px-4 py-2.5 bg-slate-100/70 border-b border-slate-200">
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Approval Snapshot</span>
+ </div>
+ <div id="confirm-snapshot-body" class="px-4 py-3 text-[12px] text-slate-700 space-y-1.5"></div>
+ </div>
+ <div id="confirm-reason-wrap" class="mt-4 hidden">
+ <label class="text-[11px] tracking-wider font-semibold text-slate-500">Reject Reason <span class="text-rose-500">*</span></label>
+ <textarea id="confirm-reason" rows="2" placeholder="e.g.: Approved IB System reversal / Documents do not meet compensation rule" class="mt-1.5 w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"></textarea>
+ </div>
+ </div>
+ <div class="border-t border-slate-200 px-6 py-3 flex justify-end gap-3 bg-slate-50/60 mt-4">
+ <button onclick="closeConfirm()" class="px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+ <button id="confirm-ok" class="text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">Confirm</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Right-side detail drawer -->
+ <div id="drawer-detail" class="drawer-overlay hidden-state fixed inset-0 z-50 flex justify-end bg-slate-900/40" onclick="closeDetailDrawer()">
+ <div class="drawer-panel bg-white w-[540px] h-full shadow-2xl overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+ <!-- Header -->
+ <div class="px-6 py-4 border-b border-slate-200 bg-white flex items-start justify-between shrink-0">
+ <div class="flex-1 min-w-0">
+ <div class="flex items-center gap-2.5">
+ <span id="drawer-txid" class="font-mono text-[15px] font-bold text-slate-800">-</span>
+ <span id="drawer-status"></span>
+ <span id="drawer-funding-status"></span>
+ </div>
+ <p id="drawer-submeta" class="text-xs text-slate-500 mt-1.5">-</p>
+ </div>
+ <button onclick="closeDetailDrawer()" class="text-slate-400 hover:text-slate-700 transition-colors -mr-1 -mt-1 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
+ <i class="fa-solid fa-xmark"></i>
+ </button>
+ </div>
+ <!-- Body -->
+ <div id="drawer-body" class="flex-1 overflow-y-auto px-6 py-5 bg-slate-50/40 space-y-5"></div>
+ <!-- Footer (only when pending) -->
+ <div id="drawer-footer" class="hidden px-6 py-3 border-t border-slate-200 bg-white shrink-0 flex justify-end gap-2.5">
+ <button id="drawer-reject" class="px-5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+ <i class="fa-solid fa-xmark mr-1 text-xs"></i> Reject
+ </button>
+ <button id="drawer-approve" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">
+ <i class="fa-solid fa-check mr-1 text-xs"></i> Approve
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Toast -->
+ <div id="toast" class="toast fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-lg shadow-2xl text-sm z-[100] pointer-events-none flex items-center gap-2"></div>
+
+ </main>
+
+ <script src="sidebar.js?v=202607221300"></script>
+ <script>
+ injectSidebar({ activePath: "Funding / Balances / Balance Adjustment", lang: "en" });
+
+ // ============================================================
+ // Mock: Client profile & Funding pool balances (for audit drawer)
+ // ============================================================
+ const USER_INFO = {
+ "UID_558012": { nickName: "Wei Zhang", clientName: "Zhang Wei" },
+ "UID_445118": { nickName: "Layla Al-Mansour", clientName: "Layla Al-Mansour" },
+ "UID_330221": { nickName: "Xiaoyu Chen", clientName: "Chen Xiaoyu" },
+ "UID_607823": { nickName: "Ahmed Rahman", clientName: "Ahmed Rahman" }
+ };
+ const FUNDING_POOLS = {
+ "UID_558012": { AED: 0,       USD: 28420.00, USDT: 3125.60 },
+ "UID_445118": { AED: 12800.00, USD: 0,        USDT: 0 },
+ "UID_330221": { AED: 0,        USD: 4210.50,  USDT: 850.00 },
+ "UID_607823": { AED: 0,        USD: 0,        USDT: 6300.00 }
+ };
+ // ============================================================
+ // Mock data: mock Acct. No ownership (for linked validation) 
+ // ============================================================
+ const MT5_OWNERSHIP = {
+ "UID_558012": ["8802917", "8902001", "8903019"],
+ "UID_445118": ["8801122"],
+ "UID_330221": ["8903301"],
+ "UID_607823": ["8907632"]
+ };
+ const MT5_INFO = {
+ "8802917": { uid: "UID_558012", baseCurrency: "USD", equity: 18420.00, marginRatio: 0.32, accountType: "self" },
+ "8902001": { uid: "UID_558012", baseCurrency: "USD", equity: 4850.00, marginRatio: null, accountType: "copy" },
+ "8903019": { uid: "UID_558012", baseCurrency: "USD", equity: 1200.00, marginRatio: 0.18, accountType: "self" },
+ "8801122": { uid: "UID_445118", baseCurrency: "USD", equity: 920.00, marginRatio: null, accountType: "self" },
+ "8903301": { uid: "UID_330221", baseCurrency: "AED", equity: 12840.00, marginRatio: 0.45, accountType: "self" },
+ "8907632": { uid: "UID_607823", baseCurrency: "USDT", equity: 8920.00, marginRatio: 0.22, accountType: "self" }
+ };
+ const FUNDING_BALANCE = {
+ "UID_558012": 28420.00, "UID_445118": 1200.00,
+ "UID_330221": 12840.00, "UID_607823": 8920.00
+ };
+ const ACCT_TYPE_META = {
+ self: { en: "Self-trading", cls: "bg-slate-50 text-slate-700 border-slate-200" },
+ copy: { en: "Copy trading", cls: "bg-violet-50 text-violet-700 border-violet-100" }
+ };
+
+ // ============================================================
+ // Mock data: Adjustment ticket (Pending pinned to top, rest in reverse chronological order) 
+ // ============================================================
+ const REMARK_LABEL = {
+ cash_bonus: "Cash Bonus",
+ promo: "Promotion",
+ compensation: "Compensation",
+ deposit_correction: "Deposit Correction",
+ ib_commission: "IB Commission",
+ master_commission: "Master Commission",
+ negative_balance: "Negative Balance",
+            abnormal_profit: "Abnormal Profit"
+ };
+ const mockAdjustments = [
+ { txid: "ADJ_20260629_006", userId: "UID_558012", targetType: "funding_mt5", mt5: null,
+ accounts: [
+ { mt5: "8802917", amount: 500.00 },
+ { mt5: "8902001", amount: 800.00 },
+ { mt5: "8903019", amount: 300.00 }
+ ],
+ direction: "debit", amount: 1600.00, currency: "USD", valueDate: "2026-06-29",
+ internalRemark: "Multi-Acct.No unified deduction · TICKET-3401 internal misbook reversal on 3 Acct.No owned by Zhang Wei",
+ customerRemarkKey: "deposit_correction",
+ maker: "eve.liu", checker: "bob.wang", status: "completed", fundingStatus: "partial", createdAt: "2026-06-29 10:18:44", rejectReason: null,
+ accountResults: [
+ { mt5: "8802917", status: "success", processedAmount: 500.00, message: "Deduction completed successfully" },
+ { mt5: "8902001", status: "failed", processedAmount: 0.00, message: "Insufficient free margin; deduction not executed" },
+ { mt5: "8903019", status: "success", processedAmount: 300.00, message: "Deduction completed successfully" }
+ ] },
+ { txid: "ADJ_20260629_005", userId: "UID_445118", targetType: "funding", mt5: null,
+ direction: "debit", amount: 88.00, currency: "USD", valueDate: "2026-06-29",
+ internalRemark: "TICKET-3308 Deposit correction reversal (Finance wang verify) ", customerRemarkKey: "deposit_correction",
+ maker: "charlie.zhao", checker: null, status: "pending", createdAt: "2026-06-29 09:42:11", rejectReason: null },
+ { txid: "ADJ_20260629_004", userId: "UID_558012", targetType: "funding", mt5: null,
+ direction: "credit", amount: 500.00, currency: "USD", valueDate: "2026-06-29",
+ internalRemark: "Compensation ticket #C-261, supervisor wang batch", customerRemarkKey: "compensation",
+ maker: "alice.li", checker: null, status: "pending", createdAt: "2026-06-29 08:15:30", rejectReason: null },
+ { txid: "ADJ_20260628_002", userId: "UID_445118", targetType: "funding_mt5", mt5: "8801122",
+ direction: "credit", amount: 1000.00, currency: "USD", valueDate: "2026-06-28",
+ internalRemark: "Promotion W26 Streamer first-deposit bonus", customerRemarkKey: "promo",
+ maker: "alice.li", checker: null, status: "pending", createdAt: "2026-06-28 16:22:08", rejectReason: null },
+ { txid: "ADJ_20260628_001", userId: "UID_330221", targetType: "funding", mt5: null,
+ direction: "debit", amount: 250.00, currency: "AED", valueDate: "2026-06-28",
+ internalRemark: "Wrong master commission amount, Please verify", customerRemarkKey: "master_commission",
+ maker: "alice.li", checker: "bob.wang", status: "rejected", createdAt: "2026-06-28 11:05:42",
+ rejectReason: "Approved IB System reversal, no need to debit again" },
+ { txid: "ADJ_20260627_005", userId: "UID_607823", targetType: "funding_mt5", mt5: "8907632",
+ direction: "debit", amount: 500.00, currency: "USDT", valueDate: "2026-06-27",
+ internalRemark: "Reverse a non-compliant trade #R-44", customerRemarkKey: "deposit_correction",
+ maker: "bob.wang", checker: "alice.li", status: "completed", fundingStatus: "success", createdAt: "2026-06-27 19:33:15", rejectReason: null },
+ { txid: "ADJ_20260627_002", userId: "UID_558012", targetType: "funding", mt5: null,
+ direction: "credit", amount: 100.00, currency: "USD", valueDate: "2026-06-27",
+ internalRemark: "Dragon Boat festival bonus", customerRemarkKey: "cash_bonus",
+ maker: "alice.li", checker: "charlie.zhao", status: "completed", fundingStatus: "processing", createdAt: "2026-06-27 10:08:55", rejectReason: null },
+ { txid: "ADJ_20260626_003", userId: "UID_330221", targetType: "funding", mt5: null,
+ direction: "credit", amount: 2600.00, currency: "AED", valueDate: "2026-06-26",
+ internalRemark: "Offline transfer backfill, ledger interface returned an error", customerRemarkKey: "deposit_correction",
+ maker: "charlie.zhao", checker: "bob.wang", status: "completed", fundingStatus: "failed", createdAt: "2026-06-26 14:26:19", rejectReason: null }
+ ];
+
+ // ============================================================
+ // Render list
+ // ============================================================
+ function statusBadge(status) {
+ const map = {
+ pending: { cls: "bg-amber-50 text-amber-600 border-amber-100", icon: "fa-circle-notch fa-spin", label: "Pending" },
+ completed: { cls: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: "fa-check", label: "Approved" },
+ rejected: { cls: "bg-rose-50 text-rose-600 border-rose-100", icon: "fa-xmark", label: "Rejected" }
+ };
+ const s = map[status];
+ return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${s.cls}">
+ <i class="fa-solid ${s.icon} text-[9px]"></i>${s.label}
+ </span>`;
+ }
+
+ function fundingStatusBadge(status) {
+ const map = {
+ processing: { cls: "bg-amber-50 text-amber-600 border-amber-100", icon: "fa-circle-notch fa-spin", label: "Processing" },
+ success: { cls: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: "fa-check", label: "Success" },
+ failed: { cls: "bg-rose-50 text-rose-600 border-rose-100", icon: "fa-xmark", label: "Failed" },
+ partial: { cls: "bg-amber-50 text-amber-600 border-amber-100", icon: "fa-circle-half-stroke", label: "Partially Successful" },
+ unprocessed: { cls: "bg-slate-50 text-slate-400 border-slate-200", icon: "fa-minus", label: "Not Processed" }
+ };
+ const s = map[status] || map.unprocessed;
+ return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${s.cls}">
+ <i class="fa-solid ${s.icon} text-[9px]"></i>${s.label}
+ </span>`;
+ }
+
+ function fundingStatusSummary(r) {
+ if (r.fundingStatus !== "partial" || !Array.isArray(r.accountResults)) return "";
+ const successCount = r.accountResults.filter(x => x.status === "success").length;
+ return `<div class="text-[10px] text-amber-600 mt-1">${successCount}/${r.accountResults.length} accounts succeeded</div>`;
+ }
+
+ function fmtAmount(direction, amount, currency) {
+ const sign = direction === "credit" ? "+" : "-";
+ const cls = direction === "credit" ? "text-emerald-600" : "text-rose-600";
+ const num = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ return `<span class="font-mono font-bold ${cls}">${sign}${num}</span>
+ <span class="text-[11px] text-slate-400 ml-0.5">${currency}</span>`;
+ }
+
+ function targetCell(r) {
+ if (r.targetType === "funding") {
+ return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+ <i class="fa-solid fa-wallet text-slate-400 text-xs"></i> Funding
+ </span>`;
+ }
+ if (Array.isArray(r.accounts) && r.accounts.length > 1) {
+ const first = r.accounts[0].mt5;
+ return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+ <i class="fa-solid fa-link text-indigo-500 text-xs"></i>
+ <span class="font-mono text-[12px]">#${first}</span>
+ <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">+${r.accounts.length - 1}</span>
+ </span>`;
+ }
+ const mt5 = r.mt5 || (r.accounts && r.accounts[0] && r.accounts[0].mt5) || "-";
+ return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+ <i class="fa-solid fa-link text-indigo-500 text-xs"></i> Acct. <span class="font-mono text-[12px]">#${mt5}</span>
+ </span>`;
+ }
+
+ function directionBadge(d) {
+ if (d === "credit") return `<span class="inline-flex items-center gap-1 text-emerald-600 font-semibold text-[12px]"><i class="fa-solid fa-arrow-down text-[10px]"></i> Credit Credit</span>`;
+ return `<span class="inline-flex items-center gap-1 text-rose-600 font-semibold text-[12px]"><i class="fa-solid fa-arrow-up text-[10px]"></i> Debit Debit</span>`;
+ }
+
+ function actionsCell(r) {
+ const detailBtn = `<button onclick="openDetailDrawer('${r.txid}')" class="text-xs font-semibold text-primary hover:bg-blue-50 px-2.5 py-1 rounded transition-colors">Detail</button>`;
+ if (r.status === "pending") {
+ return `
+ <div class="flex justify-end gap-1">
+ ${detailBtn}
+ <button onclick="askApprove('${r.txid}')" class="text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2.5 py-1 rounded transition-colors">Approve</button>
+ <button onclick="askReject('${r.txid}')" class="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded transition-colors">Reject</button>
+ </div>`;
+ }
+ return `<div class="flex justify-end">${detailBtn}</div>`;
+ }
+
+ function renderTable() {
+ const sorted = [...mockAdjustments].sort((a, b) => {
+ if (a.status === "pending" && b.status !== "pending") return -1;
+ if (a.status !== "pending" && b.status === "pending") return 1;
+ return b.createdAt.localeCompare(a.createdAt);
+ }).filter(r => {
+ const txid = document.getElementById("filter-txid").value.trim().toLowerCase();
+ const user = document.getElementById("filter-user").value.trim().toLowerCase();
+ const direction = document.getElementById("filter-direction").value;
+ const reviewStatus = document.getElementById("filter-status").value;
+ const fundingStatus = document.getElementById("filter-funding-status").value;
+ const valueDate = document.getElementById("filter-value-date").value.trim();
+ return (!txid || r.txid.toLowerCase().includes(txid))
+ && (!user || r.userId.toLowerCase().includes(user))
+ && (!direction || r.direction === direction)
+ && (!reviewStatus || r.status === reviewStatus)
+ && (!fundingStatus || (r.fundingStatus || "unprocessed") === fundingStatus)
+ && (!valueDate || r.valueDate.includes(valueDate));
+ });
+ const body = document.getElementById("table-body");
+ body.innerHTML = sorted.map(r => {
+ const customerLabel = REMARK_LABEL[r.customerRemarkKey] || "—";
+ const rejectSuffix = r.rejectReason ? `<div class="text-[11px] text-rose-500 mt-0.5 truncate" title="${r.rejectReason}">Reject: ${r.rejectReason}</div>` : "";
+ return `<tr class="${r.status === 'pending' ? 'pending-row' : ''} hover:bg-slate-50/70 transition-colors">
+ <td class="px-5 py-4 font-mono text-[12px] whitespace-nowrap"><button onclick="openDetailDrawer('${r.txid}')" class="text-primary hover:underline">${r.txid}</button></td>
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap">${r.userId}</td>
+ <td class="px-5 py-4 whitespace-nowrap">${targetCell(r)}</td>
+ <td class="px-5 py-4 whitespace-nowrap">${directionBadge(r.direction)}</td>
+ <td class="px-5 py-4 text-right whitespace-nowrap">${fmtAmount(r.direction, r.amount, r.currency)}</td>
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap">${r.valueDate}</td>
+ <td class="px-5 py-4 text-slate-600 text-[12px] truncate-cell" title="${r.internalRemark}">${r.internalRemark}${rejectSuffix}</td>
+ <td class="px-5 py-4 text-slate-600 text-[12px] whitespace-nowrap">${customerLabel}</td>
+ <td class="px-5 py-4 text-slate-700 text-[12px] whitespace-nowrap">${r.maker}</td>
+ <td class="px-5 py-4 text-slate-700 text-[12px] whitespace-nowrap">${r.checker || '<span class="text-slate-300">—</span>'}</td>
+ <td class="px-5 py-4 whitespace-nowrap">${statusBadge(r.status)}</td>
+ <td class="px-5 py-4 whitespace-nowrap">${fundingStatusBadge(r.fundingStatus)}${fundingStatusSummary(r)}</td>
+ <td class="px-5 py-4 pr-6 whitespace-nowrap">${actionsCell(r)}</td>
+ </tr>`;
+ }).join("");
+ document.getElementById("total-count").textContent = sorted.length;
+ }
+
+ function applyFilters() {
+ renderTable();
+ }
+
+ function resetFilters() {
+ ["filter-txid", "filter-user", "filter-value-date"].forEach(id => {
+ document.getElementById(id).value = "";
+ });
+ ["filter-direction", "filter-status", "filter-funding-status"].forEach(id => {
+ document.getElementById(id).value = "";
+ });
+ renderTable();
+ }
+
+ // ============================================================
+ // New ticket modal
+ // ============================================================
+ function openCreateModal() {
+ document.getElementById("create-form").reset();
+ document.querySelector('input[name="target_type"][value="funding"]').checked = true;
+ document.querySelector('input[name="direction"][value="credit"]').checked = true;
+ document.getElementById("f-valuedate").value = new Date().toISOString().slice(0, 10);
+ onTargetTypeChange();
+ document.getElementById("form-error").classList.add("hidden");
+ document.getElementById("modal-create").classList.remove("hidden-state");
+ }
+ function closeCreateModal() {
+ document.getElementById("modal-create").classList.add("hidden-state");
+ }
+ function onTargetTypeChange() {
+ const isMt5 = document.querySelector('input[name="target_type"]:checked').value === "funding_mt5";
+ document.getElementById("row-mt5").classList.toggle("hidden", !isMt5);
+ document.getElementById("row-amount").classList.toggle("hidden", isMt5);
+ document.getElementById("row-currency").classList.toggle("hidden", isMt5);
+ // UID: Link Acct. supports single entry only (Because Acct. Requires exact ownership validation) 
+ const userEl = document.getElementById("f-user");
+ const userLbl = document.getElementById("lbl-user");
+ const userHnt = document.getElementById("hint-user");
+ if (isMt5) {
+ userLbl.innerHTML = 'UID (single entry) <span class="text-rose-500">*</span>';
+ userEl.placeholder = "UID_558012";
+ userEl.rows = 1;
+ userHnt.classList.remove("hidden");
+ } else {
+ userLbl.innerHTML = 'UID <span class="text-rose-500">*</span>';
+ userEl.placeholder = "UID_558012 Use comma to separate multiple: UID_558012, UID_445118";
+ userEl.rows = 2;
+ userHnt.classList.add("hidden");
+ }
+ if (isMt5) refreshMt5Panel();
+ }
+
+ // ============================================================
+ // Dynamic Acct. No panel (per-UID load)
+ // ============================================================
+ function refreshMt5Panel() {
+ const emptyEl = document.getElementById("mt5-empty");
+ const tableEl = document.getElementById("mt5-table");
+ const tbody = document.getElementById("mt5-tbody");
+ const totalRow = document.getElementById("mt5-total-row");
+ const uid = (document.getElementById("f-user").value || "").trim();
+
+ if (!uid) {
+ emptyEl.classList.remove("hidden");
+ emptyEl.querySelector(".mt5-empty-msg").textContent = "Please enter Client ID (UID) first to load all Acct. No under this client.";
+ tableEl.classList.add("hidden");
+ totalRow.classList.add("hidden");
+ return;
+ }
+ const accts = MT5_OWNERSHIP[uid];
+ if (!accts || accts.length === 0) {
+ emptyEl.classList.remove("hidden");
+ emptyEl.querySelector(".mt5-empty-msg").textContent = `No Acct. No found for UID ${uid}.`;
+ tableEl.classList.add("hidden");
+ totalRow.classList.add("hidden");
+ return;
+ }
+ emptyEl.classList.add("hidden");
+ tableEl.classList.remove("hidden");
+ totalRow.classList.remove("hidden");
+
+ tbody.innerHTML = accts.map(a => {
+ const info = MT5_INFO[a] || {};
+ const cur = info.baseCurrency || "USD";
+ const equity = info.equity || 0;
+ const mr = info.marginRatio;
+ const mrText = (mr === null || mr === undefined) ? "-" : (mr * 100).toFixed(1) + "%";
+ const mrCls = (mr === null || mr === undefined) ? "text-slate-400" : "text-slate-700";
+ const typeMeta = ACCT_TYPE_META[info.accountType] || ACCT_TYPE_META.self;
+ const typeLabel = typeMeta.en;
+ const typeCls = typeMeta.cls;
+ return `<tr class="border-t border-slate-100" data-acct="${a}" data-base="${cur}">
+ <td class="px-4 py-3 align-top">
+ <label class="inline-flex items-center gap-2 cursor-pointer">
+ <input type="checkbox" id="mt5-check-all" class="mt5-check h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onchange="recomputeMt5Total()"/>
+ <span class="font-mono text-[13px] font-semibold text-slate-800">Acct.No ${a}</span>
+ </label>
+ </td>
+ <td class="px-4 py-3 align-top text-right font-mono text-[13px] text-slate-700">${equity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span class="text-slate-400 text-[11px]">${cur}</span></td>
+ <td class="px-4 py-3 align-top text-center">
+ <span class="${mrCls} font-mono text-[13px]">${mrText}</span>
+ </td>
+ <td class="px-4 py-3 align-top">
+ <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${typeCls}">${typeLabel}</span>
+ </td>
+ <td class="px-4 py-3 align-top">
+ <div class="flex items-center gap-1.5">
+ <input type="number" step="0.01" min="0" placeholder="0.00" class="mt5-amt w-28 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[13px] font-mono text-right focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none" oninput="recomputeMt5Total()"/>
+ <span class="text-[11px] text-slate-500">${cur}</span>
+ </div>
+ </td>
+ </tr>`;
+ }).join("");
+ recomputeMt5Total();
+ }
+
+ function recomputeMt5Total() {
+ const rows = document.querySelectorAll("#mt5-tbody tr[data-acct]");
+ const byCur = {};
+ rows.forEach(tr => {
+ const cb = tr.querySelector(".mt5-check");
+ const inp = tr.querySelector(".mt5-amt");
+ const base = tr.dataset.base || "USD";
+ if (cb && cb.checked && inp) {
+ const v = parseFloat(inp.value) || 0;
+ if (v > 0) byCur[base] = (byCur[base] || 0) + v;
+ }
+ });
+ const totalEl = document.getElementById("mt5-total");
+ const parts = Object.entries(byCur);
+ totalEl.innerHTML = parts.length === 0
+ ? `<span class="text-slate-400">-</span>`
+ : parts.map(([cur, tot]) => `<span class="font-mono">${tot.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> <span class="text-slate-500 text-[11px] mr-2">${cur}</span>`).join("");
+ }
+
+ // ============================================================
+ // Submit validation: 4 rules
+ // ============================================================
+ function showFormError(msg) {
+ document.getElementById("form-error-msg").textContent = msg;
+ document.getElementById("form-error").classList.remove("hidden");
+ }
+
+ function submitCreate() {
+ const targetType = document.querySelector('input[name="target_type"]:checked').value;
+ const direction = document.querySelector('input[name="direction"]:checked').value;
+ const userId = document.getElementById("f-user").value.trim();
+ const valueDate = document.getElementById("f-valuedate").value;
+ const customerR = document.getElementById("f-customer-remark").value;
+ const internalR = document.getElementById("f-internal-remark").value.trim();
+ document.getElementById("form-error").classList.add("hidden");
+
+ // Common required validation
+ if (!userId) return showFormError("Please enter UID. ");
+ if (!valueDate) return showFormError("Please choose value date. ");
+ if (!customerR) return showFormError("Please choose customer remark. ");
+ if (!internalR) return showFormError("Internal remark is required (e.g. ticket ID or approver) . ");
+
+ if (targetType === "funding_mt5") {
+ // Gather checked Acct. No rows + per-account amounts (currency per row from Acct. baseCurrency)
+ const rows = document.querySelectorAll("#mt5-tbody tr[data-acct]");
+ const picks = [];
+ rows.forEach(tr => {
+ const cb = tr.querySelector(".mt5-check");
+ const inp = tr.querySelector(".mt5-amt");
+ if (cb && cb.checked && inp) {
+ picks.push({ acct: tr.dataset.acct, amt: parseFloat(inp.value) });
+ }
+ });
+ if (picks.length === 0) return showFormError("Please select at least 1 Acct. No and enter its amount. ");
+
+ for (const p of picks) {
+ if (!(p.amt > 0)) return showFormError(`Acct. No ${p.acct}: Amount must be positive. `);
+ const info = MT5_INFO[p.acct];
+ if (!info) return showFormError(`Acct. No ${p.acct}: not found. `);
+ // Ownership auto-satisfied (panel built from MT5_OWNERSHIP[uid])
+ if (info.uid !== userId) return showFormError(`Acct. No ${p.acct}: does not belong to UID ${userId}. `);
+ // Debit: Free Margin check (currency comes from Acct. baseCurrency)
+ if (direction === "debit") {
+ const fm = info.equity * (1 - (info.marginRatio || 0));
+ if (fm - p.amt < 0) {
+ return showFormError(`Acct. No ${p.acct}: Free Margin ${fm.toFixed(2)} ${info.baseCurrency} insufficient to debit ${p.amt.toFixed(2)}. `);
+ }
+ }
+ }
+ // Approve → each Acct. No generates 1 Pending ticket (currency from account baseCurrency)
+ const now = new Date();
+ const ymd = now.toISOString().slice(0, 10).replace(/-/g, "");
+ picks.forEach((p, i) => {
+ const info = MT5_INFO[p.acct] || {};
+ const cur = info.baseCurrency || "USD";
+ const seq = String(mockAdjustments.length + 1 + i).padStart(3, "0");
+ mockAdjustments.unshift({
+ txid: `ADJ_${ymd}_${seq}`, userId, targetType, mt5: p.acct,
+ direction, amount: p.amt, currency: cur, valueDate,
+ internalRemark: internalR, customerRemarkKey: customerR,
+ maker: "admin.you", checker: null, status: "pending",
+ createdAt: now.toISOString().replace("T", " ").slice(0, 19), rejectReason: null
+ });
+ });
+ renderTable();
+ closeCreateModal();
+ showToast(`Generated ${picks.length} adjustment ticket(s) (User ${userId}, Target: ${picks.map(p => "Acct. No " + p.acct).join(", ")}), Status: Pending`, "success");
+ return;
+ }
+
+ // Funding branch: amount + currency required
+ const amount = parseFloat(document.getElementById("f-amount").value);
+ const currency = document.getElementById("f-currency").value;
+ if (!(amount > 0)) return showFormError("Amount must be positive (> 0) . ");
+
+ if (direction === "debit") {
+ const bal = FUNDING_BALANCE[userId] || 0;
+ if (bal - amount < 0) {
+ return showFormError(`Validation failed: Customer ${userId} Funding balance ${bal.toFixed(2)} ${currency} insufficient to debit ${amount.toFixed(2)}. `);
+ }
+ }
+
+ const now = new Date();
+ const ymd = now.toISOString().slice(0, 10).replace(/-/g, "");
+ const seq = String(mockAdjustments.length + 1).padStart(3, "0");
+ mockAdjustments.unshift({
+ txid: `ADJ_${ymd}_${seq}`, userId, targetType, mt5: null,
+ direction, amount, currency, valueDate,
+ internalRemark: internalR, customerRemarkKey: customerR,
+ maker: "admin.you", checker: null, status: "pending",
+ createdAt: now.toISOString().replace("T", " ").slice(0, 19), rejectReason: null
+ });
+ renderTable();
+ closeCreateModal();
+ showToast(`Generated 1 adjustment ticket (Target: Funding), Status: Pending`, "success");
+ }
+
+ // ============================================================
+ // Approve / Reject (Confirm again) 
+ // ============================================================
+ let pendingAction = null;
+
+ function _fmt(n, digits = 2) {
+ return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+ }
+
+ // ============================================================
+ // Right-side Detail Drawer: full audit context
+ // ============================================================
+ function openDetailDrawer(txid) {
+ const r = mockAdjustments.find(x => x.txid === txid);
+ if (!r) return;
+ const user = USER_INFO[r.userId] || { nickName: "—", clientName: "—" };
+ const pools = FUNDING_POOLS[r.userId] || { AED: 0, USD: 0, USDT: 0 };
+ const acct = r.mt5 ? MT5_INFO[r.mt5] : null;
+ const isDebit = r.direction === "debit";
+ const sign = isDebit ? "-" : "+";
+ const amtCls = isDebit ? "text-rose-600" : "text-emerald-600";
+
+ // Header
+ document.getElementById("drawer-txid").textContent = r.txid;
+ document.getElementById("drawer-status").innerHTML = statusBadge(r.status);
+ document.getElementById("drawer-funding-status").innerHTML = fundingStatusBadge(r.fundingStatus);
+ const statusVerb = r.status === "pending" ? "submitted, pending review" : (r.status === "completed" ? "approved" : "rejected");
+ document.getElementById("drawer-submeta").innerHTML =
+ `<span class="font-mono">${r.maker}</span> at <span class="font-mono">${r.createdAt}</span> ${statusVerb}`;
+
+ const sections = [];
+
+ // 1. Client
+ const poolChip = (cur, val) => {
+ const active = val > 0;
+ return `<div class="flex-1 min-w-[100px] rounded-lg border ${active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/60'} px-3 py-2">
+ <div class="text-[10px] tracking-wider font-semibold text-slate-400">Funding ${cur}</div>
+ <div class="mt-0.5 font-mono ${active ? 'text-slate-800 font-semibold' : 'text-slate-400'} text-sm">${_fmt(val)}</div>
+ </div>`;
+ };
+ sections.push(`
+ <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+ <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+ <i class="fa-regular fa-user text-slate-400 text-xs"></i>
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Client</span>
+ </div>
+ <div class="px-4 py-3.5 space-y-3">
+ <div class="flex items-center gap-3">
+ <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-user text-xs"></i></div>
+ <div class="flex-1 min-w-0">
+ <div class="font-mono text-sm font-semibold text-slate-800">${r.userId}</div>
+ <div class="text-[12px] text-slate-500 mt-0.5">${user.nickName} · <span class="font-mono">${user.clientName}</span></div>
+ </div>
+ </div>
+ <div class="flex gap-2">
+ ${poolChip("AED", pools.AED)}
+ ${poolChip("USD", pools.USD)}
+ ${poolChip("USDT", pools.USDT)}
+ </div>
+ </div>
+ </section>
+ `);
+
+ // 2. Adjustment Details (merged with target account)
+ const dirBadge = isDebit
+ ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-100"><i class="fa-solid fa-arrow-up text-[9px]"></i> Debit</span>'
+ : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100"><i class="fa-solid fa-arrow-down text-[9px]"></i> Credit</span>';
+
+ const isMt5 = r.targetType === "funding_mt5";
+ const rows = Array.isArray(r.accounts) && r.accounts.length
+ ? r.accounts
+ : (isMt5 ? [{ mt5: r.mt5, amount: r.amount }] : []);
+ const total = rows.length ? rows.reduce((s, x) => s + Number(x.amount || 0), 0) : Number(r.amount || 0);
+ const totalDisplay = `${sign}${_fmt(total)} <span class="text-[11px] text-slate-400 font-normal">${r.currency}</span>`;
+
+ let detailBody = "";
+ if (rows.length) {
+ const cards = rows.map(a => {
+ const info = MT5_INFO[a.mt5] || { accountType: "self", baseCurrency: r.currency };
+ const meta = ACCT_TYPE_META[info.accountType] || ACCT_TYPE_META.self;
+ return `
+ <div class="rounded-lg border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 flex items-center justify-between">
+ <div class="flex items-center gap-2">
+ <i class="fa-solid fa-link text-indigo-500 text-[11px]"></i>
+ <span class="font-mono font-bold text-slate-800 text-[13px]">Acct.No ${a.mt5}</span>
+ <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide border ${meta.cls}">${meta.label}</span>
+ </div>
+ <span class="font-mono font-bold text-[15px] ${amtCls}">${sign}${_fmt(a.amount)} <span class="text-[10px] text-slate-400 font-normal">${info.baseCurrency}</span></span>
+ </div>`;
+ }).join("");
+
+ const totalRow = rows.length > 1 ? `
+ <div class="mt-3 pt-3 border-t border-dashed border-slate-200 flex items-center justify-between">
+ <span class="text-[12px] text-slate-500">Total <span class="text-slate-400">(${rows.length} accounts)</span></span>
+ <span class="font-mono font-bold text-[16px] ${amtCls}">${totalDisplay}</span>
+ </div>` : "";
+
+ detailBody = `
+ <div class="space-y-2.5">${cards}</div>
+ ${totalRow}
+ <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[12px]">
+ <span class="text-slate-500">Value Date</span>
+ <span class="font-mono text-slate-800">${r.valueDate}</span>
+ </div>
+ `;
+ } else {
+ detailBody = `
+ <div class="space-y-2.5 text-[13px]">
+ <div class="flex items-center justify-between">
+ <span class="text-slate-500">Target</span>
+ <span>${targetCell(r)}</span>
+ </div>
+ <div class="flex items-center justify-between">
+ <span class="text-slate-500">Amount</span>
+ <span class="font-mono font-bold text-base ${amtCls}">${sign}${_fmt(r.amount)} <span class="text-[11px] text-slate-400 font-normal">${r.currency}</span></span>
+ </div>
+ <div class="flex items-center justify-between">
+ <span class="text-slate-500">Value Date</span>
+ <span class="font-mono text-slate-800">${r.valueDate}</span>
+ </div>
+ </div>
+ `;
+ }
+
+ sections.push(`
+ <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+ <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+ <i class="fa-solid fa-money-bill-transfer text-slate-400 text-xs"></i>
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Adjustment Details</span>
+ <span class="ml-auto flex items-center gap-2">
+ ${dirBadge}
+ <span class="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${r.currency}</span>
+ </span>
+ </div>
+ <div class="px-4 py-3.5">${detailBody}</div>
+ </section>
+ `);
+
+ // 3. Funding processing result (independent from review status)
+ const processingRows = Array.isArray(r.accountResults) && r.accountResults.length
+ ? r.accountResults.map(result => {
+ const processed = Number(result.processedAmount || 0);
+ const amountText = `${_fmt(processed)} <span class="text-[10px] text-slate-400 font-normal">${r.currency}</span>`;
+ return `<div class="rounded-lg border ${result.status === 'success' ? 'border-emerald-100 bg-emerald-50/30' : 'border-rose-100 bg-rose-50/30'} px-3.5 py-3">
+ <div class="flex items-center justify-between gap-3">
+ <span class="font-mono text-[12px] font-semibold text-slate-800">Acct.No ${result.mt5}</span>
+ ${fundingStatusBadge(result.status)}
+ </div>
+ <div class="flex items-center justify-between mt-2 text-[11px]">
+ <span class="text-slate-500">Processed Amount</span>
+ <span class="font-mono font-semibold ${result.status === 'success' ? 'text-emerald-600' : 'text-rose-600'}">${amountText}</span>
+ </div>
+ <div class="text-[11px] ${result.status === 'success' ? 'text-emerald-600' : 'text-rose-600'} mt-1">${result.message || '—'}</div>
+ </div>`;
+ }).join("")
+ : `<div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/60 px-3.5 py-3">
+ <div>
+ <div class="text-[12px] font-semibold text-slate-700">${r.fundingStatus === 'processing' ? 'Ledger routing is in progress' : (r.fundingStatus === 'success' ? 'All ledger routing completed' : (r.fundingStatus === 'failed' ? 'Ledger routing failed' : 'Waiting for execution after approval'))}</div>
+ <div class="text-[11px] text-slate-400 mt-1">${r.fundingStatus === 'processing' ? 'Refresh later to view the final result' : 'No per-account processing details for this ticket'}</div>
+ </div>
+ ${fundingStatusBadge(r.fundingStatus)}
+ </div>`;
+ sections.push(`
+ <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+ <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+ <i class="fa-solid fa-arrows-rotate text-slate-400 text-xs"></i>
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Funding Processing Result</span>
+ <span class="text-[10px] text-slate-400 ml-auto">Updated independently after approval</span>
+ </div>
+ <div class="px-4 py-3.5 space-y-2.5">${processingRows}</div>
+ </section>
+ `);
+
+ // 4. Reasons
+ const remarkLabel = REMARK_LABEL[r.customerRemarkKey] || "—";
+ sections.push(`
+ <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+ <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+ <i class="fa-regular fa-comment-dots text-slate-400 text-xs"></i>
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Reasons</span>
+ </div>
+ <div class="px-4 py-3.5 space-y-3 text-[13px]">
+ <div>
+ <div class="text-[11px] text-slate-500 mb-1">Customer-facing Reason</div>
+ <div class="text-slate-800">${remarkLabel}</div>
+ </div>
+ <div>
+ <div class="text-[11px] text-slate-500 mb-1">Internal Reason</div>
+ <div class="text-slate-800 leading-relaxed break-words">${r.internalRemark}</div>
+ </div>
+ </div>
+ </section>
+ `);
+
+ // 5. Timeline
+ const timelineItems = [
+ `<li class="flex gap-3">
+ <span class="timeline-dot border-emerald-500 bg-emerald-500 mt-1 shrink-0"></span>
+ <div class="flex-1">
+ <div class="text-[13px] text-slate-800"><span class="font-semibold">Submitted</span> · <span class="font-mono">${r.maker}</span></div>
+ <div class="text-[11px] text-slate-400 font-mono mt-0.5">${r.createdAt}</div>
+ </div>
+ </li>`
+ ];
+ if (r.status === "completed") {
+ const processingTimeline = r.fundingStatus === "partial"
+ ? `<span class="font-semibold text-amber-600">Partially successful</span> · ${r.accountResults.filter(x => x.status === "success").length}/${r.accountResults.length} accounts completed`
+ : r.fundingStatus === "processing"
+ ? `<span class="font-semibold text-amber-600">Processing</span> · System executing`
+ : r.fundingStatus === "failed"
+ ? `<span class="font-semibold text-rose-600">Failed</span> · Ledger routing incomplete`
+ : `<span class="font-semibold text-emerald-600">Success</span> · All ledger routing completed`;
+ const processingNote = r.fundingStatus === "partial"
+ ? "Some accounts succeeded; see Funding Processing Result"
+ : r.fundingStatus === "processing"
+ ? "Waiting for the ledger engine to return the final result"
+ : r.fundingStatus === "failed"
+ ? "Review the failure reason before submitting a new adjustment"
+ : "All target accounts have been processed";
+ timelineItems.push(`<li class="flex gap-3">
+ <span class="timeline-dot ${r.fundingStatus === 'success' ? 'border-emerald-500 bg-emerald-500' : r.fundingStatus === 'failed' ? 'border-rose-500 bg-rose-500' : 'border-amber-500 bg-amber-500'} mt-1 shrink-0"></span>
+ <div class="flex-1">
+ <div class="text-[13px] text-slate-800">${processingTimeline} · <span class="font-mono">${r.checker}</span></div>
+ <div class="text-[11px] text-slate-400 mt-0.5">${processingNote}</div>
+ </div>
+ </li>`);
+ } else if (r.status === "rejected") {
+ timelineItems.push(`<li class="flex gap-3">
+ <span class="timeline-dot border-rose-500 bg-rose-500 mt-1 shrink-0"></span>
+ <div class="flex-1">
+ <div class="text-[13px] text-slate-800"><span class="font-semibold text-rose-600">Rejected</span> · <span class="font-mono">${r.checker}</span></div>
+ <div class="text-[11px] text-rose-500 mt-0.5 break-words">Reason: ${r.rejectReason || "—"}</div>
+ </div>
+ </li>`);
+ } else {
+ timelineItems.push(`<li class="flex gap-3">
+ <span class="timeline-dot border-slate-300 bg-white mt-1 shrink-0"></span>
+ <div class="flex-1">
+ <div class="text-[13px] text-slate-500">Pending review</div>
+ <div class="text-[11px] text-slate-400 mt-0.5">Awaiting reviewer action</div>
+ </div>
+ </li>`);
+ }
+ sections.push(`
+ <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+ <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+ <i class="fa-regular fa-clock text-slate-400 text-xs"></i>
+ <span class="text-[11px] tracking-wider font-semibold text-slate-500">Approval Timeline</span>
+ </div>
+ <ul class="px-4 py-3.5 space-y-3">${timelineItems.join("")}</ul>
+ </section>
+ `);
+
+ document.getElementById("drawer-body").innerHTML = sections.join("");
+
+ const footer = document.getElementById("drawer-footer");
+ if (r.status === "pending") {
+ footer.classList.remove("hidden");
+ document.getElementById("drawer-approve").onclick = () => { closeDetailDrawer(); askApprove(r.txid); };
+ document.getElementById("drawer-reject").onclick  = () => { closeDetailDrawer(); askReject(r.txid);  };
+ } else {
+ footer.classList.add("hidden");
+ }
+ document.getElementById("drawer-detail").classList.remove("hidden-state");
+ }
+ function closeDetailDrawer() {
+ document.getElementById("drawer-detail").classList.add("hidden-state");
+ }
+
+ function askApprove(txid) {
+ const r = mockAdjustments.find(x => x.txid === txid);
+ const isMulti = Array.isArray(r.accounts) && r.accounts.length > 1;
+ const isMt5 = r.targetType === "funding_mt5";
+ const tip = isMt5
+ ? (isMulti
+ ? `After approval, ${r.accounts.length * 2} ledger entries will be generated (2 per Acct.). System will withdraw from each Acct. to Funding, then debit Funding.`
+ : (r.direction === "credit"
+ ? "After approval will generate 2 entries: ① credited to Funding ② System auto from Funding Transfer In Acct.."
+ : "After approval will generate 2 entries: ① System auto from Acct. withdraw to Funding ② from Funding Debit target funds."))
+ : (r.direction === "credit"
+ ? "After approval will generate 1 entry: Funds credited directly to customer Funding."
+ : "After approval will generate 1 entry: deduct the frozen funds in Funding.");
+
+ // Approval snapshot (funds already moved to Funding at submit time — no need to re-check Free Margin here)
+ const user = USER_INFO[r.userId] || { nickName: "—", clientName: "—" };
+ const isDebit = r.direction === "debit";
+ const sign = isDebit ? "-" : "+";
+ const amtCls = isDebit ? "text-rose-600" : "text-emerald-600";
+ const rowsArr = isMt5 ? (Array.isArray(r.accounts) && r.accounts.length ? r.accounts : [{ mt5: r.mt5, amount: r.amount }]) : [];
+ let snapshotRows = [
+ `<div class="flex items-center justify-between">
+ <span class="text-slate-500">Client</span>
+ <span><span class="font-mono font-semibold text-slate-800">${r.userId}</span> · ${user.nickName}</span>
+ </div>`,
+ `<div class="flex items-center justify-between">
+ <span class="text-slate-500">Target</span>
+ <span>${targetCell(r)}</span>
+ </div>`,
+ `<div class="flex items-center justify-between">
+ <span class="text-slate-500">Direction / Total</span>
+ <span class="font-mono font-bold ${amtCls}">${sign}${_fmt(r.amount)} <span class="text-[10px] text-slate-400 font-normal">${r.currency}</span></span>
+ </div>`,
+ ];
+ if (isMt5 && rowsArr.length > 1) {
+ const lines = rowsArr.map(a => `
+ <div class="flex items-center justify-between py-1 border-t border-slate-100 first:border-t-0">
+ <span class="font-mono text-slate-700 text-[12px]">#${a.mt5}</span>
+ <span class="font-mono text-[11px] ${amtCls} font-semibold">${sign}${_fmt(a.amount)} <span class="text-slate-400 font-normal">${r.currency}</span></span>
+ </div>`).join("");
+ snapshotRows.push(`
+ <div class="mt-2 pt-2 border-t border-slate-200/60">
+ <div class="text-[10px] text-slate-400 tracking-wide mb-0.5">Per-account breakdown (${rowsArr.length} accounts)</div>
+ ${lines}
+ </div>`);
+ }
+
+ openConfirm({
+ txid, type: "approve",
+ icon: "fa-check", iconCls: "bg-emerald-50 text-emerald-600",
+ title: `Confirm Approve ${txid}?`,
+ desc: tip,
+ okCls: "bg-emerald-600 hover:bg-emerald-700",
+ showReason: false,
+ snapshotHtml: snapshotRows.join("")
+ });
+ }
+ function askReject(txid) {
+ openConfirm({
+ txid, type: "reject",
+ icon: "fa-xmark", iconCls: "bg-rose-50 text-rose-600",
+ title: `Confirm Reject ${txid}? `,
+ desc: "After reject, the ticket status becomes 「Rejected」, process ends; If this is a debit ticket, will be auto-unfrozen Funding the corresponding funds in . ",
+ okCls: "bg-rose-600 hover:bg-rose-700",
+ showReason: true
+ });
+ }
+ function openConfirm(opts) {
+ pendingAction = opts;
+ const iconEl = document.getElementById("confirm-icon");
+ iconEl.className = `w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${opts.iconCls}`;
+ iconEl.innerHTML = `<i class="fa-solid ${opts.icon}"></i>`;
+ document.getElementById("confirm-title").textContent = opts.title;
+ document.getElementById("confirm-desc").textContent = opts.desc;
+ // Snapshot
+ const snapWrap = document.getElementById("confirm-snapshot");
+ const snapBody = document.getElementById("confirm-snapshot-body");
+ if (opts.snapshotHtml) {
+ snapBody.innerHTML = opts.snapshotHtml;
+ snapWrap.classList.remove("hidden");
+ } else {
+ snapWrap.classList.add("hidden");
+ snapBody.innerHTML = "";
+ }
+ document.getElementById("confirm-reason-wrap").classList.toggle("hidden", !opts.showReason);
+ document.getElementById("confirm-reason").value = "";
+ const okBtn = document.getElementById("confirm-ok");
+ okBtn.className = `text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors ${opts.okCls}`;
+ okBtn.textContent = opts.type === "approve" ? "Confirm Approve" : "Confirm Reject";
+ okBtn.disabled = false;
+ okBtn.title = "";
+ okBtn.onclick = doConfirm;
+ document.getElementById("modal-confirm").classList.remove("hidden-state");
+ }
+ function closeConfirm() {
+ document.getElementById("modal-confirm").classList.add("hidden-state");
+ pendingAction = null;
+ }
+ function doConfirm() {
+ const op = pendingAction; if (!op) return;
+ const r = mockAdjustments.find(x => x.txid === op.txid); if (!r) return;
+ if (op.type === "approve") {
+ r.status = "completed";
+ r.fundingStatus = "processing";
+ r.checker = "admin.you";
+ showToast(`Approved ${r.txid}, Ledger routing in progress...`, "success");
+ } else {
+ const reason = document.getElementById("confirm-reason").value.trim();
+ if (!reason) {
+ showToast("Reject reason is required", "error");
+ return;
+ }
+ r.status = "rejected";
+ r.checker = "admin.you";
+ r.rejectReason = reason;
+ showToast(`Rejected ${r.txid}` + (r.direction === "debit" ? ", Funding Frozen funds released" : ""), "warn");
+ }
+ renderTable();
+ closeConfirm();
+ }
+
+ // ============================================================
+ // Toast
+ // ============================================================
+ function showToast(msg, type = "info") {
+ const el = document.getElementById("toast");
+ const map = {
+ success: { bg: "bg-emerald-600", icon: "fa-check-circle" },
+ warn: { bg: "bg-amber-600", icon: "fa-circle-exclamation" },
+ error: { bg: "bg-rose-600", icon: "fa-circle-xmark" },
+ info: { bg: "bg-slate-800", icon: "fa-circle-info" }
+ };
+ const t = map[type] || map.info;
+ el.className = `toast fixed bottom-6 right-6 ${t.bg} text-white px-5 py-3 rounded-lg shadow-2xl text-sm z-[100] flex items-center gap-2`;
+ el.innerHTML = `<i class="fa-solid ${t.icon}"></i> ${msg}`;
+ requestAnimationFrame(() => el.classList.add("show"));
+ clearTimeout(window.__toastTimer);
+ window.__toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+ }
+
+ // Initialize
+ renderTable();
+ </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rebate Settings - CFD Admin Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0; opacity: 0; overflow: hidden;
+        }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+
+        .tab-btn { position: relative; }
+        .tab-btn.active { color: #3B82F6; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+            height: 2px; background: #3B82F6; border-radius: 2px;
+        }
+
+        /* Waterfall bar */
+        .waterfall-bar { transition: width .4s ease; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <div class="flex items-center text-sm text-slate-500">
+                <i class="fa-solid fa-house mr-2"></i>
+                <span>Finance</span>
+                <i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i>
+                <span>Partner</span>
+                <i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i>
+                <span class="text-slate-700 font-medium">Rebate Settings</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="lang-switch"></div>
+                <button class="text-slate-500 hover:text-primary transition-colors relative">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+                </button>
+                <button class="text-slate-500 hover:text-primary text-sm transition-colors">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <!-- Title -->
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Rebate Settings</h1>
+                    <p class="text-sm text-slate-500 mt-2">Configure Markup spread and per-level commission percentages by Symbol. Level count is controlled by Level Management; currently 4 levels L1 ~ L4.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-calc" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors hidden">
+                        <i class="fa-solid fa-calculator mr-1.5"></i>Preview Calculator
+                    </button>
+                    <button id="btn-logs" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors relative">
+                        <i class="fa-solid fa-clipboard-check mr-1.5"></i>Approval Log
+                        <span id="badge-pending" class="absolute -top-2 -right-2 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    <button id="btn-add" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/30">
+                        <i class="fa-solid fa-plus mr-1.5"></i>Add Symbol
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global params (read-only) -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-circle-info text-primary"></i>
+                    <span class="text-sm font-semibold text-slate-700">Global Clearing Parameters (Read-only / synced with trading engine)</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs">
+                    <div>
+                        <p class="text-slate-400 mb-1">Truncation Precision</p>
+                        <p class="font-mono font-bold text-slate-800">2 decimals</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">Real-time Batch</p>
+                        <p class="font-mono font-bold text-slate-800">Every 10 min</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">T+1 Residual Sweep</p>
+                        <p class="font-mono font-bold text-slate-800">GMT+0 10:00</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">RawSpread Last Run</p>
+                        <p class="font-mono font-bold text-slate-800">2026-06-29 (Mon) 00:00 GMT+0</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">RawSpread Next Run</p>
+                        <p class="font-mono font-bold text-emerald-600">2026-07-06 (Mon) 00:00 GMT+0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">Symbol Search</label>
+                        <input id="f-symbol" type="text" placeholder="e.g. XAUUSD / EURUSD"
+                            class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">Asset Type</label>
+                        <select id="f-class" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                            <option value="all">All</option>
+                            <option value="fx-major">FX Majors</option>
+                            <option value="fx-cross">FX Crosses</option>
+                            <option value="gold">Gold</option>
+                            <option value="silver">Silver</option>
+                            <option value="energy">Energy</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="indices">Indices</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">Status</label>
+                        <select id="f-status" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="paused">Paused</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button id="btn-apply" class="flex-1 h-9 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                            <i class="fa-solid fa-magnifying-glass mr-1"></i>Search
+                        </button>
+                        <button id="btn-reset" class="flex-1 h-9 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-semibold text-slate-700">Symbol Configuration List</span>
+                        <span id="cnt-total" class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-mono">0</span>
+                    </div>
+                    <span class="text-xs text-slate-400">Click row to view/edit</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[13px]">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-5 py-3 text-left text-[11px] tracking-wider font-semibold text-slate-500">Symbol</th>
+                                <th class="px-5 py-3 text-left text-[11px] tracking-wider font-semibold text-slate-500">Asset Type</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Contract</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Digits</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Markup<br><span class="text-slate-400 normal-case font-normal">(pts)</span></th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">RawSpread<br><span class="text-slate-400 normal-case font-normal">(pts, 7d)</span></th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Total<br><span class="text-slate-400 normal-case font-normal">(pts)</span></th>
+                                <th class="px-5 py-3 text-center text-[11px] tracking-wider font-semibold text-slate-500">Status</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="hidden text-center py-16 text-slate-400">
+                    <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
+                    <p class="text-sm">No matching symbols</p>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mt-4">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Tip: Non-USD quote symbols (e.g. EURGBP / AUDCAD) are auto-converted to USD using the close-time FX rate. Percentage set to 0% means the level is disabled for that symbol.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- ===== Edit Drawer ===== -->
+    <div id="edit-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800" id="ed-title">Edit Symbol Rebate</h3>
+                    <p class="text-xs text-slate-400 mt-0.5" id="ed-subtitle">— —</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+                <!-- Basic info -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Basic Info</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Asset Type *</label>
+                            <select id="ed-class" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                                <option value="fx-major">FX Majors</option>
+                                <option value="fx-cross">FX Crosses</option>
+                                <option value="gold">Gold</option>
+                                <option value="silver">Silver</option>
+                                <option value="energy">Energy</option>
+                                <option value="crypto">Crypto</option>
+                                <option value="indices">Indices</option>
+                            </select>
+                            <p class="text-[10px] text-slate-400 mt-1">Reads MT5 asset types</p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Symbol *</label>
+                            <select id="ed-symbol" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono bg-white focus:border-primary focus:outline-none">
+                                <option value="">Select symbol...</option>
+                            </select>
+                            <p id="ed-symbol-hint" class="text-[10px] text-slate-400 mt-1">Configured symbols are excluded</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contract specs (read-only) -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Contract Specs <span class="ml-1 text-slate-400 normal-case">(from trading engine, read-only)</span></h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Contract Size</label>
+                            <input id="ed-contract" type="number" class="w-full h-9 px-3 border border-slate-200 bg-slate-50 rounded-lg text-sm font-mono text-slate-500" readonly>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Digits Precision</label>
+                            <input id="ed-digits" type="number" step="0.0001" class="w-full h-9 px-3 border border-slate-200 bg-slate-50 rounded-lg text-sm font-mono text-slate-500" readonly>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Group spread & commission configuration -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Group Spread &amp; Commission Config <span class="ml-1 text-slate-400 normal-case">(spreads from MT5 / Bridge, read-only; commission % configured per Group)</span></h4>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-[12px]">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-500 text-[11px]">
+                                    <th class="text-left px-2 py-2 font-semibold">Group</th>
+                                    <th class="text-right px-2 py-2 font-semibold">Markup (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">RawSpread (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">Bridge (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">Total Spread (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">1 Lot Gross (USD)</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L1%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L2%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L3%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L4%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ed-group-table" class="divide-y divide-slate-200">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5"><i class="fa-solid fa-circle-info mr-0.5"></i>Total spread = Markup + RawSpread + Bridge. Commission percentages are configured per Group; the client Group determines the calculation.</p>
+                </section>
+
+                <!-- Live preview -->
+                <section class="bg-blue-50/40 border border-blue-100 rounded-lg p-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <label class="text-xs font-medium text-slate-600">Reference Group</label>
+                        <select id="ed-preview-group" class="h-8 px-2 border border-slate-200 rounded text-xs bg-white font-mono">
+                            <option value="">-- Select Group --</option>
+                        </select>
+                    </div>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-blue-700 mb-3"><i class="fa-solid fa-bolt mr-1"></i>Live Preview — 1 Lot Nominal Commission</h4>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-white rounded p-2 border border-slate-200">
+                            <p class="text-slate-400 mb-1">1 Lot Gross</p>
+                            <p id="ed-preview-gross" class="font-mono font-bold text-emerald-600">$ 0.00</p>
+                        </div>
+                        <div class="bg-white rounded p-2 border border-slate-200">
+                            <p class="text-slate-400 mb-1">Formula</p>
+                            <p id="ed-preview-formula" class="font-mono text-[10px] text-slate-500">1 × Total Spread × Contract × Digits</p>
+                        </div>
+                    </div>
+                    <div id="ed-preview-grid" class="grid grid-cols-4 gap-2 mt-3"></div>
+                </section>
+
+                <!-- Reason note -->
+                <section>
+                    <label class="text-xs text-slate-500 mb-1.5 block">Reason <span class="text-rose-500">*</span> <span class="text-slate-400 normal-case">(required for Approval Log)</span></label>
+                    <textarea id="ed-reason" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none" placeholder="e.g. Markup adjusted for liquidity pool change; new level launch; commercial strategy update..."></textarea>
+                </section>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
+                <p class="text-xs text-slate-400">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    PRD §4.8: Only applies to new trades after publish; historical orders follow the snapshot at trade time.
+                </p>
+                <div class="flex gap-2">
+                    <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors" data-close>Cancel</button>
+                    <button id="ed-publish" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/30">
+                        <i class="fa-solid fa-clipboard-check mr-1"></i>Submit for Review
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Preview Calculator Drawer ===== -->
+    <div id="calc-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800"><i class="fa-solid fa-calculator text-primary mr-1.5"></i>Rebate Preview Calculator</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">PRD §5.4 Differential + §5.5 Truncation to 2 decimals</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Input</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Symbol</label>
+                            <select id="ca-symbol" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Trade Volume (Lots)</label>
+                            <input id="ca-lots" type="number" step="0.01" min="0.01" value="1" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="text-xs text-slate-500 mb-1.5 block">Rebate Calculation Chain (max 3 levels, farthest eligible upline → direct)</label>
+                        <div id="ca-chain" class="space-y-2"></div>
+                        <div class="flex gap-2 mt-2">
+                            <button id="ca-add" class="text-xs text-primary hover:underline"><i class="fa-solid fa-plus mr-1"></i>Add Eligible Upline (max 3)</button>
+                            <button id="ca-pop" class="text-xs text-slate-500 hover:underline"><i class="fa-solid fa-minus mr-1"></i>Remove last</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">
+                        <i class="fa-solid fa-sliders mr-1 text-primary"></i>Level Commission % (Editable for Preview)
+                    </h4>
+                    <div class="grid grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L1 %</label>
+                            <input id="ca-pct-l1" type="number" step="1" min="0" max="100" value="50" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L2 %</label>
+                            <input id="ca-pct-l2" type="number" step="1" min="0" max="100" value="60" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L3 %</label>
+                            <input id="ca-pct-l3" type="number" step="1" min="0" max="100" value="70" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L4 %</label>
+                            <input id="ca-pct-l4" type="number" step="1" min="0" max="100" value="80" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button id="ca-reset-pcts" class="text-xs text-primary hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i>Reset to Symbol Default</button>
+                        <span class="text-xs text-slate-400 ml-auto" id="ca-pct-hint">Using manual values</span>
+                    </div>
+                </section>
+
+                <section class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Gross Profit</h4>
+                    <div class="grid grid-cols-3 gap-3 text-xs">
+                        <div>
+                            <p class="text-slate-400 mb-1">Total Spread (pts)</p>
+                            <p id="ca-totalspread" class="font-mono font-bold text-slate-800">0</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 mb-1">Contract × Digits</p>
+                            <p id="ca-contract" class="font-mono font-bold text-slate-800">0</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 mb-1">Gross ({{lots}} Lot)</p>
+                            <p id="ca-gross" class="font-mono font-bold text-emerald-600">$ 0.00</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Differential Derivation (bottom-up)</h4>
+                    <div id="ca-waterfall" class="space-y-2"></div>
+                </section>
+
+                <section class="bg-amber-50/40 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>
+                    <span class="font-semibold">Fuse Rule:</span>
+                    When a level's nominal minus the sum already paid downstream ≤ 0, it is force-set to $0.00. Platform never pays negative.
+                </section>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end shrink-0 bg-slate-50">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors" data-close>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Audit Log Drawer ===== -->
+    <div id="log-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800"><i class="fa-solid fa-clipboard-check text-primary mr-1.5"></i>Rebate Config Approval Log</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">All config changes immutable & auditable</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="log-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Confirm Modal ===== -->
+    <div id="confirm-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/40">
+        <div class="bg-white rounded-xl shadow-2xl w-[440px] p-6">
+            <h3 class="text-base font-bold text-slate-800 mb-2"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>Confirm Submission</h3>
+            <p class="text-sm text-slate-600 mb-4" id="cm-msg">About to submit rebate config change for <span class="font-mono font-bold text-slate-800">XAUUSD</span>.<br>The change will take effect after admin approval.</p>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
+                <p class="text-xs text-slate-500 mb-1">Reason</p>
+                <p id="cm-reason" class="text-sm text-slate-800">— —</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100" data-cm-cancel>Cancel</button>
+                <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600" data-cm-ok>Confirm Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status toggle confirmation modal -->
+    <div id="toggle-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/40">
+        <div class="bg-white rounded-xl shadow-2xl w-[440px] p-6">
+            <h3 class="text-base font-bold text-slate-800 mb-2" id="tm-title"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>Confirm Status Change</h3>
+            <p class="text-sm text-slate-600 mb-4" id="tm-msg">— —</p>
+            <div class="mb-4">
+                <label class="text-xs text-slate-500 mb-1.5 block">Reason <span class="text-rose-500">*</span> <span class="text-slate-400 normal-case">(required for approval log)</span></label>
+                <textarea id="tm-reason" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none" placeholder="e.g. Liquidity issue, business strategy adjustment..."></textarea>
+                <p class="text-[10px] text-slate-400 mt-1">500 characters max</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100" data-tm-cancel>Cancel</button>
+                <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600" data-tm-ok>Confirm Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-wrap" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-2"></div>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script src="lang-switch.js?v=202607039900"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / Rebate Settings", lang: 'en' });
+    </script>
+    <!-- Page JS -->
+    <script>
+        // ========== Mock Data ==========
+        const CLASS_LABEL = {
+            'fx-major': 'FX Majors',
+            'fx-cross': 'FX Crosses',
+            'gold': 'Gold',
+            'silver': 'Silver',
+            'energy': 'Energy',
+            'crypto': 'Crypto',
+            'indices': 'Indices',
+        };
+        // MT5 Asset Type → Symbol map (mock; loaded from MT5 platform in production)
+        const MT5_SYMBOLS = {
+            'fx-major': ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'],
+            'fx-cross': ['EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'AUDCAD', 'NZDJPY', 'CADJPY'],
+            'gold':     ['XAUUSD', 'XAUEUR', 'XAUAUD', 'XAUGBP'],
+            'silver':   ['XAGUSD', 'XAGEUR', 'XAGAUD'],
+            'energy':   ['WTIUSD', 'BRENT', 'NGAS'],
+            'crypto':   ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'DOGEUSDT'],
+            'indices':  ['US30', 'NAS100', 'SPX500', 'DAX40', 'UK100', 'HK50', 'JP225', 'AUS200'],
+        };
+        const CLASS_BADGE = {
+            'fx-major': 'bg-sky-50 text-sky-700 border-sky-100',
+            'fx-cross': 'bg-indigo-50 text-indigo-700 border-indigo-100',
+            'gold':     'bg-amber-50 text-amber-700 border-amber-100',
+            'silver':   'bg-slate-50 text-slate-700 border-slate-200',
+            'energy':   'bg-orange-50 text-orange-700 border-orange-100',
+            'crypto':   'bg-violet-50 text-violet-700 border-violet-100',
+            'indices':  'bg-blue-50 text-blue-700 border-blue-100',
+        };
+
+        // ===== Group 级Spread Details（From MT5 / Bridge，Read-only） =====
+        // Same Symbol May be in multiple MT5 Group，每个 Group 的 Markup 不同
+        const MOCK_GROUPS = {
+            'EURUSD': [
+                { name: 'Standard-ECN', markup: 8, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 6, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 12, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 4, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'GBPUSD': [
+                { name: 'Standard-ECN', markup: 10, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 8, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 14, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 6, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDJPY': [
+                { name: 'Standard-ECN', markup: 9, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 7, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 13, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 5, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'EURGBP': [
+                { name: 'Standard-ECN', markup: 12, raw: 6, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 10, raw: 6, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 16, raw: 6, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 8, raw: 6, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'AUDCAD': [
+                { name: 'Standard-ECN', markup: 14, raw: 7, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 11, raw: 7, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 18, raw: 7, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 9, raw: 7, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'XAUUSD': [
+                { name: 'Standard-ECN', markup: 40, raw: 20, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 35, raw: 20, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 50, raw: 20, bridge: 12, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 30, raw: 20, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAUEUR': [
+                { name: 'Standard-ECN', markup: 45, raw: 22, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 40, raw: 22, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 55, raw: 22, bridge: 12, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 35, raw: 22, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAGUSD': [
+                { name: 'Standard-ECN', markup: 25, raw: 12, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 22, raw: 12, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'Islamic-ECN',  markup: 30, raw: 12, bridge: 6, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 18, raw: 12, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            'WTIUSD': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 5, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 15, bridge: 4, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 38, raw: 15, bridge: 6, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 20, raw: 15, bridge: 3, pcts: [40,50,60,70] },
+            ],
+            'BRENT': [
+                { name: 'Standard-ECN', markup: 30, raw: 14, bridge: 5, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 14, bridge: 4, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 38, raw: 14, bridge: 6, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 20, raw: 14, bridge: 3, pcts: [40,50,60,70] },
+            ],
+            'BTCUSDT': [
+                { name: 'Standard-ECN', markup: 600, raw: 350, bridge: 80, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 500, raw: 350, bridge: 60, pcts: [50,60,70,80] },
+                { name: 'Islamic-ECN',  markup: 750, raw: 350, bridge: 100, pcts: [60,70,80,90] },
+                { name: 'VIP-ECN',      markup: 400, raw: 350, bridge: 50, pcts: [45,55,65,75] },
+            ],
+            'ETHUSDT': [
+                { name: 'Standard-ECN', markup: 80, raw: 45, bridge: 15, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 65, raw: 45, bridge: 12, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 50, raw: 45, bridge: 10, pcts: [45,55,65,75] },
+            ],
+            'US30': [
+                { name: 'Standard-ECN', markup: 25, raw: 12, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 20, raw: 12, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 15, raw: 12, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'NAS100': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 22, raw: 14, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 18, raw: 14, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'SPX500': [
+                { name: 'Standard-ECN', markup: 22, raw: 11, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 18, raw: 11, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 14, raw: 11, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            // FX Majors (Not in SYMBOLS 中的)
+            'AUDUSD': [
+                { name: 'Standard-ECN', markup: 7, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 5, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 11, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 3, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDCAD': [
+                { name: 'Standard-ECN', markup: 9, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 7, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 13, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 5, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'NZDUSD': [
+                { name: 'Standard-ECN', markup: 11, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 9, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 15, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 7, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDCHF': [
+                { name: 'Standard-ECN', markup: 10, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 8, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 14, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 6, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            // FX Crosses
+            'EURJPY': [
+                { name: 'Standard-ECN', markup: 12, raw: 6, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 10, raw: 6, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 16, raw: 6, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 8, raw: 6, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'GBPJPY': [
+                { name: 'Standard-ECN', markup: 15, raw: 7, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 12, raw: 7, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 18, raw: 7, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 10, raw: 7, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            // Gold additional
+            'XAUAUD': [
+                { name: 'Standard-ECN', markup: 50, raw: 25, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 45, raw: 25, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 38, raw: 25, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAUGBP': [
+                { name: 'Standard-ECN', markup: 48, raw: 24, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 42, raw: 24, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 36, raw: 24, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            // Silver additional
+            'XAGEUR': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 24, raw: 14, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'VIP-ECN',      markup: 20, raw: 14, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            'XAGAUD': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 26, raw: 15, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'VIP-ECN',      markup: 22, raw: 15, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            // Energy additional
+            'NGAS': [
+                { name: 'Standard-ECN', markup: 40, raw: 20, bridge: 8, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 35, raw: 20, bridge: 6, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 28, raw: 20, bridge: 5, pcts: [40,50,60,70] },
+            ],
+            // Crypto additional
+            'SOLUSDT': [
+                { name: 'Standard-ECN', markup: 120, raw: 70, bridge: 20, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 100, raw: 70, bridge: 15, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 80, raw: 70, bridge: 12, pcts: [45,55,65,75] },
+            ],
+            'XRPUSDT': [
+                { name: 'Standard-ECN', markup: 60, raw: 35, bridge: 10, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 50, raw: 35, bridge: 8, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 40, raw: 35, bridge: 6, pcts: [45,55,65,75] },
+            ],
+            // Indices additional
+            'DAX40': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 4, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 15, bridge: 3, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 20, raw: 15, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'UK100': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 4, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 23, raw: 14, bridge: 3, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 18, raw: 14, bridge: 2, pcts: [40,50,60,70] },
+            ],
+        };
+
+        // Get Symbol 的 Group List（Default value from Standard-ECN As primary value）
+        function getGroups(symbol) { return MOCK_GROUPS[symbol] || []; }
+        function getDefaultGroup(symbol) {
+            const g = getGroups(symbol);
+            return g.length ? g[0] : { markup: 0, raw: 0, bridge: 0 };
+        }
+        function getMarkupRange(symbol) {
+            const gs = getGroups(symbol);
+            if (!gs.length) return { min: 0, max: 0 };
+            const vals = gs.map(g => g.markup);
+            return { min: Math.min(...vals), max: Math.max(...vals) };
+        }
+
+        // Symbol Data：Based on PRD §5.3.2 Instance
+        function getDefaultPcts(symbol) {
+            const g = getDefaultGroup(symbol);
+            return g ? g.pcts : [50, 60, 70, 80];
+        }
+
+        let SYMBOLS = [
+            // FX Majors
+            { symbol: 'EURUSD', cls: 'fx-major', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'GBPUSD', cls: 'fx-major', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'USDJPY', cls: 'fx-major', contract: 100000, digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            // FX Crosses
+            { symbol: 'EURGBP', cls: 'fx-cross', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'AUDCAD', cls: 'fx-cross', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            // Gold (PRD Instance)
+            { symbol: 'XAUUSD', cls: 'gold',   contract: 100,    digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'XAUEUR', cls: 'gold',   contract: 100,    digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            // Silver
+            { symbol: 'XAGUSD', cls: 'silver', contract: 5000,   digits: 0.001,  pcts: [45,55,65,75], status: 'active' },
+            // Energy
+            { symbol: 'WTIUSD', cls: 'energy', contract: 1000,   digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'BRENT',  cls: 'energy', contract: 1000,   digits: 0.01,   pcts: [50,60,70,80], status: 'paused' },
+            // Crypto
+            { symbol: 'BTCUSDT', cls: 'crypto', contract: 1,     digits: 0.01,   pcts: [55,65,75,85], status: 'active' },
+            { symbol: 'ETHUSDT', cls: 'crypto', contract: 1,     digits: 0.01,   pcts: [55,65,75,85], status: 'active' },
+            // Indices
+            { symbol: 'US30',    cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'NAS100',  cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'SPX500',  cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+        ];
+
+        // ApproveLog mock（status: pending/approved/rejected）
+        // Approval History（Approved/Rejected）
+        const APPROVAL_HISTORY = [
+            { id: 'PH_1', symbol: 'XAUUSD', action: 'Publish', diff: 'Standard-ECN: L1~L4 50/60/70/80% → 45/55/65/75%', reason: 'Gold liquidity pool spread tightened，Adjust Standard-ECN Commission %。', status: 'approved', createTime: '2026-06-28 14:32', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-28 14:35', rejectNote: null },
+            { id: 'PH_2', symbol: 'BTCUSDT', action: 'Publish', diff: 'VIP-ECN: L4: 75% → 80%', reason: 'Q3 Business Strategy，加大头部代理 Crypto Incentive。', status: 'approved', createTime: '2026-06-25 09:11', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-25 09:15', rejectNote: null },
+            { id: 'PH_3', symbol: 'BRENT', action: 'Paused', diff: 'status: active → paused', reason: 'Crude oil rebate campaignPause，Pending Q3 Business Plan。', status: 'approved', createTime: '2026-06-22 16:48', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-22 16:50', rejectNote: null },
+            { id: 'PH_4', symbol: 'SPX500', action: 'Add Symbol', diff: 'New Symbol Rebate Config（SPX500）', reason: 'New index listing SPX500 Symbol。', status: 'approved', createTime: '2026-06-20 11:05', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-20 11:10', rejectNote: null },
+            { id: 'PH_5', symbol: 'EURUSD', action: 'Publish', diff: 'Standard-ECN: L1~L4 50/60/70/80% → 48/58/68/78%', reason: 'Competitor benchmark rate adjustment，Market alignment。', status: 'approved', createTime: '2026-06-15 18:22', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-15 18:25', rejectNote: null },
+        ];
+
+        // Pending ApprovalEntry
+        const PENDING_LOGS = [
+            {
+                id: 'PL_demo1', symbol: 'XAUUSD', action: 'Modify', cls: 'gold',
+                diff: 'Standard-ECN: L1~L4 50/60/70/80% → 45/55/65/75%',
+                reason: '配合市场成本Adjust，提升头部代理Incentive',
+                oldData: { cls: 'gold', groupPcts: { 'Standard-ECN': [50, 60, 70, 80] } },
+                newData: { cls: 'gold', groupPcts: { 'Standard-ECN': [45, 55, 65, 75] } },
+                status: 'pending', createTime: '2026-07-03 14:20', actor: 'Risk Control Admin',
+                approver: null, approveTime: null, rejectNote: null,
+            },
+            {
+                id: 'PL_demo2', symbol: 'EURUSD', action: 'Modify', cls: 'fx-major',
+                diff: 'Standard-ECN: L1~L4 50/60/70/80% → 48/58/68/78%',
+                reason: 'Eurozone volatility increase，适当AdjustCommission %',
+                oldData: { cls: 'fx-major', groupPcts: { 'Standard-ECN': [50, 60, 70, 80] } },
+                newData: { cls: 'fx-major', groupPcts: { 'Standard-ECN': [48, 58, 68, 78] } },
+                status: 'pending', createTime: '2026-07-03 15:00', actor: 'Risk Control Admin',
+                approver: null, approveTime: null, rejectNote: null,
+            },
+        ];
+
+        // ========== Utility Functions ==========
+        const LEVEL_COUNT = 4; // Q2: Fixed L1-L4
+
+        function calcGrossPerLot(s, groupName) {
+            // PRD §5.3.1: 1 Lot Gross Profit = 1 × Total Spread × Contract Size × Digits
+            let g;
+            if (groupName) {
+                g = getGroups(s.symbol || s).find(g => g.name === groupName);
+            }
+            if (!g) g = getDefaultGroup(s.symbol || s);
+            const total = (Number(g.markup) || 0) + (Number(g.raw) || 0) + (Number(g.bridge) || 0);
+            return total * s.contract * s.digits;
+        }
+        function fmtMoney(v) {
+            const n = Number(v);
+            if (!isFinite(n)) return '$ 0.00';
+            return '$ ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function trunc2(v) {
+            // PRD §5.5: Truncate小数点后 2 位（No rounding）
+            return Math.trunc(v * 100) / 100;
+        }
+        function toast(msg, type='success') {
+            const div = document.createElement('div');
+            const colorClass = type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : type === 'error'
+                ? 'bg-rose-50 border-rose-200 text-rose-700'
+                : 'bg-slate-50 border-slate-200 text-slate-700';
+            div.className = `toast border ${colorClass} px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2`;
+            div.innerHTML = `<i class="fa-solid ${type==='success'?'fa-check-circle':'fa-circle-exclamation'}"></i><span>${msg}</span>`;
+            document.getElementById('toast-wrap').appendChild(div);
+            requestAnimationFrame(() => div.classList.add('show'));
+            setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 300); }, 2400);
+        }
+
+        // ========== Table Rendering ==========
+        function statusBadge(s) {
+            if (s === 'active') return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100"><i class="fa-solid fa-check mr-1 text-[10px]"></i>Active</span>`;
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-slate-50 text-slate-500 border border-slate-200"><i class="fa-solid fa-pause mr-1 text-[10px]"></i>Paused</span>`;
+        }
+        function classBadge(cls) {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${CLASS_BADGE[cls]}">${CLASS_LABEL[cls]}</span>`;
+        }
+        function pctCell(v) {
+            const n = Number(v) || 0;
+            if (n === 0) return `<span class="font-mono text-slate-300">0%</span>`;
+            return `<span class="font-mono font-semibold text-slate-700">${n}%</span>`;
+        }
+
+        function renderTable() {
+            const fSym    = (document.getElementById('f-symbol').value || '').trim().toUpperCase();
+            const fCls    = document.getElementById('f-class').value;
+            const fStatus = document.getElementById('f-status').value;
+
+            const rows = SYMBOLS.filter(r => {
+                if (fSym && !r.symbol.includes(fSym)) return false;
+                if (fCls !== 'all' && r.cls !== fCls) return false;
+                if (fStatus !== 'all' && r.status !== fStatus) return false;
+                return true;
+            });
+
+            document.getElementById('cnt-total').textContent = rows.length;
+
+            const tbody = document.getElementById('tbody');
+            const empty = document.getElementById('empty-state');
+            if (rows.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = rows.map(r => {
+                const range = getMarkupRange(r.symbol);
+                const rangeStr = range.min === range.max ? `${range.min}` : `${range.min} ~ ${range.max}`;
+                const def = getDefaultGroup(r.symbol);
+                const total = def.markup + def.raw + def.bridge;
+                const gross = calcGrossPerLot(r);
+                const paused = r.status === 'paused';
+                return `
+                <tr class="hover:bg-slate-50/70 transition-colors ${paused ? 'opacity-60' : ''}">
+                    <td class="px-5 py-4 font-mono font-bold text-slate-800">${r.symbol}</td>
+                    <td class="px-5 py-4">${classBadge(r.cls)}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-600">${r.contract.toLocaleString()}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-600">${r.digits}</td>
+                    <td class="px-5 py-4 text-right">
+                        <span class="font-mono font-semibold text-slate-800 cursor-pointer group-markup" data-symbol="${r.symbol}">${rangeStr}
+                            <i class="fa-solid fa-chevron-down text-[9px] ml-1 text-slate-400 group-hover:text-primary"></i>
+                        </span>
+                    </td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-500"><i class="fa-solid fa-lock text-[9px] mr-1 text-slate-300"></i>${def.raw}</td>
+                    <td class="px-5 py-4 text-right font-mono font-bold text-slate-800">${total}</td>
+                    <td class="px-5 py-4 text-center">${statusBadge(r.status)}</td>
+                    <td class="px-5 py-4 text-right whitespace-nowrap">
+                        <button class="text-primary hover:underline text-xs font-medium" data-edit="${r.symbol}"><i class="fa-solid fa-pen mr-0.5"></i>Edit</button>
+                        <span class="text-slate-200 mx-1">|</span>
+                        <button class="text-${paused?'emerald':'amber'}-600 hover:underline text-xs font-medium" data-toggle="${r.symbol}">${paused ? 'Active' : 'Paused'}</button>
+                    </td>
+                </tr>
+                <tr class="group-detail-row hidden" data-detail="${r.symbol}">
+                    <td colspan="10" class="px-5 py-3 bg-slate-50/80 border-b border-slate-200">
+                        <div class="text-xs text-slate-500 mb-2 font-semibold"><i class="fa-solid fa-layer-group mr-1"></i>MT5 Group Spread Details — ${r.symbol}</div>
+                        <table class="w-full text-[11px]">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-200">
+                                    <th class="text-left py-1.5 pr-4">Group</th>
+                                    <th class="text-right pr-4">Markup (pts)</th>
+                                    <th class="text-right pr-4">RawSpread (pts)</th>
+                                    <th class="text-right pr-4">Bridge (pts)</th>
+                                    <th class="text-right pr-4">Total Spread (pts)</th>
+                                    <th class="text-right pr-4">1 Lot Gross (USD)</th>
+                                    <th class="text-center pr-2">L1%</th>
+                                    <th class="text-center pr-2">L2%</th>
+                                    <th class="text-center pr-2">L3%</th>
+                                    <th class="text-center">L4%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${getGroups(r.symbol).map(g => {
+                                    const gt = g.markup + g.raw + g.bridge;
+                                    const gg = gt * r.contract * r.digits;
+                                    return `<tr class="border-b border-slate-100 hover:bg-slate-100/50">
+                                        <td class="py-1.5 pr-4 font-mono text-slate-700">${g.name}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-600">${g.markup}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-500">${g.raw}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-500">${g.bridge}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono font-bold text-slate-700">${gt}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono font-bold text-emerald-600">${fmtMoney(gg)}</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[0]}%</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[1]}%</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[2]}%</td>
+                                        <td class="py-1.5 text-center font-mono text-slate-700">${g.pcts[3]}%</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', e => {
+                e.stopPropagation(); openEdit(b.dataset.edit);
+            }));
+            tbody.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', e => {
+                e.stopPropagation(); toggleStatus(b.dataset.toggle);
+            }));
+            // Click Markup Expand Range/Collapse Group Detail Row
+            tbody.querySelectorAll('.group-markup').forEach(el => {
+                el.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const sym = el.dataset.symbol;
+                    const detailRow = document.querySelector(`.group-detail-row[data-detail="${sym}"]`);
+                    if (detailRow) {
+                        const isHidden = detailRow.classList.contains('hidden');
+                        detailRow.classList.toggle('hidden');
+                        el.querySelector('i').classList.toggle('rotate-180', !isHidden);
+                    }
+                });
+            });
+            // Click row（Exclude detail 行）Also openEdit
+            tbody.querySelectorAll('tr:not(.group-detail-row)').forEach((tr, idx) => {
+                tr.addEventListener('click', () => {
+                    const r = rows.find(r => r.symbol === tr.querySelector('[data-edit]')?.dataset.edit);
+                    if (r) openEdit(r.symbol);
+                });
+            });
+        }
+
+        function toggleStatus(sym) {
+            const r = SYMBOLS.find(s => s.symbol === sym);
+            if (!r) return;
+            const newStatus = r.status === 'active' ? 'paused' : 'active';
+            const actName = newStatus === 'active' ? 'Active' : 'Paused';
+
+            document.getElementById('tm-title').innerHTML = `<i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>Confirm${actName} Symbol`;
+            document.getElementById('tm-msg').innerHTML = `About to apply to <span class="font-mono font-bold text-slate-800">${sym}</span> Submit<span class="font-semibold ${newStatus === 'active' ? 'text-emerald-600' : 'text-amber-600'}">${actName}</span>Approve。<br>Submit后将由Risk Control Admintakes effect after approval。`;
+            document.getElementById('tm-reason').value = '';
+
+            const modal = document.getElementById('toggle-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            const ok = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+                const reason = document.getElementById('tm-reason').value.trim();
+                if (!reason) return toast('Please enterActionsReason（ApproveForce Log）', 'error');
+
+                PENDING_LOGS.unshift({
+                    id: 'PL_' + Date.now(),
+                    symbol: sym,
+                    cls: r.cls,
+                    action: actName,
+                    diff: `status: ${r.status === 'active' ? 'active' : 'paused'} → ${newStatus}`,
+                    reason,
+                    oldData: { ...r },
+                    newData: { ...r, status: newStatus },
+                    status: 'pending',
+                    createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                    actor: 'Admin Super',
+                    approver: null,
+                    approveTime: null,
+                    rejectNote: null,
+                });
+                updatePendingBadge();
+                renderTable();
+                toast(`${sym} ${actName}已Submit for Approval，Pending approval`);
+            };
+            const cancel = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+            };
+            function cleanup() {
+                modal.querySelector('[data-tm-ok]').removeEventListener('click', ok);
+                modal.querySelector('[data-tm-cancel]').removeEventListener('click', cancel);
+            }
+            modal.querySelector('[data-tm-ok]').addEventListener('click', ok);
+            modal.querySelector('[data-tm-cancel]').addEventListener('click', cancel);
+        }
+
+        // ========== EditDrawer ==========
+        let currentEdit = null; // CurrentEdit的 symbol；null = Add Symbol
+
+        // Already configured symbols（Dedup pool）
+        function getUsedSymbols(excludeSymbol) {
+            return new Set(SYMBOLS.filter(s => s.symbol !== excludeSymbol).map(s => s.symbol));
+        }
+        // Render Symbol 下拉（按CurrentAsset Type + ExcludeConfigured）
+        function refreshSymbolOptions(currentSym) {
+            const cls = document.getElementById('ed-class').value;
+            const selectEl = document.getElementById('ed-symbol');
+            const pool = MT5_SYMBOLS[cls] || [];
+            const used = getUsedSymbols(currentSym);
+            const available = pool.filter(s => !used.has(s));
+
+            selectEl.innerHTML = '';
+            if (currentSym && !available.includes(currentSym)) {
+                // EditScenario：Current symbol Always in list
+                const o = document.createElement('option');
+                o.value = currentSym;
+                o.textContent = currentSym;
+                selectEl.appendChild(o);
+            }
+            if (available.length === 0 && !currentSym) {
+                const o = document.createElement('option');
+                o.value = '';
+                o.textContent = '该Asset Type下All Symbol Configured';
+                o.disabled = true;
+                selectEl.appendChild(o);
+            } else {
+                available.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s;
+                    o.textContent = s;
+                    selectEl.appendChild(o);
+                });
+            }
+            if (currentSym) selectEl.value = currentSym;
+        }
+
+        // MT5 Config Store（Actual deployment by MT5 + Bridge by symbol Sync）
+        const MT5_DEFAULTS = {
+            // FX Majors (contract=100000)
+            EURUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            GBPUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDJPY: {cls:'fx-major',contract:100000,digits:0.01},
+            AUDUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDCAD: {cls:'fx-major',contract:100000,digits:0.0001},
+            NZDUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDCHF: {cls:'fx-major',contract:100000,digits:0.0001},
+            // FX Crosses
+            EURGBP: {cls:'fx-cross',contract:100000,digits:0.0001},
+            EURJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            GBPJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            AUDJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            AUDCAD: {cls:'fx-cross',contract:100000,digits:0.0001},
+            // Gold
+            XAUUSD: {cls:'gold',contract:100,digits:0.01},
+            XAUEUR: {cls:'gold',contract:100,digits:0.01},
+            XAUAUD: {cls:'gold',contract:100,digits:0.01},
+            // Silver
+            XAGUSD: {cls:'silver',contract:5000,digits:0.001},
+            XAGEUR: {cls:'silver',contract:5000,digits:0.001},
+            // Energy
+            WTIUSD: {cls:'energy',contract:1000,digits:0.01},
+            BRENT:  {cls:'energy',contract:1000,digits:0.01},
+            NGAS:   {cls:'energy',contract:1000,digits:0.001},
+            // Crypto
+            BTCUSDT:{cls:'crypto',contract:1,digits:0.01},
+            ETHUSDT:{cls:'crypto',contract:1,digits:0.01},
+            SOLUSDT:{cls:'crypto',contract:1,digits:0.01},
+            XRPUSDT:{cls:'crypto',contract:1,digits:0.0001},
+            // Indices
+            US30:   {cls:'index',contract:1,digits:1},
+            NAS100: {cls:'index',contract:1,digits:1},
+            SPX500: {cls:'index',contract:1,digits:1},
+            DAX40:  {cls:'index',contract:1,digits:1},
+            UK100:  {cls:'index',contract:1,digits:1},
+            HK50:   {cls:'index',contract:1,digits:1},
+        };
+
+        // Render Group spread details in the editor
+        function renderGroupTable(symbol) {
+            const tbody = document.getElementById('ed-group-table');
+            const groups = getGroups(symbol);
+            const def = MT5_DEFAULTS[symbol];
+            const contract = def?.contract || 100000;
+            const digits = def?.digits || 0.0001;
+            if (!groups.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-slate-400 text-xs">No Group data</td></tr>';
+                return;
+            }
+            const levelLabels = ['L1', 'L2', 'L3', 'L4'];
+            tbody.innerHTML = groups.map(g => {
+                const total = g.markup + g.raw + g.bridge;
+                const gross = total * contract * digits;
+                const pcts = g.pcts || [50, 60, 70, 80];
+                const id = g.name.replace(/[^a-zA-Z0-9]/g, '_');
+                return `<tr class="hover:bg-slate-100/50">
+                    <td class="px-2 py-2 font-mono text-slate-700 text-[11px]">${g.name}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-700 text-[11px]">${g.markup}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-500 text-[11px]">${g.raw}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-500 text-[11px]">${g.bridge}</td>
+                    <td class="px-2 py-2 text-right font-mono font-bold text-slate-700 text-[11px]">${total}</td>
+                    <td class="px-2 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">${fmtMoney(gross)}</td>
+                    ${levelLabels.map((lv, i) => `<td class="px-1 py-2 text-center"><input type="number" min="0" max="100" value="${pcts[i] || 0}" id="g-pct-${id}-${i}" class="w-10 h-7 text-center border border-slate-200 rounded text-[11px] font-mono bg-white focus:border-primary focus:outline-none"></td>`).join('')}
+                </tr>`;
+            }).join('');
+        }
+
+        function populatePreviewGroupSelect(symbol, selected) {
+            const sel = document.getElementById('ed-preview-group');
+            const groups = getGroups(symbol);
+            sel.innerHTML = groups.map(g => `<option value="${g.name}" ${g.name === selected ? 'selected' : ''}>${g.name}</option>`).join('');
+            if (!groups.length) sel.innerHTML = '<option value="">—</option>';
+        }
+
+        function fillSymbolDefaults(symbol) {
+            const def = MT5_DEFAULTS[symbol];
+            if (!def) return;
+            document.getElementById('ed-contract').value = def.contract;
+            document.getElementById('ed-digits').value = def.digits;
+            renderGroupTable(symbol);
+            populatePreviewGroupSelect(symbol, getGroups(symbol)[0]?.name);
+            updateEditPreview();
+        }
+
+        function openEdit(sym) {
+            const r = sym ? SYMBOLS.find(s => s.symbol === sym) : null;
+            currentEdit = r ? sym : null;
+            document.getElementById('ed-title').textContent = r ? `Edit ${sym} Rebate Config` : 'Add Symbol Rebate Config';
+            document.getElementById('ed-subtitle').textContent = r ? `Asset Type: ${CLASS_LABEL[r.cls]}` : 'Select an asset type, then choose an available MT5 Symbol; spreads are loaded from MT5 / Bridge.';
+            document.getElementById('ed-class').value = r ? r.cls : 'fx-major';
+            document.getElementById('ed-class').disabled = !!r;
+            refreshSymbolOptions(r ? r.symbol : null);
+            document.getElementById('ed-symbol').disabled = !!r;
+            const targetSym = r ? r.symbol : document.getElementById('ed-symbol').value;
+            if (targetSym) {
+                const def = MT5_DEFAULTS[targetSym];
+                if (def) {
+                    document.getElementById('ed-contract').value = def.contract;
+                    document.getElementById('ed-digits').value = def.digits;
+                }
+                renderGroupTable(targetSym);
+                populatePreviewGroupSelect(targetSym, getGroups(targetSym)[0]?.name);
+            } else {
+                document.getElementById('ed-contract').value = '';
+                document.getElementById('ed-digits').value = '';
+                document.getElementById('ed-group-table').innerHTML = '<tr><td colspan="10" class="text-center py-4 text-slate-400 text-xs">Please select a Symbol</td></tr>';
+                document.getElementById('ed-preview-group').innerHTML = '<option value="">—</option>';
+            }
+            document.getElementById('ed-reason').value = '';
+            updateEditPreview();
+            showDrawer('edit-drawer');
+        }
+
+        function readEditForm() {
+            const targetSym = document.getElementById('ed-symbol').value.trim().toUpperCase();
+            const selGroup = document.getElementById('ed-preview-group').value;
+            const groups = getGroups(targetSym);
+            const g = groups.find(g => g.name === selGroup) || getDefaultGroup(targetSym);
+            // 从 Group Read selected from table Group 的 L1~L4 Input value
+            const pcts = [];
+            const gid = selGroup.replace(/[^a-zA-Z0-9]/g, '_');
+            for (let i = 0; i < 4; i++) {
+                const inp = document.getElementById(`g-pct-${gid}-${i}`);
+                pcts.push(Number(inp?.value) || 0);
+            }
+            return {
+                symbol: targetSym,
+                cls: document.getElementById('ed-class').value,
+                contract: Number(document.getElementById('ed-contract').value),
+                digits: Number(document.getElementById('ed-digits').value),
+                markup: g.markup,
+                raw: g.raw,
+                bridge: g.bridge,
+                pcts,
+                status: 'active',
+            };
+        }
+
+        function updateEditPreview() {
+            const data = readEditForm();
+            const total = data.markup + data.raw + data.bridge;
+            const gross = total * data.contract * data.digits;
+            document.getElementById('ed-preview-gross').textContent = fmtMoney(gross);
+            document.getElementById('ed-preview-formula').textContent =
+                `1 × (${data.markup}+${data.raw}+${data.bridge}=${total}) × ${data.contract.toLocaleString()} × ${data.digits}`;
+            const grid = document.getElementById('ed-preview-grid');
+            grid.innerHTML = data.pcts.map((p, i) => {
+                const v = gross * (p / 100);
+                const disabled = p === 0;
+                return `
+                <div class="bg-white rounded p-2 border ${disabled ? 'border-slate-200 opacity-50' : 'border-blue-200'} text-center">
+                    <p class="text-[10px] text-slate-400">L${i+1} ${p}%</p>
+                    <p class="font-mono font-bold ${disabled ? 'text-slate-400' : 'text-blue-600'} text-xs mt-1">${fmtMoney(v)}</p>
+                </div>`;
+            }).join('');
+        }
+
+        // Markup/Raw/Bridge 现在都是Read-only，由 MT5/Bridge sync，No longer listening input
+        // Asset TypeSync refresh on change Symbol 下拉
+        document.getElementById('ed-class').addEventListener('change', () => {
+            if (!currentEdit) {
+                refreshSymbolOptions(null);
+                const firstSym = document.getElementById('ed-symbol').value;
+                if (firstSym) fillSymbolDefaults(firstSym);
+            }
+        });
+        // Symbol Auto-load on change Symbol 的 MT5/Bridge default config
+        // Symbol change -> auto-load MT5/Bridge defaults.
+        document.getElementById('ed-symbol').addEventListener('change', () => {
+            if (!currentEdit) {
+                const sym = document.getElementById('ed-symbol').value;
+                if (sym) fillSymbolDefaults(sym);
+            }
+        });
+        // Group Refresh preview on change
+        document.getElementById('ed-preview-group').addEventListener('change', updateEditPreview);
+
+        // ========== Publish流程 ==========
+        document.getElementById('ed-publish').addEventListener('click', () => {
+            const data = readEditForm();
+            const reason = document.getElementById('ed-reason').value.trim();
+            if (!data.symbol) return toast('Please select a Symbol', 'error');
+            if (data.markup < 0) return toast('Markup Cannot be negative', 'error');
+            if (data.pcts.some(p => p < 0 || p > 100)) return toast('Percentage must be between 0-100 之间', 'error');
+            if (!reason) return toast('Please enter reason for change（ApproveForce Log）', 'error');
+
+            // 二次Confirm
+            document.getElementById('cm-msg').innerHTML = `About to apply to <span class="font-mono font-bold text-slate-800">${data.symbol}</span> SubmitRebate ConfigChangeApprove。<br>Submit后将由Risk Control Admintakes effect after approval。`;
+            document.getElementById('cm-reason').textContent = reason;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            const ok = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+
+                // Submit Changes / Add Symbol — No longer writing directly SYMBOLS，Change to createPending ApprovalEntry
+                const idx = SYMBOLS.findIndex(s => s.symbol === currentEdit);
+                const old = idx >= 0 ? SYMBOLS[idx] : null;
+                let diffText;
+                if (old) {
+                    const changes = [];
+                    if (old.cls !== data.cls) changes.push(`Symbol等级: ${CLASS_LABEL[old.cls]} → ${CLASS_LABEL[data.cls]}`);
+                    // Collect all Group commission change
+                    const groups = getGroups(data.symbol);
+                    groups.forEach(g => {
+                        const gid = g.name.replace(/[^a-zA-Z0-9]/g, '_');
+                        const oldP = g.pcts || [50,60,70,80];
+                        const newP = [];
+                        for (let i = 0; i < 4; i++) {
+                            const inp = document.getElementById(`g-pct-${gid}-${i}`);
+                            newP.push(Number(inp?.value) || 0);
+                        }
+                        const changed = oldP.some((p, i) => p !== newP[i]);
+                        if (changed) {
+                            // Update MOCK_GROUPS 中的 pcts
+                            g.pcts = newP;
+                            changes.push(`${g.name}: L1~L4 ${oldP.join('/')}% → ${newP.join('/')}%`);
+                        }
+                    });
+                    diffText = changes.length ? changes.join('；') : '（No field changes）';
+                } else {
+                    diffText = `New Symbol Rebate Config（${data.symbol}）`;
+                }
+
+                PENDING_LOGS.unshift({
+                    id: 'PL_' + Date.now(),
+                    symbol: data.symbol,
+                    cls: data.cls,
+                    action: idx >= 0 ? 'Modify' : 'Add Symbol',
+                    diff: diffText,
+                    reason,
+                    oldData: old ? { ...old } : null,
+                    newData: { ...data },
+                    status: 'pending',
+                    createTime: new Date().toISOString().slice(0,19).replace('T',' '),
+                    actor: 'Risk Control Admin',
+                    approver: null,
+                    approveTime: null,
+                    rejectNote: null,
+                });
+
+                updatePendingBadge();
+                renderTable();
+                closeDrawer('edit-drawer');
+                toast(`${data.symbol} Change已Submit for Approval，Pending approval`);
+            };
+            const cancel = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+            };
+            function cleanup() {
+                modal.querySelector('[data-cm-ok]').removeEventListener('click', ok);
+                modal.querySelector('[data-cm-cancel]').removeEventListener('click', cancel);
+            }
+            modal.querySelector('[data-cm-ok]').addEventListener('click', ok);
+            modal.querySelector('[data-cm-cancel]').addEventListener('click', cancel);
+        });
+
+        // ========== 预览计算器 ==========
+        let caChain = ['L3', 'L2', 'L1']; // Max 3 eligible levels: farthest eligible upline → direct
+
+        function openCalc() {
+            // Fill symbol 下拉
+            const sel = document.getElementById('ca-symbol');
+            sel.innerHTML = SYMBOLS.filter(s => s.status === 'active')
+                .map(s => `<option value="${s.symbol}">${s.symbol} — ${CLASS_LABEL[s.cls]}</option>`).join('');
+            sel.value = 'XAUUSD';
+            document.getElementById('ca-lots').value = '1';
+            // Fill默认百分比
+            const defaultSym = SYMBOLS.find(s => s.symbol === 'XAUUSD');
+            if (defaultSym) {
+                document.getElementById('ca-pct-l1').value = defaultSym.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = defaultSym.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = defaultSym.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = defaultSym.pcts[3] || 0;
+            }
+            caChain = ['L3', 'L2', 'L1'];
+            renderChain();
+            updateCalc();
+            showDrawer('calc-drawer');
+        }
+
+        function renderChain() {
+            const wrap = document.getElementById('ca-chain');
+            wrap.innerHTML = caChain.map((lv, i) => `
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <span class="text-xs text-slate-500 w-16">Eligible depth ${caChain.length - i}</span>
+                    <select data-chain="${i}" class="flex-1 h-8 px-2 border border-slate-200 rounded text-sm bg-white">
+                        ${[1,2,3,4].map(n => `<option value="L${n}" ${lv === `L${n}` ? 'selected' : ''}>L${n}</option>`).join('')}
+                    </select>
+                </div>
+            `).join('');
+            wrap.querySelectorAll('select').forEach(s => s.addEventListener('change', () => {
+                caChain[Number(s.dataset.chain)] = s.value;
+                updateCalc();
+            }));
+        }
+
+        document.getElementById('ca-add').addEventListener('click', () => {
+            if (caChain.length >= 3) return toast('Rebate calculation is limited to 3 levels; deeper relationships are not eligible', 'error');
+            caChain.unshift('L4'); // Add higher tier at top
+            renderChain(); updateCalc();
+        });
+        document.getElementById('ca-pop').addEventListener('click', () => {
+            if (caChain.length <= 1) return toast('At least one level 1 层', 'error');
+            caChain.pop();
+            renderChain(); updateCalc();
+        });
+        document.getElementById('ca-symbol').addEventListener('change', () => {
+            // Symbol 切换时，Use new Symbol 的DefaultFill手动输入框
+            const s = SYMBOLS.find(x => x.symbol === document.getElementById('ca-symbol').value);
+            if (s) {
+                document.getElementById('ca-pct-l1').value = s.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = s.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = s.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = s.pcts[3] || 0;
+            }
+            updateCalc();
+        });
+        document.getElementById('ca-lots').addEventListener('input', updateCalc);
+        // Recalculate on manual % change
+        ['ca-pct-l1', 'ca-pct-l2', 'ca-pct-l3', 'ca-pct-l4'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCalc);
+        });
+        // 恢复Default按钮
+        document.getElementById('ca-reset-pcts').addEventListener('click', () => {
+            const s = SYMBOLS.find(x => x.symbol === document.getElementById('ca-symbol').value);
+            if (s) {
+                document.getElementById('ca-pct-l1').value = s.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = s.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = s.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = s.pcts[3] || 0;
+                updateCalc();
+            }
+        });
+
+        function updateCalc() {
+            const sym = document.getElementById('ca-symbol').value;
+            const lots = Number(document.getElementById('ca-lots').value) || 0;
+            const s = SYMBOLS.find(x => x.symbol === sym);
+            if (!s) return;
+            const total = (Number(s.markup) || 0) + (Number(s.raw) || 0) + (Number(s.bridge) || 0);
+            const grossPerLot = total * s.contract * s.digits;
+            const gross = grossPerLot * lots;
+
+            document.getElementById('ca-totalspread').textContent = total;
+            document.getElementById('ca-contract').textContent = `${s.contract.toLocaleString()} × ${s.digits}`;
+            document.getElementById('ca-gross').textContent = fmtMoney(gross);
+
+            // Read manual level %（If empty, use Symbol Default）
+            const manualPcts = [
+                Number(document.getElementById('ca-pct-l1').value) || s.pcts[0] || 0,
+                Number(document.getElementById('ca-pct-l2').value) || s.pcts[1] || 0,
+                Number(document.getElementById('ca-pct-l3').value) || s.pcts[2] || 0,
+                Number(document.getElementById('ca-pct-l4').value) || s.pcts[3] || 0,
+            ];
+            // Update hint text
+            const hint = document.getElementById('ca-pct-hint');
+            if (hint) {
+                const isManual = manualPcts.some((v, i) => v !== (s.pcts[i] || 0));
+                hint.textContent = isManual ? 'CurrentUsing manual values' : 'Current使用 Symbol Default';
+                hint.className = isManual ? 'text-xs text-amber-600 ml-auto' : 'text-xs text-slate-400 ml-auto';
+            }
+
+            // Cascade calculation：从Direct（Bottom Level）Round up
+            // chain = [顶, 中..., Direct]
+            const reversed = [...caChain].reverse(); // [Direct, 中..., 顶]
+            const results = []; // Each Level：{ level, pct, nominal, distributed_below, actual }
+            let distributedBelow = 0;
+            reversed.forEach((lv, idx) => {
+                const lvIdx = Number(lv.slice(1)) - 1;
+                const pct = manualPcts[lvIdx] || 0;
+                const nominal = gross * (pct / 100);
+                let actual = nominal - distributedBelow;
+                let melt = false;
+                if (actual <= 0) { actual = 0; melt = true; }
+                actual = trunc2(actual); // PRD §5.5 Truncate 2 位
+                results.push({ position: idx === 0 ? 'Direct' : (idx === reversed.length - 1 ? 'Top Level' : `Middle Level ${reversed.length - 1 - idx}`), level: lv, pct, nominal, distributedBelow, actual, melt });
+                distributedBelow += actual;
+            });
+
+            // Render waterfall
+            const maxAbs = Math.max(...results.map(r => r.nominal), 0.01);
+            const wf = document.getElementById('ca-waterfall');
+            wf.innerHTML = results.slice().reverse().map(r => {
+                const w = Math.min(100, (r.nominal / maxAbs) * 100);
+                return `
+                <div class="bg-white border border-slate-200 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-slate-500">${r.position}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 font-mono">${r.level}</span>
+                            <span class="text-xs text-slate-500">${r.pct}%</span>
+                        </div>
+                        <span class="font-mono font-bold ${r.melt ? 'text-rose-600' : 'text-emerald-600'}">${fmtMoney(r.actual)}</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full waterfall-bar ${r.melt ? 'bg-rose-200' : 'bg-emerald-400'}" style="width: ${w}%"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1 font-mono">
+                        Notional ${fmtMoney(r.nominal)} − Lower Level已分 ${fmtMoney(r.distributedBelow)} = ${fmtMoney(r.nominal - r.distributedBelow)}${r.melt ? ' → 熔断为 $0.00' : ''}
+                    </p>
+                </div>`;
+            }).join('');
+        }
+
+        // ========== ApproveLog Drawer ==========
+        let currentRejectId = null;
+
+        function updatePendingBadge() {
+            const badge = document.getElementById('badge-pending');
+            const count = PENDING_LOGS.length;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function openApprovalLogs() {
+            const wrap = document.getElementById('log-list');
+            const allItems = [...PENDING_LOGS.map(p => ({ ...p, _type: 'pending' })), ...APPROVAL_HISTORY.map(h => ({ ...h, _type: 'history' }))];
+
+            if (allItems.length === 0) {
+                wrap.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-clipboard-check text-3xl mb-3 block opacity-40"></i><p class="text-sm">NoneApproveRecord</p></div>';
+                showDrawer('log-drawer');
+                return;
+            }
+
+            wrap.innerHTML = allItems.map(item => {
+                const isPending = item._type === 'pending';
+                const isApproved = item.status === 'approved';
+                const isRejected = item.status === 'rejected';
+
+                const statusBadge = isPending
+                    ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700"><i class="fa-solid fa-clock text-[9px]"></i>Pending</span>'
+                    : isApproved
+                        ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700"><i class="fa-solid fa-check text-[9px]"></i>Approved</span>'
+                        : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700"><i class="fa-solid fa-xmark text-[9px]"></i>Rejected</span>';
+
+                const rightActions = isPending
+                    ? `<div class="flex items-center gap-1.5 flex-shrink-0 ml-3">
+                        <button onclick="approvePending('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors flex-shrink-0"><i class="fa-solid fa-check mr-1 text-[9px]"></i>Approved</button>
+                        <button onclick="openReject('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 rounded-md hover:bg-rose-100 transition-colors flex-shrink-0"><i class="fa-solid fa-xmark mr-1 text-[9px]"></i>Reject</button>
+                    </div>`
+                    : `<span class="text-[10px] text-slate-400 flex-shrink-0 ml-3"><i class="fa-solid fa-user-shield mr-1"></i>${item.approver || '—'} · ${item.approveTime || '—'}</span>`;
+
+                const rejectBlock = isRejected && item.rejectNote
+                    ? `<div class="mt-1.5 text-xs text-rose-600 bg-rose-50/50 rounded px-2 py-1"><i class="fa-solid fa-ban mr-1"></i>Rejection Reason：${item.rejectNote}</div>`
+                    : '';
+
+                const rejectInputBlock = isPending
+                    ? `<div id="reject-box-${item.id}" class="hidden mt-2 border border-rose-200 rounded-md p-2 bg-rose-50/30">
+                        <textarea id="reject-note-${item.id}" class="w-full border border-rose-200 rounded-md px-2 py-1.5 text-[12px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-400 resize-none" rows="2" placeholder="Please enter rejection reason（Required）"></textarea>
+                        <div class="flex items-center justify-end gap-1.5 mt-1.5">
+                            <button onclick="closeReject('${item.id}')" class="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded-md transition-colors">Cancel</button>
+                            <button onclick="submitReject('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-rose-500 text-white rounded-md hover:bg-rose-600 transition-colors">ConfirmReject</button>
+                        </div>
+                    </div>`
+                    : '';
+
+                return `
+                <div class="border border-slate-200 rounded-lg p-3 mb-2 ${isPending ? 'border-l-amber-400 border-l-2' : ''}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0 border-l-2 border-primary/40 pl-3">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="font-mono font-bold text-slate-800 text-sm">${item.symbol}</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    item.action === 'Modify' ? 'bg-blue-50 text-blue-700' :
+                                    item.action === 'Add Symbol' ? 'bg-emerald-50 text-emerald-700' :
+                                    item.action === 'Active' ? 'bg-emerald-50 text-emerald-700' :
+                                    item.action === 'Paused' ? 'bg-amber-50 text-amber-700' :
+                                    'bg-slate-50 text-slate-600'
+                                }">${item.action}</span>
+                                ${statusBadge}
+                            </div>
+                            <p class="text-[11px] text-slate-600 mb-1 font-mono">${item.diff}</p>
+                            <p class="text-[11px] text-slate-500">${item.reason}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${item.createTime} · <i class="fa-solid fa-user-pen mx-0.5"></i>${item.actor}</p>
+                            ${rejectBlock}
+                            ${rejectInputBlock}
+                        </div>
+                        ${rightActions}
+                    </div>
+                </div>`;
+            }).join('');
+            updatePendingBadge();
+            showDrawer('log-drawer');
+        }
+
+        function approvePending(id) {
+            const idx = PENDING_LOGS.findIndex(p => p.id === id);
+            if (idx === -1) return;
+            const p = PENDING_LOGS.splice(idx, 1)[0];
+            // Apply changes to SYMBOLS
+            if (p.action === 'Modify') {
+                const symIdx = SYMBOLS.findIndex(s => s.symbol === p.symbol);
+                if (symIdx !== -1) {
+                    SYMBOLS[symIdx] = { ...SYMBOLS[symIdx], ...p.newData };
+                }
+            } else if (p.action === 'Add Symbol') {
+                SYMBOLS.push(p.newData);
+            } else if (p.action === 'Paused' || p.action === 'Active') {
+                const symIdx = SYMBOLS.findIndex(s => s.symbol === p.symbol);
+                if (symIdx !== -1) SYMBOLS[symIdx].status = p.newData.status;
+            }
+            // Move to history
+            const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+            APPROVAL_HISTORY.unshift({ ...p, status: 'approved', approver: 'Admin Super', approveTime: now, rejectNote: null });
+            renderTable();
+            openApprovalLogs();
+            toast('Approved ' + p.symbol + '，Change has taken effect');
+        }
+
+        function openReject(id) {
+            currentRejectId = id;
+            const box = document.getElementById('reject-box-' + id);
+            if (box) { box.classList.remove('hidden'); setTimeout(() => document.getElementById('reject-note-' + id).focus(), 100); }
+        }
+
+        function closeReject(id) {
+            currentRejectId = null;
+            const box = document.getElementById('reject-box-' + id);
+            if (box) box.classList.add('hidden');
+        }
+
+        function submitReject(id) {
+            const note = document.getElementById('reject-note-' + id).value.trim();
+            if (!note) { toast('Rejection reason is required', 'error'); return; }
+            const idx = PENDING_LOGS.findIndex(p => p.id === id);
+            if (idx === -1) return;
+            const p = PENDING_LOGS.splice(idx, 1)[0];
+            const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+            APPROVAL_HISTORY.unshift({ ...p, status: 'rejected', approver: 'Admin Super', approveTime: now, rejectNote: note });
+            closeReject(id);
+            openApprovalLogs();
+            toast('Rejected ' + p.symbol, 'success');
+            updatePendingBadge();
+        }
+
+        // ========== Drawer General ==========
+        function showDrawer(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('hidden');
+            requestAnimationFrame(() => el.querySelector('.drawer-panel').classList.add('open'));
+        }
+        function closeDrawer(id) {
+            const el = document.getElementById(id);
+            el.querySelector('.drawer-panel').classList.remove('open');
+            setTimeout(() => el.classList.add('hidden'), 300);
+        }
+        document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+            const drawer = b.closest('[id$="-drawer"]');
+            if (drawer) closeDrawer(drawer.id);
+        }));
+
+        // ========== Top Button ==========
+        document.getElementById('btn-add').addEventListener('click', () => openEdit(null));
+        document.getElementById('btn-calc').addEventListener('click', openCalc);
+        document.getElementById('btn-logs').addEventListener('click', openApprovalLogs);
+        document.getElementById('btn-apply').addEventListener('click', renderTable);
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            document.getElementById('f-symbol').value = '';
+            document.getElementById('f-class').value = 'all';
+            document.getElementById('f-status').value = 'all';
+            renderTable();
+        });
+        document.getElementById('f-symbol').addEventListener('input', renderTable);
+        document.getElementById('f-class').addEventListener('change', renderTable);
+        document.getElementById('f-status').addEventListener('change', renderTable);
+
+        // ========== Initialize ==========
+        renderTable();
+        updatePendingBadge();
+    </script>
+</body>
+</html// ========== Init ==========
+        updatePendingBadge();
+        renderTable();
+    </script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

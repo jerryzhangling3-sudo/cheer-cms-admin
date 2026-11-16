@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代理管理 - CFD 业务管理后台</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0; opacity: 0; overflow: hidden;
+        }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        /* Toast 反馈 */
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Drawer 抽屉过渡 */
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+
+        /* Tab active 下划线 */
+        .tab-btn { position: relative; }
+        .tab-btn.active { color: #3B82F6; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+            height: 2px; background: #3B82F6; border-radius: 2px;
+        }
+
+        /* 团队结构 mini-tree */
+        .tree-line { position: relative; }
+        .tree-line::before {
+            content: ''; position: absolute; left: 12px; top: 0; bottom: 50%;
+            width: 1px; background: #cbd5e1;
+        }
+        .tree-line::after {
+            content: ''; position: absolute; left: 12px; top: 50%;
+            width: 14px; height: 1px; background: #cbd5e1;
+        }
+        .tree-last::before { bottom: 50%; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">内容管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">Partner</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">代理管理</span>
+            </div>
+
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 实际页面内容承载区 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <!-- 页面标题区 -->
+            <div class="mb-6 flex items-start justify-between gap-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">代理管理</h1>
+                </div>
+                <button onclick="openOnboardDrawer()" class="px-5 py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-user-plus"></i> 客服一键开通
+                </button>
+            </div>
+
+            <!-- 顶部统计条 -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+                    <div class="text-xs text-slate-500 font-semibold tracking-wider">Partner 总数</div>
+                    <div class="text-2xl font-bold text-slate-800 mt-2 font-mono" id="stat-total">—</div>
+                    <div class="text-[11px] text-slate-400 mt-1">含全部状态</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+                    <div class="text-xs text-slate-500 font-semibold tracking-wider">本月新增</div>
+                    <div class="text-2xl font-bold text-emerald-600 mt-2 font-mono" id="stat-new">—</div>
+                    <div class="text-[11px] text-slate-400 mt-1">含 5 种入驻通道</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+                    <div class="text-xs text-slate-500 font-semibold tracking-wider">异常代理</div>
+                    <div class="text-2xl font-bold text-rose-600 mt-2 font-mono" id="stat-abnormal">—</div>
+                    <div class="text-[11px] text-slate-400 mt-1">已冻结</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+                    <div class="text-xs text-slate-500 font-semibold tracking-wider">数据更新</div>
+                    <div class="text-2xl font-bold text-slate-800 mt-2 font-mono">08-11</div>
+                    <div class="text-[11px] text-slate-400 mt-1">2026-08-11 10:30 GMT+0</div>
+                </div>
+            </div>
+
+            <!-- 状态 Tab -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
+                <div class="flex items-center border-b border-slate-200 px-2 text-sm font-medium text-slate-500">
+                    <button class="tab-btn active px-5 py-3.5 cursor-pointer hover:text-primary transition-colors" data-tab="all" onclick="switchTab('all')">全部 <span class="ml-1.5 text-[11px] font-mono bg-slate-100 px-1.5 py-0.5 rounded-md" id="cnt-all">0</span></button>
+                    <button class="tab-btn px-5 py-3.5 cursor-pointer hover:text-primary transition-colors" data-tab="active" onclick="switchTab('active')">正常 <span class="ml-1.5 text-[11px] font-mono bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-md" id="cnt-active">0</span></button>
+                    <button class="tab-btn px-5 py-3.5 cursor-pointer hover:text-primary transition-colors" data-tab="frozen">冻结 <span class="ml-1.5 text-[11px] font-mono bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md" id="cnt-frozen">0</span></button>
+                </div>
+
+                <!-- 筛选区 -->
+                <div class="p-5">
+                    <div class="grid grid-cols-5 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">Partner UID</label>
+                            <input id="f-uid" type="text" placeholder="精确查询 UID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">当前等级</label>
+                            <select id="f-level" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                                <option value="all" selected>全部</option>
+                                <option value="L2">L2 黄金代理</option>
+                                <option value="L3">L3 专业代理</option>
+                                <option value="L4">L4 核心代理</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">入驻通道</label>
+                            <select id="f-channel" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                                <option value="all" selected>全部</option>
+                                <option value="invite">邀请升级</option>
+                                <option value="assess">考核升级</option>
+                                <option value="zendesk">Zendesk 接洽</option>
+                                <option value="offline">线下商务</option>
+                                <option value="online">在线申请</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">上级代理 UID</label>
+                            <input id="f-parent" type="text" placeholder="按上级 UID 过滤" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">入驻时间</label>
+                            <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                <i class="fa-regular fa-calendar text-slate-400 mr-2 text-sm"></i>
+                                <input type="text" placeholder="开始 - 结束" class="w-full bg-transparent text-sm focus:outline-none text-slate-600" value="2025-01-01 ~ 2026-06-29">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 justify-end mt-5 pt-5 border-t border-slate-100">
+                        <button onclick="resetFilter()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right text-xs"></i> 重置
+                        </button>
+                        <button onclick="renderTable()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i> 查询
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据列表卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] tracking-wider border-b border-slate-200">
+                                <th class="px-5 py-3.5 font-semibold sticky left-0 bg-slate-50">Partner UID</th>
+                                <th class="px-5 py-3.5 font-semibold">昵称 / 邮箱</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">当前等级</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">入驻通道</th>
+                                <th class="px-5 py-3.5 font-semibold">佣金结算币种</th>
+                                <th class="px-5 py-3.5 font-semibold">上级代理</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">3级团队活跃客户</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">3级团队总客户</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">3级团队滚动 Margin</th>
+                                <th class="px-5 py-3.5 font-semibold">入驻时间</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">状态</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-[13px] divide-y divide-slate-100" id="partners-tbody">
+                            <!-- JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- 表格底部分页区域 -->
+                <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>共 <span id="page-total" class="font-mono font-semibold text-slate-700">0</span> 条结果</span>
+                    <div class="flex items-center gap-1">
+                        <button class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-40" disabled>上一页</button>
+                        <button class="px-3 py-1.5 border border-primary bg-primary text-white rounded-md">1</button>
+                        <button class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-40" disabled>下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- Partner 详情抽屉 -->
+    <!-- ========================================================= -->
+    <div id="drawer" class="hidden fixed inset-0 z-50">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" onclick="closeDrawer()"></div>
+        <div id="drawer-panel" class="drawer-panel absolute right-0 top-0 bottom-0 w-[860px] max-w-[94vw] bg-white shadow-2xl flex flex-col">
+            <!-- 抽屉头部 -->
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                <div>
+                    <div class="text-xs text-slate-500 font-medium tracking-wide">Partner 详情</div>
+                    <div class="mt-0.5 flex items-center gap-3">
+                        <span class="text-lg font-bold text-slate-800 font-mono" id="d-uid">UID_000000</span>
+                        <span id="d-statusTop"></span>
+                    </div>
+                </div>
+                <button onclick="closeDrawer()" class="w-8 h-8 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- 抽屉内容 -->
+            <div class="flex-1 overflow-auto px-6 py-5 space-y-6">
+
+                <!-- 段 1：基础信息 -->
+                <section>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-primary"></i> 基础信息
+                    </h3>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 grid grid-cols-4 gap-x-6 gap-y-3 text-[13px]">
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">昵称</div><div class="text-slate-800 font-medium" id="d-name">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">邮箱</div><div class="text-slate-700 font-mono text-xs" id="d-email">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">注册地区</div><div class="text-slate-800" id="d-region">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">入驻时间</div><div class="text-slate-800 font-mono text-xs" id="d-onboardTime">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">等级保护期至</div><div class="text-slate-800 font-mono text-xs" id="d-protectUntil">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">入驻通道</div><div id="d-channel">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">佣金结算币种</div><div id="d-settleCurrency">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">POA 状态</div><div><span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100"><i class="fa-solid fa-check mr-1 text-[10px]"></i>已通过</span></div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">邀请码</div><div class="text-slate-700 font-mono text-xs" id="d-inviteCode">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">上级代理</div><div class="text-slate-700 font-mono text-xs" id="d-parent">—</div></div>
+                        <div><div class="text-[11px] text-slate-500 mb-0.5">开通备注</div><div class="text-slate-600 text-xs" id="d-onboardNote">—</div></div>
+                    </div>
+                </section>
+
+                <!-- 段 2：关系网络概览（关系可无限延伸） -->
+                <section>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-sitemap text-primary"></i> 关系网络概览（关系可无限延伸）
+                    </h3>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 text-[13px] font-mono">
+                        <div id="d-tree" class="space-y-1.5">— 加载中 —</div>
+                        <div class="mt-3 pt-3 border-t border-slate-200 text-[11px] text-slate-500 font-sans flex items-center gap-4">
+                            <span><i class="fa-solid fa-circle text-primary text-[8px] mr-1"></i>当前 Partner</span>
+                            <span><i class="fa-solid fa-circle text-slate-400 text-[8px] mr-1"></i>上下层 Partner</span>
+                            <span><i class="fa-solid fa-circle text-emerald-500 text-[8px] mr-1"></i>终端 Trader</span>
+                        </div>
+                        <p class="mt-2 text-[11px] text-amber-700 font-sans"><i class="fa-solid fa-circle-info mr-1"></i>关系可继续向上、向下追溯；返佣及团队考核数据仅计算直属及下属第 1–3 级，不含当前代理本人。</p>
+                    </div>
+                </section>
+
+                <!-- 段 3：滚动考核 (PRD §4) -->
+                <section>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-primary"></i> 滚动考核 (近 3 月窗口)
+                    </h3>
+                    <div class="grid grid-cols-4 gap-3 text-[13px]">
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">当前等级</div>
+                            <div id="d-levelBig" class="text-xl font-bold text-slate-800 font-mono">—</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">3级团队活跃客户</div>
+                            <div id="d-activeClients" class="text-xl font-bold text-slate-800 font-mono">—</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">直属及下属第 1–3 级 · 去重 / 开仓 ≥ 1 笔</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">3级团队滚动 Margin (USD)</div>
+                            <div id="d-rollingMargin" class="text-xl font-bold text-slate-800 font-mono">—</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">直属及下属第 1–3 级初始保证金累计</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">距下次评估</div>
+                            <div class="text-xl font-bold text-amber-600 font-mono">2 天</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">07-01 00:00 GMT+0</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 px-4 py-2.5 bg-blue-50/60 border border-blue-100 rounded-lg text-[12px] text-blue-700 flex items-start gap-2">
+                        <i class="fa-solid fa-circle-info mt-0.5"></i>
+                        <span>等级升降按 PRD §4.6 / §4.7 月初 1 日 00:00 GMT+0 自动评估；活跃客户与保证金仅取直属及下属第 1–3 级，历史订单返佣按订单产生时等级固化结算。</span>
+                    </div>
+                </section>
+
+                <!-- 段 4：返佣概览 -->
+                <section>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-coins text-primary"></i> 返佣概览
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3 text-[13px]">
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">本月已入账</div>
+                            <div id="d-cmMonth" class="text-xl font-bold text-emerald-600 font-mono">—</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">≥ 0.01 USD 实时入账</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">寄存账本尾数</div>
+                            <div id="d-cmSuspense" class="text-xl font-bold text-slate-800 font-mono">—</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">&lt; 0.01 USD / T+1 归集</div>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+                            <div class="text-[11px] text-slate-500 mb-1">累计返佣 (生命周期)</div>
+                            <div id="d-cmTotal" class="text-xl font-bold text-slate-800 font-mono">—</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">入驻至今</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 段 5：操作日志 -->
+                <section>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-primary"></i> 操作日志
+                    </h3>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                        <ol class="space-y-3 text-[13px]" id="d-timeline">
+                            <!-- JS 渲染 -->
+                        </ol>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- 抽屉脚部 -->
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0 bg-slate-50">
+                <button id="btn-transfer" onclick="openTransfer()" class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                    <i class="fa-solid fa-shuffle text-xs"></i> 申请划转
+                </button>
+                <div class="flex items-center gap-3">
+                    <button id="btn-freeze" onclick="openFreeze()" class="px-4 py-2 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-snowflake text-xs"></i> 冻结
+                    </button>
+                    <button id="btn-unfreeze" onclick="openUnfreeze()" class="hidden px-4 py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-sun text-xs"></i> 解冻
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- 客服一键开通抽屉 -->
+    <!-- ========================================================= -->
+    <div id="onboard" class="hidden fixed inset-0 z-50">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" onclick="closeOnboardDrawer()"></div>
+        <div id="onboard-panel" class="drawer-panel absolute right-0 top-0 bottom-0 w-[560px] max-w-[94vw] bg-white shadow-2xl flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                <div>
+                    <div class="text-xs text-slate-500 font-medium tracking-wide">客服一键开通</div>
+                    <div class="mt-0.5 text-lg font-bold text-slate-800">承载 §3.1 / §3.2 / 线下商务通道</div>
+                </div>
+                <button onclick="closeOnboardDrawer()" class="w-8 h-8 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-6 py-5 space-y-5 text-[13px]">
+                <div class="px-4 py-3 bg-amber-50/60 border border-amber-100 rounded-lg text-amber-700 flex items-start gap-2 text-xs">
+                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                    <span>本入口仅承载 <b>邀请升级 / Zendesk / 线下商务</b> 三种"客服直接开通"通道；§3.3 在线申请请走【代理申请】审批工单，<b>考核升级</b>由系统自动从 L1→L2，无需人工录入。</span>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">客户 UID <span class="text-rose-500">*</span></label>
+                    <input id="o-uid" type="text" placeholder="UID_XXXXXX" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">入驻通道 <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:border-primary text-xs font-medium text-slate-700"><input type="radio" name="o-channel" value="invite" checked class="text-primary">邀请升级</label>
+                        <label class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:border-primary text-xs font-medium text-slate-700"><input type="radio" name="o-channel" value="zendesk" class="text-primary">Zendesk</label>
+                        <label class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:border-primary text-xs font-medium text-slate-700"><input type="radio" name="o-channel" value="offline" class="text-primary">线下商务</label>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">佣金结算币种 <span class="text-rose-500">*</span></label>
+                    <select id="o-settleCurrency" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                        <option value="USDT" selected>USDT · 泰达币</option>
+                        <option value="AED">AED · 阿联酋迪拉姆</option>
+                        <option value="USD">USD · 美元</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-coins mr-1"></i>IB 返佣将按此币种结算至 Funding</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">初始等级 <span class="text-rose-500">*</span></label>
+                        <select id="o-level" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                            <option value="L2" selected>L2 见习 Starter</option>
+                            <option value="L3">L3 专业 Pro</option>
+                            <option value="L4">L4 核心 Elite</option>
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>注册客户默认即为 L1，开通 Partner 须从 L2 起步</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">上级代理 UID (可空)</label>
+                        <input id="o-parent" type="text" placeholder="留空 = 顶层" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">等级保护期 <span class="text-rose-500">*</span></label>
+                        <div class="flex items-center gap-2">
+                            <input id="o-protect" type="number" min="0" max="12" value="3" oninput="updateProtectPreview()" class="w-24 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono">
+                            <span class="text-sm text-slate-600">个月</span>
+                            <span class="text-[11px] text-slate-500 ml-2">至 <span id="o-protect-until" class="font-mono font-semibold text-emerald-600">—</span></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-shield-halved mr-1"></i>保护期内 <span class="font-semibold text-emerald-600">只升不降</span>：达升级门槛照常升，达降级门槛跳过</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">保护期到期后</label>
+                        <div class="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-600">
+                            自动进入正常月度评估（升可升 · 降可降），无需人工确认
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 py-3 bg-blue-50/60 border border-blue-100 rounded-lg text-xs text-blue-700 flex items-start gap-2">
+                    <i class="fa-solid fa-shield-halved mt-0.5"></i>
+                    <span>系统将自动预检 POA 认证（PRD §3.1.2 / §3.2）。POA 未通过则拒绝开通并提示客服联系用户补全。</span>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">备注 <span class="text-rose-500">*</span> <span class="text-slate-400 font-normal">（Zendesk 工单号 / 商务对接人 / 尽调摘要）</span></label>
+                    <textarea id="o-note" rows="3" placeholder="例：Zendesk #12345 / BD: Tony Lin / 已完成 KYC 视频面访" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-400"></textarea>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 shrink-0 bg-slate-50">
+                <button onclick="closeOnboardDrawer()" class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer">取消</button>
+                <button onclick="confirmOnboard()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-xs"></i> 确认开通
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- 冻结 / 注销 / 划转 弹层（共用） -->
+    <!-- ========================================================= -->
+    <div id="actModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeAct()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-[500px] max-w-[94vw]">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="text-base font-bold text-slate-800" id="actTitle">操作确认</div>
+                <button onclick="closeAct()" class="w-7 h-7 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 text-[13px]">
+                <div id="actDesc" class="text-slate-600 leading-relaxed"></div>
+                <div id="actExtra" class="hidden space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">目标上级 UID（留空 = 划至顶层）</label>
+                    <input id="act-newParent" type="text" placeholder="UID_XXXXXX" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-600">操作理由 <span class="text-rose-500">*</span></label>
+                    <textarea id="actReason" rows="3" placeholder="请简要说明操作理由（必填）" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-400"></textarea>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50">
+                <button onclick="closeAct()" class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer">取消</button>
+                <button id="actConfirmBtn" onclick="confirmAct()" class="px-5 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast fixed bottom-6 right-6 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium z-[70] flex items-center gap-2"></div>
+
+    <!-- ========================================================= -->
+    <!-- 业务脚本 -->
+    <!-- ========================================================= -->
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / 代理管理", lang: "zh" });
+    </script>
+    <script src="lang-switch.js?v=202607039600"></script>
+
+    <script>
+        // =================================================================
+        // Mock 数据：11 条 Partner 实体
+        // 覆盖：L2×6 / L3×3 / L4×2（L1 已不再是 Partner 等级，仅为普通注册客户）
+        //       通道：邀请升级 ×3 / 考核升级 ×2 / Zendesk ×2 / 线下商务 ×2 / 在线申请 ×2
+        //       状态：正常 ×10 / 冻结 ×1
+        //       含一个 3 层链条（UID_500001 顶层 → UID_500003 → UID_500007）
+        //       含一个 3 层链条（UID_500001 顶层 → UID_500003 → UID_500007）
+        // =================================================================
+        const CHANNEL_META = {
+            invite:   { label: '邀请升级',  icon: 'fa-arrow-up-from-bracket', cls: 'bg-blue-50 text-blue-600 border-blue-100' },
+            assess:   { label: '考核升级',  icon: 'fa-medal',                 cls: 'bg-cyan-50 text-cyan-600 border-cyan-100' },
+            zendesk:  { label: 'Zendesk',   icon: 'fa-headset',               cls: 'bg-violet-50 text-violet-600 border-violet-100' },
+            offline:  { label: '线下商务',  icon: 'fa-handshake',             cls: 'bg-indigo-50 text-indigo-600 border-indigo-100' },
+            online:   { label: '在线申请',  icon: 'fa-file-signature',        cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+        };
+
+        const LEVEL_META = {
+            L1: { label: 'L1 见习',  cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+            L2: { label: 'L2 黄金',  cls: 'bg-sky-50 text-sky-700 border-sky-200' },
+            L3: { label: 'L3 专业',  cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+            L4: { label: 'L4 核心',  cls: 'bg-blue-50 text-blue-700 border-blue-300' },
+        };
+
+        const STATUS_META = {
+            active: { label: '正常', icon: 'fa-circle-check',  cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+            frozen: { label: '冻结', icon: 'fa-snowflake',      cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+            closed: { label: '注销', icon: 'fa-ban',            cls: 'bg-rose-50 text-rose-600 border-rose-100' },
+        };
+
+        const SETTLE_CURRENCY_META = {
+            USDT: { label: 'USDT', cls: 'bg-slate-100 text-slate-700 border-slate-200',     icon: 'fa-coins' },
+            AED:  { label: 'AED',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: 'fa-coins' },
+            USD:  { label: 'USD',  cls: 'bg-blue-50 text-blue-700 border-blue-100',          icon: 'fa-coins' },
+        };
+
+        function renderSettleCurrency(cur) {
+            if (!cur) return '<span class="text-slate-300 text-xs">—</span>';
+            const m = SETTLE_CURRENCY_META[cur];
+            if (!m) return '<span class="text-slate-300 text-xs">—</span>';
+            return `<span class="inline-flex items-center px-2 py-0.5 ${m.cls} border rounded-md text-[11px] font-bold font-mono tracking-wide">
+                        <i class="fa-solid ${m.icon} mr-1 text-[10px]"></i>${m.label}
+                    </span>`;
+        }
+
+        const mockPartners = [
+            { uid: 'UID_500001', settlementCurrency: 'USDT', name: 'Marcus Wong',     email: 'marcus***@cheertrade.com', region: '香港',          channel: 'offline', level: 'L4', parent: null,        validClients: 187, teamSize: 1245, rollingMargin: 8520000.00, onboardTime: '2025-01-12 10:20', status: 'active', inviteCode: 'M4HK01', onboardNote: 'BD: Tony Lin · 顶级 KOL', protectUntil: '2025-04-12', cmMonth: 24580.45, cmSuspense: 0.0072, cmTotal: 285430.18 },
+            { uid: 'UID_500002', settlementCurrency: 'USD', name: 'Elena Petrova',   email: 'elena***@gmail.com',       region: '俄罗斯',         channel: 'zendesk', level: 'L4', parent: 'UID_500001', validClients: 96, teamSize: 612,  rollingMargin: 4230000.00, onboardTime: '2025-02-08 14:30', status: 'active', inviteCode: 'E4RU09', onboardNote: 'Zendesk #21487 · 高价值客户', protectUntil: '2025-05-08', cmMonth: 11240.20, cmSuspense: 0.0048, cmTotal: 142810.65 },
+            { uid: 'UID_500003', settlementCurrency: 'USDT', name: 'Chen Yuhao',      email: 'yuha***@163.com',          region: '上海',          channel: 'online',  level: 'L3', parent: 'UID_500001', validClients: 58, teamSize: 312,  rollingMargin: 2180000.00, onboardTime: '2025-03-15 09:18', status: 'active', inviteCode: 'C9SH01', onboardNote: '在线申请通过 / APP_20260227_003', protectUntil: '2025-06-15', cmMonth: 6720.88,  cmSuspense: 0.0091, cmTotal: 68420.30 },
+            { uid: 'UID_500004', settlementCurrency: 'AED', name: 'Ahmed Al-Rashid', email: 'ahmed***@protonmail.com',  region: '阿联酋 迪拜',    channel: 'offline', level: 'L3', parent: null,        validClients: 47, teamSize: 268,  rollingMargin: 1980000.00, onboardTime: '2025-04-02 16:45', status: 'active', inviteCode: 'A3AE21', onboardNote: 'BD: Sarah Chen · MENA 区域', protectUntil: '2025-07-02', cmMonth: 5840.10,  cmSuspense: 0.0033, cmTotal: 51230.78 },
+            { uid: 'UID_500005', settlementCurrency: 'USDT', name: 'Liu Wei',         email: 'liuw***@outlook.com',      region: '深圳',          channel: 'online',  level: 'L3', parent: null,        validClients: 41, teamSize: 218,  rollingMargin: 1650000.00, onboardTime: '2025-04-19 11:08', status: 'active', inviteCode: 'L9SZ03', onboardNote: '在线申请通过 / APP_20260319_011', protectUntil: '2025-07-19', cmMonth: 4920.55,  cmSuspense: 0.0064, cmTotal: 42180.92 },
+            { uid: 'UID_500006', settlementCurrency: 'USD', name: 'Hiro Tanaka',     email: 'hiro***@yahoo.co.jp',      region: '日本 东京',      channel: 'invite',  level: 'L2', parent: 'UID_500002', validClients: 18, teamSize: 87,   rollingMargin: 780000.00,  onboardTime: '2025-06-22 13:15', status: 'active', inviteCode: 'H2JP08', onboardNote: '邀请升级 / 自动 POA + 1 名有效客户', protectUntil: '2025-09-22', cmMonth: 1820.40,  cmSuspense: 0.0021, cmTotal: 18420.55 },
+            { uid: 'UID_500007', settlementCurrency: 'USD', name: 'Sofía Romero',    email: 'sofia***@gmail.com',       region: '墨西哥',         channel: 'invite',  level: 'L2', parent: 'UID_500003', validClients: 12, teamSize: 54,   rollingMargin: 520000.00,  onboardTime: '2025-08-11 08:42', status: 'active', inviteCode: 'S2MX11', onboardNote: '邀请升级 / 自动 POA + 1 名有效客户', protectUntil: '2025-11-11', cmMonth: 1140.20,  cmSuspense: 0.0058, cmTotal: 9820.45 },
+            { uid: 'UID_500008', settlementCurrency: 'USD', name: 'Pieter de Vries', email: 'pieter***@protonmail.com', region: '荷兰',          channel: 'zendesk', level: 'L2', parent: null,        validClients: 9,  teamSize: 38,   rollingMargin: 390000.00,  onboardTime: '2025-09-04 17:22', status: 'active', inviteCode: 'P2NL02', onboardNote: 'Zendesk #28902', protectUntil: '2025-12-04', cmMonth: 820.18,   cmSuspense: 0.0012, cmTotal: 7140.30 },
+            { uid: 'UID_500009', settlementCurrency: 'USDT', name: 'Aaron Cheung',    email: 'cheu***@gmail.com',        region: '香港',          channel: 'assess',  level: 'L2', parent: 'UID_500001', validClients: 4,  teamSize: 11,   rollingMargin: 92000.00,   onboardTime: '2026-04-15 11:08', status: 'active', inviteCode: 'A8X7K2', onboardNote: '完成 L1 考核自动升级 L2 / 滚动 3 月有效客户 ≥ 1', protectUntil: '2026-07-15', cmMonth: 248.55,   cmSuspense: 0.0009, cmTotal: 980.18 },
+            { uid: 'UID_500010', settlementCurrency: 'AED', name: 'Khaled Al-Mansouri', email: 'khal***@protonmail.com', region: '阿联酋 迪拜',   channel: 'invite',  level: 'L2', parent: 'UID_500004', validClients: 2,  teamSize: 5,    rollingMargin: 32000.00,   onboardTime: '2026-06-10 09:50', status: 'active', inviteCode: 'K1AE92', onboardNote: '邀请升级 / 自动 POA + 1 名有效客户（§4.4 豁免）', protectUntil: '2026-09-10', cmMonth: 88.20,    cmSuspense: 0.0007, cmTotal: 88.20 },
+            { uid: 'UID_500011', settlementCurrency: 'USD', name: 'Anonymous Promo', email: 'pq***@mail.ru',            region: '俄罗斯',         channel: 'assess',  level: 'L2', parent: 'UID_500002', validClients: 1,  teamSize: 1,    rollingMargin: 8000.00,    onboardTime: '2026-05-18 22:00', status: 'frozen', inviteCode: 'A0RU88', onboardNote: '考核升级 L2 后被风控冻结', protectUntil: '2026-08-18', cmMonth: 0,        cmSuspense: 0,     cmTotal: 12.45 },
+        ];
+
+        // 划转申请 mock（本页面提交后写入；完整数据见「划转审核」页）
+        const mockTransferRequests = [];
+
+        // 操作日志 mock（按 uid 索引）
+        const mockTimelines = {
+            'UID_500001': [
+                { t: '2025-01-12 10:18:02', op: 'admin_bd',    msg: 'BD 团队尽调通过，线下商务通道开通 Partner，初始等级 L4' },
+                { t: '2025-04-01 00:00:08', op: 'system',       msg: '月初评估：滚动 Margin 870 万 USD，维持 L4' },
+                { t: '2025-07-01 00:00:11', op: 'system',       msg: '月初评估：维持 L4' },
+                { t: '2026-04-01 00:00:14', op: 'system',       msg: '月初评估：维持 L4' },
+            ],
+            'UID_500003': [
+                { t: '2025-03-15 09:15:21', op: 'system',       msg: '在线申请提交 (APP_20260227_003)' },
+                { t: '2025-03-15 09:17:48', op: 'admin_super',  msg: '审批通过，初始等级 L2' },
+                { t: '2026-01-01 00:00:12', op: 'system',       msg: '月初评估：升级 L2 → L3（Margin 218 万 USD）' },
+                { t: '2026-06-12 14:22:08', op: 'admin_super',  msg: '人工划转：上级由 — 调整为 UID_500001（理由：BD 归属调整）' },
+            ],
+            'UID_500011': [
+                { t: '2026-05-18 22:00:15', op: 'system',       msg: '完成 L1 滚动考核（有效客户 ≥ 1）自动升级 Partner，初始等级 L2' },
+                { t: '2026-06-22 16:30:42', op: 'admin_risk',   msg: '风控冻结：检测到关联 IP 群控行为（理由：疑似羊毛党刷量）' },
+            ],
+        };
+
+        function defaultTimeline(row) {
+            return [
+                { t: row.onboardTime + ':00', op: ({invite:'system', online:'admin_super', zendesk:'admin_bd', offline:'admin_bd', assess:'system'})[row.channel], msg: ({
+                    invite:  '邀请升级开通 Partner，初始等级 ' + row.level,
+                    online:  '在线申请审批通过，初始等级 ' + row.level,
+                    zendesk: 'Zendesk 通道开通 Partner，初始等级 ' + row.level,
+                    offline: '线下商务通道开通 Partner，初始等级 ' + row.level,
+                    assess:  '完成 L1 滚动考核自动升级 Partner，初始等级 ' + row.level,
+                })[row.channel] },
+            ];
+        }
+
+        // =================================================================
+        // 工具
+        // =================================================================
+        function renderBadge(meta) {
+            if (!meta) return '<span class="text-slate-400 text-xs">—</span>';
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}">${meta.icon ? `<i class="fa-solid ${meta.icon} mr-1.5 text-[10px]"></i>` : ''}${meta.label}</span>`;
+        }
+        function splitDateTime(s) {
+            if (!s) return '<span class="text-slate-300">—</span>';
+            const [d, t = ''] = s.split(' ');
+            return `<div class="font-mono text-xs leading-tight"><div class="text-slate-700">${d}</div><div class="text-slate-400 text-[10px]">${t}</div></div>`;
+        }
+        function fmtMoney(n) {
+            return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function fmtNum(n) { return Number(n || 0).toLocaleString('en-US'); }
+        function shortEmail(e) { return e || '—'; }
+
+        function renderTimeline(arr) {
+            if (!arr || !arr.length) return '<li class="text-slate-400 text-xs">— 暂无记录 —</li>';
+            const opColor = {
+                system:      'bg-slate-300',
+                admin_super: 'bg-primary',
+                admin_bd:    'bg-indigo-400',
+                admin_risk:  'bg-rose-400',
+            };
+            const opLabel = {
+                system:      '系统',
+                admin_super: '超级管理员',
+                admin_bd:    'BD / 客服',
+                admin_risk:  '风控',
+            };
+            return arr.map(item => `
+                <li class="flex items-start gap-3">
+                    <div class="w-2 h-2 rounded-full ${opColor[item.op] || 'bg-slate-300'} mt-1.5 shrink-0"></div>
+                    <div class="flex-1">
+                        <div class="text-slate-700">${item.msg}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 font-mono">${item.t} · ${opLabel[item.op] || item.op}</div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        // =================================================================
+        // 列表渲染 + Tab + 筛选
+        // =================================================================
+        let currentTab = 'all';
+
+        function applyFilter() {
+            const fUid    = document.getElementById('f-uid').value.trim().toLowerCase();
+            const fLevel  = document.getElementById('f-level').value;
+            const fChan   = document.getElementById('f-channel').value;
+            const fParent = document.getElementById('f-parent').value.trim().toLowerCase();
+            return mockPartners.filter(r => {
+                if (currentTab !== 'all' && r.status !== currentTab) return false;
+                if (fUid && !r.uid.toLowerCase().includes(fUid)) return false;
+                if (fLevel !== 'all' && r.level !== fLevel) return false;
+                if (fChan !== 'all' && r.channel !== fChan) return false;
+                if (fParent && !(r.parent || '').toLowerCase().includes(fParent)) return false;
+                return true;
+            });
+        }
+
+        function renderActions(row) {
+            const detailBtn = `<button onclick="event.stopPropagation();openDrawer('${row.uid}')" class="text-primary hover:underline font-medium text-xs cursor-pointer">详情</button>`;
+            if (row.status === 'frozen') {
+                return `${detailBtn}<span class="text-slate-300 mx-1.5">|</span><button onclick="event.stopPropagation();openDrawer('${row.uid}');setTimeout(openUnfreeze,250)" class="text-emerald-600 hover:underline font-medium text-xs cursor-pointer">解冻</button>`;
+            }
+            return `${detailBtn}<span class="text-slate-300 mx-1.5">|</span><button onclick="event.stopPropagation();openDrawer('${row.uid}');setTimeout(openFreeze,250)" class="text-amber-600 hover:underline font-medium text-xs cursor-pointer">冻结</button>`;
+        }
+
+        function renderTable() {
+            const list = applyFilter();
+            const html = list.map(row => {
+                return `<tr class="hover:bg-slate-50/70 transition-colors cursor-pointer" onclick="openDrawer('${row.uid}')">
+                    <td class="px-5 py-4 font-mono text-blue-600 text-xs font-semibold sticky left-0 bg-white">${row.uid}</td>
+                    <td class="px-5 py-4">
+                        <div class="text-slate-800 text-[13px] font-medium leading-tight">${row.name}</div>
+                        <div class="text-slate-400 text-[11px] font-mono mt-0.5">${shortEmail(row.email)}</div>
+                    </td>
+                    <td class="px-5 py-4 text-center">${renderBadge(LEVEL_META[row.level])}</td>
+                    <td class="px-5 py-4 text-center">${renderBadge(CHANNEL_META[row.channel])}</td>
+                    <td class="px-5 py-4">${renderSettleCurrency(row.settlementCurrency)}</td>
+                    <td class="px-5 py-4 font-mono text-slate-600 text-xs">${row.parent || '<span class="text-slate-300">— 顶层 —</span>'}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-700">${fmtNum(row.validClients)}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-700">${fmtNum(row.teamSize)}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-700">$${fmtMoney(row.rollingMargin)}</td>
+                    <td class="px-5 py-4">${splitDateTime(row.onboardTime)}</td>
+                    <td class="px-5 py-4 text-center">${renderBadge(STATUS_META[row.status])}</td>
+                    <td class="px-5 py-4 text-center" onclick="event.stopPropagation()">${renderActions(row)}</td>
+                </tr>`;
+            }).join('');
+            document.getElementById('partners-tbody').innerHTML = html || `<tr><td colspan="12" class="px-5 py-10 text-center text-slate-400 text-sm">暂无匹配的 Partner</td></tr>`;
+            document.getElementById('page-total').textContent = list.length;
+            updateStats();
+        }
+
+        function updateStats() {
+            const all = mockPartners.length;
+            document.getElementById('stat-total').textContent = all;
+            document.getElementById('stat-new').textContent   = '+' + mockPartners.filter(r => r.onboardTime.startsWith('2026-06')).length;
+            document.getElementById('stat-abnormal').textContent = mockPartners.filter(r => r.status === 'frozen').length;
+            document.getElementById('cnt-all').textContent    = all;
+            document.getElementById('cnt-active').textContent = mockPartners.filter(r => r.status === 'active').length;
+            document.getElementById('cnt-frozen').textContent = mockPartners.filter(r => r.status === 'frozen').length;
+        }
+
+        function resetFilter() {
+            document.getElementById('f-uid').value = '';
+            document.getElementById('f-level').value = 'all';
+            document.getElementById('f-channel').value = 'all';
+            document.getElementById('f-parent').value = '';
+            renderTable();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            renderTable();
+        }
+
+        // =================================================================
+        // 团队结构 mini-tree
+        // =================================================================
+        function buildTree(rootUid) {
+            const findChildren = (uid) => mockPartners.filter(p => p.parent === uid);
+            const findRow = (uid) => mockPartners.find(p => p.uid === uid);
+            const root = findRow(rootUid);
+            if (!root) return '<div class="text-slate-400 text-xs">— 未找到 —</div>';
+
+            // 上层：找到 root.parent
+            const parent = root.parent ? findRow(root.parent) : null;
+            // 下层：root 的直接下级 + 每个下级再下一层
+            const children = findChildren(root.uid);
+
+            const renderNode = (p, type, prefix) => {
+                const colorCls = type === 'self' ? 'text-primary font-bold' : type === 'trader' ? 'text-emerald-600' : 'text-slate-700';
+                const levelLabel = p.level ? `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${LEVEL_META[p.level].cls}">${p.level}</span>` : '';
+                return `<div class="text-[13px]"><span class="text-slate-400">${prefix}</span><span class="${colorCls}">${p.uid}</span><span class="text-slate-400 font-sans ml-2 text-xs">${p.name}</span>${levelLabel}</div>`;
+            };
+
+            let html = '';
+            if (parent) {
+                html += renderNode(parent, 'parent', '└─ 上级 ');
+                html += renderNode(root, 'self', '   └─ ▶ ');
+            } else {
+                html += renderNode(root, 'self', '▶ (顶层) ');
+            }
+            if (children.length === 0) {
+                html += `<div class="text-[12px] text-slate-400 font-sans pl-8 mt-1">└─ 暂无下级 Partner（仅有终端 Trader）</div>`;
+            } else {
+                children.forEach((c, i) => {
+                    const isLast = i === children.length - 1;
+                    const indent = parent ? '      ' : '   ';
+                    html += renderNode(c, 'child', indent + (isLast ? '└─ ' : '├─ '));
+                    const grand = findChildren(c.uid);
+                    grand.slice(0, 2).forEach((g, j) => {
+                        const isLastG = j === Math.min(grand.length, 2) - 1;
+                        html += renderNode(g, 'grand', indent + (isLast ? '    ' : '│   ') + (isLastG ? '└─ ' : '├─ '));
+                    });
+                    if (grand.length > 2) {
+                        html += `<div class="text-[11px] text-slate-400 font-sans pl-${parent ? '16' : '12'}">…仍有更深层关系可继续追溯（第 4 级及以上不计入返佣、活跃客户或团队保证金）</div>`;
+                    }
+                });
+            }
+            html += `<div class="mt-2 text-[11px] text-slate-400 font-sans">终端 Trader 共 <span class="font-mono font-semibold text-slate-600">${root.teamSize}</span> 人（含各级下属 Partner 名下客户）</div>`;
+            return html;
+        }
+
+        // =================================================================
+        // 抽屉 / 操作
+        // =================================================================
+        let currentRow = null;
+
+        function openDrawer(uid) {
+            const row = mockPartners.find(r => r.uid === uid);
+            if (!row) return;
+            currentRow = row;
+
+            document.getElementById('d-uid').textContent = row.uid;
+            document.getElementById('d-statusTop').innerHTML = renderBadge(STATUS_META[row.status]);
+            document.getElementById('d-name').textContent = row.name;
+            document.getElementById('d-email').textContent = row.email;
+            document.getElementById('d-region').textContent = row.region;
+            document.getElementById('d-onboardTime').textContent = row.onboardTime;
+            // 等级保护期
+            const pEl = document.getElementById('d-protectUntil');
+            if (row.protectUntil) {
+                const today = new Date('2026-07-01');
+                const exp = new Date(row.protectUntil);
+                const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                if (diff > 0) {
+                    pEl.innerHTML = `<span class="text-sky-700 font-semibold">${row.protectUntil}</span> <span class="text-[10px] text-sky-600 bg-sky-50 border border-sky-100 px-1.5 py-0.5 rounded ml-1">保护中 · 剩 ${diff} 天</span>`;
+                } else {
+                    pEl.innerHTML = `<span class="text-slate-400">${row.protectUntil}</span> <span class="text-[10px] text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded ml-1">已到期</span>`;
+                }
+            } else {
+                pEl.innerHTML = '<span class="text-slate-400">— 无保护期 —</span>';
+            }
+            document.getElementById('d-channel').innerHTML = renderBadge(CHANNEL_META[row.channel]);
+            document.getElementById('d-settleCurrency').innerHTML = renderSettleCurrency(row.settlementCurrency);
+            document.getElementById('d-inviteCode').textContent = row.inviteCode;
+            document.getElementById('d-parent').innerHTML = row.parent ? row.parent : '<span class="text-slate-400">— 顶层 —</span>';
+            document.getElementById('d-onboardNote').textContent = row.onboardNote || '—';
+
+            document.getElementById('d-tree').innerHTML = buildTree(row.uid);
+
+            document.getElementById('d-levelBig').textContent = row.level;
+            document.getElementById('d-activeClients').textContent = fmtNum(row.validClients);
+            document.getElementById('d-rollingMargin').textContent = '$' + fmtMoney(row.rollingMargin);
+            document.getElementById('d-cmMonth').textContent       = '$' + fmtMoney(row.cmMonth);
+            document.getElementById('d-cmSuspense').textContent    = '$' + Number(row.cmSuspense || 0).toFixed(4);
+            document.getElementById('d-cmTotal').textContent       = '$' + fmtMoney(row.cmTotal);
+
+            document.getElementById('d-timeline').innerHTML = renderTimeline(mockTimelines[row.uid] || defaultTimeline(row));
+
+            // 操作按钮可见性
+            const isActive = row.status === 'active';
+            const isFrozen = row.status === 'frozen';
+            document.getElementById('btn-freeze').classList.toggle('hidden', !isActive);
+            document.getElementById('btn-unfreeze').classList.toggle('hidden', !isFrozen);
+
+            document.getElementById('drawer').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.querySelector('#drawer .drawer-backdrop').style.opacity = '1';
+                document.getElementById('drawer-panel').classList.add('open');
+            });
+        }
+
+        function closeDrawer() {
+            document.querySelector('#drawer .drawer-backdrop').style.opacity = '0';
+            document.getElementById('drawer-panel').classList.remove('open');
+            setTimeout(() => document.getElementById('drawer').classList.add('hidden'), 250);
+        }
+
+        // 客服一键开通抽屉
+        function openOnboardDrawer() {
+            document.getElementById('o-uid').value = '';
+            document.getElementById('o-parent').value = '';
+            document.getElementById('o-note').value = '';
+            document.getElementById('o-level').value = 'L2';
+            document.getElementById('o-protect').value = 3;
+            updateProtectPreview();
+            document.querySelector('input[name="o-channel"][value="invite"]').checked = true;
+            document.getElementById('onboard').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.querySelector('#onboard .drawer-backdrop').style.opacity = '1';
+                document.getElementById('onboard-panel').classList.add('open');
+            });
+        }
+        function updateProtectPreview() {
+            const inp = document.getElementById('o-protect');
+            let n = parseInt(inp.value || '0', 10);
+            if (isNaN(n) || n < 0) n = 0;
+            if (n > 12) n = 12;
+            inp.value = n;
+            const now = new Date();
+            const until = new Date(now.getFullYear(), now.getMonth() + n, now.getDate());
+            const y = until.getFullYear();
+            const m = String(until.getMonth() + 1).padStart(2, '0');
+            const d = String(until.getDate()).padStart(2, '0');
+            const el = document.getElementById('o-protect-until');
+            el.textContent = n === 0 ? '无保护期' : `${y}-${m}-${d}`;
+            el.className = n === 0 ? 'font-mono font-semibold text-slate-400' : 'font-mono font-semibold text-emerald-600';
+        }
+        function closeOnboardDrawer() {
+            document.querySelector('#onboard .drawer-backdrop').style.opacity = '0';
+            document.getElementById('onboard-panel').classList.remove('open');
+            setTimeout(() => document.getElementById('onboard').classList.add('hidden'), 250);
+        }
+        function confirmOnboard() {
+            const uid = document.getElementById('o-uid').value.trim();
+            const note = document.getElementById('o-note').value.trim();
+            const channel = document.querySelector('input[name="o-channel"]:checked').value;
+            const level = document.getElementById('o-level').value;
+            const currency = document.getElementById('o-settleCurrency').value;
+            const protect = parseInt(document.getElementById('o-protect').value || '0', 10);
+            if (!uid) return showToast('请填写客户 UID', 'error');
+            if (!note) return showToast('请填写备注（必填）', 'error');
+            const protectMsg = protect === 0 ? '无保护期' : `保护期 ${protect} 个月`;
+            showToast(`已开通 ${uid} 为 ${level} · ${protectMsg} · 佣金结算币种 ${currency}（通道：${CHANNEL_META[channel].label}）`, 'success');
+            closeOnboardDrawer();
+        }
+
+        // 冻结 / 解冻 / 注销 / 划转 共用弹层
+        let actType = null;
+        function openFreeze() {
+            actType = 'freeze';
+            document.getElementById('actTitle').innerHTML = '<i class="fa-solid fa-snowflake mr-2 text-amber-500"></i>冻结 Partner';
+            document.getElementById('actDesc').textContent = `确认冻结 ${currentRow.uid}（${currentRow.name}）？冻结后该 Partner 名下新单不再产生返佣，已产生的返佣可正常入账。`;
+            document.getElementById('actExtra').classList.add('hidden');
+            document.getElementById('actReason').value = '';
+            document.getElementById('actReason').placeholder = '请简要说明操作理由（必填）';
+            document.getElementById('actConfirmBtn').className = 'px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer';
+            document.getElementById('actConfirmBtn').textContent = '确认冻结';
+            document.getElementById('actModal').classList.remove('hidden');
+        }
+        function openUnfreeze() {
+            actType = 'unfreeze';
+            document.getElementById('actTitle').innerHTML = '<i class="fa-solid fa-sun mr-2 text-emerald-500"></i>解冻 Partner';
+            document.getElementById('actDesc').textContent = `确认解冻 ${currentRow.uid}（${currentRow.name}）？解冻后该 Partner 名下新单恢复正常返佣计算。`;
+            document.getElementById('actExtra').classList.add('hidden');
+            document.getElementById('actReason').value = '';
+            document.getElementById('actReason').placeholder = '请简要说明解冻理由（必填）';
+            document.getElementById('actConfirmBtn').className = 'px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer';
+            document.getElementById('actConfirmBtn').textContent = '确认解冻';
+            document.getElementById('actModal').classList.remove('hidden');
+        }
+        function openTransfer() {
+            actType = 'transfer';
+            document.getElementById('actTitle').innerHTML = '<i class="fa-solid fa-shuffle mr-2 text-primary"></i>申请划转';
+            document.getElementById('actDesc').innerHTML = `提交后需运营领导审核，审核通过后由超管执行。此操作将变更 ${currentRow.uid}（${currentRow.name}）的<b>上级代理</b>关系，影响整条返佣链。`;
+            document.getElementById('actExtra').classList.remove('hidden');
+            document.getElementById('act-newParent').value = '';
+            document.getElementById('actReason').value = '';
+            document.getElementById('actConfirmBtn').className = 'px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer';
+            document.getElementById('actConfirmBtn').textContent = '提交申请';
+            document.getElementById('actModal').classList.remove('hidden');
+        }
+        function closeAct() { document.getElementById('actModal').classList.add('hidden'); }
+        function confirmAct() {
+            const reason = document.getElementById('actReason').value.trim();
+            if (!reason) return showToast('请填写操作理由（必填）', 'error');
+            if (actType === 'freeze') {
+                // 写入操作日志
+                const timeline = mockTimelines[currentRow.uid] || defaultTimeline(currentRow);
+                const now = new Date();
+                const pad = n => String(n).padStart(2,'0');
+                const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                timeline.push({ t: ts, op: 'admin_risk', msg: `冻结操作（理由：${reason}）` });
+                mockTimelines[currentRow.uid] = timeline;
+                // 更新当前行状态
+                currentRow.status = 'frozen';
+                showToast(`已冻结 ${currentRow.uid}`, 'success');
+                renderTable();
+            }
+            if (actType === 'unfreeze') {
+                // 写入操作日志
+                const timeline = mockTimelines[currentRow.uid] || defaultTimeline(currentRow);
+                const now = new Date();
+                const pad = n => String(n).padStart(2,'0');
+                const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                timeline.push({ t: ts, op: 'admin_risk', msg: `解冻操作（理由：${reason}）` });
+                mockTimelines[currentRow.uid] = timeline;
+                // 更新当前行状态
+                currentRow.status = 'active';
+                showToast(`已解冻 ${currentRow.uid}`, 'success');
+                renderTable();
+            }
+            if (actType === 'transfer') {
+                const np = document.getElementById('act-newParent').value.trim() || '— 顶层 —';
+                // 写入 mockTransferRequests（待审）
+                if (typeof mockTransferRequests !== 'undefined') {
+                    const now = new Date();
+                    const pad = n => String(n).padStart(2,'0');
+                    const reqId = `TR_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${String(mockTransferRequests.length+1).padStart(3,'0')}`;
+                    mockTransferRequests.unshift({
+                        reqId,
+                        targetUid: currentRow.uid,
+                        targetNick: currentRow.name,
+                        oldParentUid: currentRow.parentUid || '—',
+                        oldParentNick: currentRow.parentName || '顶层',
+                        newParentUid: np === '— 顶层 —' ? '—' : np,
+                        newParentNick: np === '— 顶层 —' ? '顶层' : np,
+                        impact: { subordinateCount: currentRow.subordinates || 0, tierDepth: 2, estimatedRebate30d: 0, currency: 'AED' },
+                        reason,
+                        applicant: 'cs_jane',
+                        applyTime: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+                        status: 'pending',
+                        reviewer: null, reviewTime: null, reviewNote: null,
+                        executor: null, executeTime: null,
+                    });
+                }
+                showToast(`划转申请已提交，待运营领导审核`, 'success');
+            }
+            closeAct();
+            if (actType !== 'transfer') closeDrawer();
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            const cls = {
+                success: 'bg-emerald-500 text-white',
+                error:   'bg-rose-500 text-white',
+                info:    'bg-slate-800 text-white',
+            }[type] || 'bg-slate-800 text-white';
+            t.className = 'toast fixed bottom-6 right-6 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium z-[70] flex items-center gap-2 ' + cls;
+            t.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'circle-xmark' : 'circle-info'}"></i>${msg}`;
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // 初始渲染
+        renderTable();
+    </script>
+
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

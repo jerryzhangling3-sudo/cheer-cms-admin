@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资金管理 - CFD 业务管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { sidebar: '#0B1120', sidebarHover: '#1E293B', primary: '#3B82F6' }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0; opacity: 0; overflow: hidden;
+        }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Modal & 抽屉 */
+        .modal-overlay { transition: opacity .25s ease; }
+        .modal-panel { transition: transform .25s ease, opacity .25s ease; }
+        .modal-overlay.hidden-state { opacity: 0; pointer-events: none; }
+        .modal-overlay.hidden-state .modal-panel { transform: translateY(20px) scale(.97); opacity: 0; }
+        /* 右侧详情抽屉 */
+        .drawer-overlay { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+        .drawer-overlay.hidden-state { opacity: 0; pointer-events: none; }
+        .drawer-overlay.hidden-state .drawer-panel { transform: translateX(100%); }
+        /* 时间线小节点 */
+        .timeline-dot { width: 10px; height: 10px; border-radius: 999px; border: 2px solid; }
+
+        /* 待审核行高亮 */
+        tr.pending-row { background: linear-gradient(90deg, rgba(245,158,11,.07) 0%, rgba(245,158,11,0) 60%); }
+        tr.pending-row td:first-child { border-left: 3px solid #f59e0b; }
+
+        /* 长文本截断 */
+        .truncate-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">资金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">资金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">资金管理</span>
+            </div>
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">资金管理</h1>
+                    <p class="text-sm text-slate-500 mt-2 max-w-3xl">面向客诉补偿、线下汇款、违规扣款等特殊场景的资金调整工单。提交后进入 Maker-Checker 审批流，通过后系统自动按双工单路由执行 Funding / Acct. 账务划转。</p>
+                </div>
+                <button onclick="openCreateModal()" class="bg-primary hover:bg-blue-600 transition-colors text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30 flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-[12px]"></i> 新增资金调整
+                </button>
+            </div>
+
+            <!-- 筛选区 -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="grid grid-cols-6 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">TxID</label>
+                        <input id="filter-txid" type="text" placeholder="ADJ_20260629_..." class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">客户ID</label>
+                        <input id="filter-user" type="text" placeholder="精确匹配" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">操作方向</label>
+                        <select id="filter-direction" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                            <option value="">全部</option>
+                            <option value="credit">赠与</option>
+                            <option value="debit">扣减</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">审核状态</label>
+                        <select id="filter-status" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                            <option value="">全部</option>
+                            <option value="pending">待审核</option>
+                            <option value="completed">已通过</option>
+                            <option value="rejected">已驳回</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">资金处理状态</label>
+                        <select id="filter-funding-status" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                            <option value="">全部</option>
+                            <option value="processing">处理中</option>
+                            <option value="success">成功</option>
+                            <option value="failed">失败</option>
+                            <option value="partial">部分成功</option>
+                            <option value="unprocessed">未处理</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">账务日期</label>
+                        <input id="filter-value-date" type="text" placeholder="2026-06-01 ~ 2026-06-29" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-5">
+                    <button onclick="resetFilters()" class="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">重置</button>
+                    <button onclick="applyFilters()" class="bg-primary hover:bg-blue-600 transition-colors text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30">查询</button>
+                </div>
+            </div>
+
+            <!-- 列表 -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center">
+                    <div class="text-[13px] text-slate-500">共 <span id="total-count" class="font-semibold text-slate-700">0</span> 条 · 待审核单据已置顶高亮</div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50/80 border-y border-slate-200">
+                            <tr class="text-[11px] tracking-wider font-semibold text-slate-500">
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">流水ID</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">客户ID</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">目标账户</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">操作方向</th>
+                                <th class="text-right px-5 py-3.5 whitespace-nowrap">调整金额</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">账务日期</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">对内原因</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">对外原因</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">发起人</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">审核人</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">审核状态</th>
+                                <th class="text-left px-5 py-3.5 whitespace-nowrap">资金处理状态</th>
+                                <th class="text-right px-5 py-3.5 whitespace-nowrap pr-6">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 新增资金调整 Modal -->
+        <div id="modal-create" class="modal-overlay hidden-state fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50">
+            <div class="modal-panel bg-white rounded-xl shadow-2xl w-[640px] max-h-[88vh] overflow-hidden flex flex-col">
+                <!-- Tab 切换 -->
+                <div class="border-b border-slate-200 px-6 pt-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-slate-800">新增资金调整</h3>
+                        <button onclick="closeCreateModal()" class="text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-1 text-sm">
+                        <button class="px-4 py-2 border-b-2 border-primary text-primary font-semibold">手动录入</button>
+                        <button class="px-4 py-2 border-b-2 border-transparent text-slate-400 cursor-not-allowed" title="批量上传下期上线">
+                            批量上传 <span class="ml-1 text-[10px] px-1.5 py-[1px] rounded bg-slate-100">下期</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 表单 -->
+                <form id="create-form" class="flex-1 overflow-y-auto px-6 py-5 space-y-5" onsubmit="return false;">
+                    <!-- 账号类型 -->
+                    <div class="space-y-2">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">账号类型 <span class="text-rose-500">*</span></label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="target_type" value="funding" class="peer hidden" checked onchange="onTargetTypeChange()"/>
+                                <div class="px-4 py-3 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-primary peer-checked:bg-blue-50/40 peer-checked:text-primary peer-checked:font-semibold transition-colors">
+                                    <i class="fa-solid fa-wallet mr-2"></i> 仅 Funding
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="target_type" value="funding_mt5" class="peer hidden" onchange="onTargetTypeChange()"/>
+                                <div class="px-4 py-3 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-primary peer-checked:bg-blue-50/40 peer-checked:text-primary peer-checked:font-semibold transition-colors">
+                                    <i class="fa-solid fa-link mr-2"></i> Funding + Acct.（联动）
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- UID -->
+                    <div class="space-y-1.5">
+                        <label id="lbl-user" class="text-[11px] tracking-wider font-semibold text-slate-500">客户ID<span class="text-rose-500">*</span></label>
+                        <textarea id="f-user" rows="2" oninput="refreshMt5Panel()" placeholder="UID_558012  或多个用英文逗号分隔：UID_558012, UID_445118" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"></textarea>
+                        <p id="hint-user" class="text-[11px] text-slate-400 leading-relaxed hidden">联动 Acct. 模式下仅支持单 UID，因为需精确校验 Acct. No 归属。</p>
+                    </div>
+
+                    <!-- Acct. No（条件显示） -->
+                    <div id="row-mt5" class="space-y-2 hidden">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Acct. No（该 UID 名下账号） <span class="text-rose-500">*</span></label>
+                        <!-- 空态：还没输 UID -->
+                        <div id="mt5-empty" class="text-[12px] text-slate-400 border border-dashed border-slate-200 rounded-lg px-3 py-3 bg-slate-50/40">
+                            <i class="fa-regular fa-circle-question mr-1"></i>
+                            请先在上方填写客户 ID (UID)，系统将自动加载其名下的 Acct. No、净值、保证金比例与账号属性。
+                        </div>
+                        <!-- 空态：UID 无法识别或没有 Acct.NO -->
+                        <div id="mt5-nohit" class="hidden text-[12px] text-rose-500 border border-rose-100 rounded-lg px-3 py-3 bg-rose-50/40">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            该 UID 未查询到 Acct. No（可能是 UID 输入有误、或客户尚未开通交易账号）。
+                        </div>
+                        <!-- 表格 -->
+                        <div id="mt5-table" class="hidden border border-slate-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-slate-50/80 text-[11px] tracking-wider font-semibold text-slate-500">
+                                    <tr>
+                                        <th class="px-3 py-2.5 text-left w-8"><input type="checkbox" id="mt5-check-all" class="rounded border-slate-300 text-primary focus:ring-primary/30 cursor-pointer"/></th>
+                                        <th class="px-3 py-2.5 text-left">Acct.No</th>
+                                        <th class="px-3 py-2.5 text-right">净值 (Equity)</th>
+                                        <th class="px-3 py-2.5 text-right">保证金比例</th>
+                                        <th class="px-3 py-2.5 text-left">账号属性</th>
+                                        <th class="px-3 py-2.5 text-right w-44">本次调整金额</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mt5-tbody" class="divide-y divide-slate-100 text-[13px] text-slate-700 bg-white"></tbody>
+                            </table>
+                        </div>
+                        <!-- 合计 -->
+                        <div id="mt5-total-row" class="hidden flex items-center justify-between px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span class="text-[11px] tracking-wider font-semibold text-slate-500">合计调整金额 (Total)</span>
+                            <span class="font-mono font-bold text-slate-800 text-[15px]"><span id="mt5-total">0.00</span> <span id="mt5-total-cur" class="text-slate-500 text-[11px] font-semibold ml-1"></span></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">
+                            勾选参与本次调整的 Acct. No，逐个填写金额（合计自动计算）。系统会自动校验：① 币种与账号 Base Currency 一致；② 扣减方向下每个账号 Free Margin 充足。
+                        </p>
+                    </div>
+
+                    <!-- 操作方向 + 币种（Funding 模式下才显示金额输入；Acct 模式下金额已按行填写） -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] tracking-wider font-semibold text-slate-500">操作方向 <span class="text-rose-500">*</span></label>
+                            <div class="flex gap-2">
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="direction" value="credit" class="peer hidden" checked/>
+                                    <div class="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50/40 peer-checked:text-emerald-600 peer-checked:font-semibold transition-colors">
+                                        <i class="fa-solid fa-plus mr-1 text-xs"></i> 赠与
+                                    </div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="direction" value="debit" class="peer hidden"/>
+                                    <div class="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm text-center peer-checked:border-rose-500 peer-checked:bg-rose-50/40 peer-checked:text-rose-600 peer-checked:font-semibold transition-colors">
+                                        <i class="fa-solid fa-minus mr-1 text-xs"></i> 扣减
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="row-amount" class="space-y-1.5">
+                            <label class="text-[11px] tracking-wider font-semibold text-slate-500">金额 <span class="text-rose-500">*</span></label>
+                            <input id="f-amount" type="number" min="0.01" step="0.01" placeholder="0.00" class="w-full font-mono text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                        </div>
+                        <div id="row-currency" class="space-y-1.5">
+                            <label class="text-[11px] tracking-wider font-semibold text-slate-500">币种 <span class="text-rose-500">*</span></label>
+                            <select id="f-currency" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                                <option value="USD">USD</option>
+                                <option value="AED">AED</option>
+                                <option value="USDT">USDT</option>
+                                <option value="CNY">CNY</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 账务日期 -->
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">账务日期 <span class="text-rose-500">*</span></label>
+                        <input id="f-valuedate" type="date" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                        <p class="text-[11px] text-slate-400">用于财务记账归属期；默认当前自然日。</p>
+                    </div>
+
+                    <!-- 对客原因 -->
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">对客原因<span class="text-rose-500">*</span></label>
+                        <select id="f-customer-remark" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                            <option value="">请选择...</option>
+                            <option value="cash_bonus">红包</option>
+                            <option value="promo">活动</option>
+                            <option value="compensation">补偿</option>
+                            <option value="deposit_correction">异常入金</option>
+                            <option value="ib_commission">代理商佣金</option>
+                            <option value="master_commission">高手佣金</option>
+                            <option value="negative_balance">穿仓补偿</option>
+                            <option value="abnormal_profit">异常盈利</option>
+                        </select>
+                        <p class="text-[11px] text-slate-400">将展示在客户前端的资金流水中。</p>
+                    </div>
+
+                    <!-- 对内原因 -->
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">对内原因<span class="text-rose-500">*</span></label>
+                        <input id="f-internal-remark" type="text" placeholder="必填：客诉 Ticket ID 或核准人，例如 TICKET-3308 / 主管 wang 批" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"/>
+                        <p class="text-[11px] text-slate-400">仅后台可见，用于审核佐证。</p>
+                    </div>
+
+                    <!-- 校验提示 -->
+                    <div id="form-error" class="hidden bg-rose-50 border border-rose-200 text-rose-600 text-sm px-4 py-3 rounded-lg flex items-start gap-2">
+                        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                        <span id="form-error-msg"></span>
+                    </div>
+                </form>
+
+                <div class="border-t border-slate-200 px-6 py-4 flex justify-end gap-3 bg-slate-50/60">
+                    <button onclick="closeCreateModal()" class="px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+                    <button onclick="submitCreate()" class="bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm shadow-blue-500/30 transition-colors">
+                        <i class="fa-solid fa-paper-plane mr-1.5 text-xs"></i> 提交审核
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通用确认弹框 -->
+        <div id="modal-confirm" class="modal-overlay hidden-state fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50">
+            <div class="modal-panel bg-white rounded-xl shadow-2xl w-[520px] overflow-hidden">
+                <div class="px-6 pt-6 pb-2">
+                    <div class="flex items-start gap-4">
+                        <div id="confirm-icon" class="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 id="confirm-title" class="text-base font-bold text-slate-800">确认执行该笔资金调整？</h4>
+                            <p id="confirm-desc" class="text-sm text-slate-500 mt-1.5 leading-relaxed">执行后将立即按双工单路由进行账务划转。</p>
+                        </div>
+                    </div>
+                    <!-- 审批快照卡片（通过弹窗展示） -->
+                    <div id="confirm-snapshot" class="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+                        <div class="px-4 py-2.5 bg-slate-100/70 border-b border-slate-200">
+                            <span class="text-[11px] tracking-wider font-semibold text-slate-500">审批快照</span>
+                        </div>
+                        <div id="confirm-snapshot-body" class="px-4 py-3 text-[12px] text-slate-700 space-y-1.5"></div>
+                    </div>
+                    <div id="confirm-reason-wrap" class="mt-4 hidden">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">驳回原因 <span class="text-rose-500">*</span></label>
+                        <textarea id="confirm-reason" rows="2" placeholder="例如：已通过 IB 系统冲销 / 资料不符合补偿规则" class="mt-1.5 w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="border-t border-slate-200 px-6 py-3 flex justify-end gap-3 bg-slate-50/60 mt-4">
+                    <button onclick="closeConfirm()" class="px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+                    <button id="confirm-ok" class="text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧详情抽屉 -->
+        <div id="drawer-detail" class="drawer-overlay hidden-state fixed inset-0 z-50 flex justify-end bg-slate-900/40" onclick="closeDetailDrawer()">
+            <div class="drawer-panel bg-white w-[540px] h-full shadow-2xl overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-slate-200 bg-white flex items-start justify-between shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2.5">
+                            <span id="drawer-txid" class="font-mono text-[15px] font-bold text-slate-800">-</span>
+                            <span id="drawer-status"></span>
+                            <span id="drawer-funding-status"></span>
+                        </div>
+                        <p id="drawer-submeta" class="text-xs text-slate-500 mt-1.5">-</p>
+                    </div>
+                    <button onclick="closeDetailDrawer()" class="text-slate-400 hover:text-slate-700 transition-colors -mr-1 -mt-1 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <!-- Body -->
+                <div id="drawer-body" class="flex-1 overflow-y-auto px-6 py-5 bg-slate-50/40 space-y-5"></div>
+                <!-- Footer (仅 pending 时显示) -->
+                <div id="drawer-footer" class="hidden px-6 py-3 border-t border-slate-200 bg-white shrink-0 flex justify-end gap-2.5">
+                    <button id="drawer-reject" class="px-5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                        <i class="fa-solid fa-xmark mr-1 text-xs"></i> 驳回
+                    </button>
+                    <button id="drawer-approve" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors">
+                        <i class="fa-solid fa-check mr-1 text-xs"></i> 通过
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-lg shadow-2xl text-sm z-[100] pointer-events-none flex items-center gap-2"></div>
+
+    </main>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        injectSidebar({ activePath: "资金管理 / 资金管理 / 资金管理" });
+
+        // ============================================================
+        // Mock 数据：模拟 Acct. No 归属（用于联动校验）
+        // ============================================================
+        const MT5_OWNERSHIP = {
+            "UID_558012": ["8802917", "8902001", "8903019"],
+            "UID_445118": ["8801122"],
+            "UID_330221": ["8903301"],
+            "UID_607823": ["8907632"]
+        };
+        // 单账号档案：equity 净值 / marginRatio 保证金比例（null = 无持仓） / accountType self=自主交易 copy=跟单账号 / freeMargin 可用保证金
+        const MT5_INFO = {
+            "8802917": { baseCurrency: "USD", equity: 12345.00, marginRatio: 187.5,  accountType: "self", freeMargin: 5300.00 },
+            "8902001": { baseCurrency: "USD", equity:  8200.00, marginRatio: null,   accountType: "copy", freeMargin: 1800.00 },
+            "8903019": { baseCurrency: "USD", equity:   500.00, marginRatio:  42.1,  accountType: "self", freeMargin:  120.00 },
+            "8801122": { baseCurrency: "USD", equity:  6420.00, marginRatio: null,   accountType: "self", freeMargin: 3100.00 },
+            "8903301": { baseCurrency: "AED", equity: 25400.00, marginRatio: 320.0,  accountType: "self", freeMargin: 6700.00 },
+            "8907632": { baseCurrency: "USDT", equity: 45200.00, marginRatio: 421.7, accountType: "self", freeMargin: 12400.00 }
+        };
+        const MT5_BASE_CURRENCY = Object.fromEntries(Object.entries(MT5_INFO).map(([k,v]) => [k, v.baseCurrency]));
+        const MT5_FREE_MARGIN   = Object.fromEntries(Object.entries(MT5_INFO).map(([k,v]) => [k, v.freeMargin]));
+        const ACCT_TYPE_LABEL   = { self: "自主交易", copy: "跟单账号" };
+        const FUNDING_BALANCE = {
+            "UID_558012": 28420.00, "UID_445118": 1200.00,
+            "UID_330221": 12840.00, "UID_607823": 8920.00
+        };
+
+        // 客户档案：用于详情抽屉展示
+        const USER_INFO = {
+            "UID_558012": { nickName: "张伟", clientName: "Zhang Wei" },
+            "UID_445118": { nickName: "李娜", clientName: "Li Na" },
+            "UID_330221": { nickName: "王芳", clientName: "Wang Fang" },
+            "UID_607823": { nickName: "Ahmed Ali", clientName: "Ahmed Ali" }
+        };
+        // 客户 Funding 三池余额（用于详情抽屉展示，可用余额）
+        const FUNDING_POOLS = {
+            "UID_558012": { AED: 0.00,      USD: 28420.00, USDT: 5320.10 },
+            "UID_445118": { AED: 0.00,      USD: 1200.00,  USDT: 0.00 },
+            "UID_330221": { AED: 12840.00,  USD: 0.00,     USDT: 0.00 },
+            "UID_607823": { AED: 0.00,      USD: 0.00,     USDT: 8920.00 }
+        };
+
+        // ============================================================
+        // Mock 数据：调整单（待审核置顶，其余按时间倒序）
+        // ============================================================
+        const REMARK_LABEL = {
+            cash_bonus: "红包",
+            promo: "活动",
+            compensation: "补偿",
+            deposit_correction: "异常入金",
+            ib_commission: "代理商佣金",
+            master_commission: "高手佣金",
+            negative_balance: "穿仓补偿",
+            abnormal_profit: "异常盈利"
+        };
+        const mockAdjustments = [
+            { txid: "ADJ_20260629_006", userId: "UID_558012", targetType: "funding_mt5", mt5: null,
+              accounts: [
+                { mt5: "8802917", amount: 500.00 },
+                { mt5: "8902001", amount: 800.00 },
+                { mt5: "8903019", amount: 300.00 }
+              ],
+              direction: "debit", amount: 1600.00, currency: "USD", valueDate: "2026-06-29",
+              internalRemark: "多账号统一扣款 · TICKET-3401 内部盘错记账回撤，涉及主播张伟名下 3 个 Acct.No",
+              customerRemarkKey: "deposit_correction",
+              maker: "eve.liu", checker: "bob.wang", status: "completed", fundingStatus: "partial", createdAt: "2026-06-29 10:18:44", rejectReason: null,
+              accountResults: [
+                { mt5: "8802917", status: "success", processedAmount: 500.00, message: "已成功扣减" },
+                { mt5: "8902001", status: "failed", processedAmount: 0.00, message: "可用保证金不足，未执行扣减" },
+                { mt5: "8903019", status: "success", processedAmount: 300.00, message: "已成功扣减" }
+              ] },
+            { txid: "ADJ_20260629_005", userId: "UID_445118", targetType: "funding", mt5: null,
+              direction: "debit", amount: 88.00, currency: "USD", valueDate: "2026-06-29",
+              internalRemark: "TICKET-3308 异常入金回退（财务 wang 核）", customerRemarkKey: "deposit_correction",
+              maker: "charlie.zhao", checker: null, status: "pending", createdAt: "2026-06-29 09:42:11", rejectReason: null },
+            { txid: "ADJ_20260629_004", userId: "UID_558012", targetType: "funding", mt5: null,
+              direction: "credit", amount: 500.00, currency: "USD", valueDate: "2026-06-29",
+              internalRemark: "客诉补偿单 #C-261，主管 wang 批", customerRemarkKey: "compensation",
+              maker: "alice.li", checker: null, status: "pending", createdAt: "2026-06-29 08:15:30", rejectReason: null },
+            { txid: "ADJ_20260628_002", userId: "UID_445118", targetType: "funding_mt5", mt5: "8801122",
+              direction: "credit", amount: 1000.00, currency: "USD", valueDate: "2026-06-28",
+              internalRemark: "活动 W26 主播首充奖", customerRemarkKey: "promo",
+              maker: "alice.li", checker: null, status: "pending", createdAt: "2026-06-28 16:22:08", rejectReason: null },
+            { txid: "ADJ_20260628_001", userId: "UID_330221", targetType: "funding", mt5: null,
+              direction: "debit", amount: 250.00, currency: "AED", valueDate: "2026-06-28",
+              internalRemark: "高手返佣金额错误，请核", customerRemarkKey: "master_commission",
+              maker: "alice.li", checker: "bob.wang", status: "rejected", createdAt: "2026-06-28 11:05:42",
+              rejectReason: "已通过 IB 系统冲销，无需重复扣减" },
+            { txid: "ADJ_20260627_005", userId: "UID_607823", targetType: "funding_mt5", mt5: "8907632",
+              direction: "debit", amount: 500.00, currency: "USDT", valueDate: "2026-06-27",
+              internalRemark: "违规交易冲销 #R-44", customerRemarkKey: "deposit_correction",
+              maker: "bob.wang", checker: "alice.li", status: "completed", fundingStatus: "success", createdAt: "2026-06-27 19:33:15", rejectReason: null },
+            { txid: "ADJ_20260627_002", userId: "UID_558012", targetType: "funding", mt5: null,
+              direction: "credit", amount: 100.00, currency: "USD", valueDate: "2026-06-27",
+              internalRemark: "端午福利红包发放", customerRemarkKey: "cash_bonus",
+              maker: "alice.li", checker: "charlie.zhao", status: "completed", fundingStatus: "processing", createdAt: "2026-06-27 10:08:55", rejectReason: null },
+            { txid: "ADJ_20260626_003", userId: "UID_330221", targetType: "funding", mt5: null,
+              direction: "credit", amount: 2600.00, currency: "AED", valueDate: "2026-06-26",
+              internalRemark: "线下汇款补录，账务接口返回失败", customerRemarkKey: "deposit_correction",
+              maker: "charlie.zhao", checker: "bob.wang", status: "completed", fundingStatus: "failed", createdAt: "2026-06-26 14:26:19", rejectReason: null }
+        ];
+
+        // ============================================================
+        // 渲染列表
+        // ============================================================
+        function statusBadge(status) {
+            const map = {
+                pending:   { cls: "bg-amber-50 text-amber-600 border-amber-100",   icon: "fa-circle-notch fa-spin", label: "待审核" },
+                completed: { cls: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: "fa-check",            label: "已通过" },
+                rejected:  { cls: "bg-rose-50 text-rose-600 border-rose-100",       icon: "fa-xmark",                label: "已驳回" }
+            };
+            const s = map[status];
+            return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${s.cls}">
+                <i class="fa-solid ${s.icon} text-[9px]"></i>${s.label}
+            </span>`;
+        }
+
+        function fundingStatusBadge(status) {
+            const map = {
+                processing: { cls: "bg-amber-50 text-amber-600 border-amber-100", icon: "fa-circle-notch fa-spin", label: "处理中" },
+                success:    { cls: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: "fa-check", label: "成功" },
+                failed:     { cls: "bg-rose-50 text-rose-600 border-rose-100", icon: "fa-xmark", label: "失败" },
+                partial:    { cls: "bg-amber-50 text-amber-600 border-amber-100", icon: "fa-circle-half-stroke", label: "部分成功" },
+                unprocessed:{ cls: "bg-slate-50 text-slate-400 border-slate-200", icon: "fa-minus", label: "未处理" }
+            };
+            const s = map[status] || map.unprocessed;
+            return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${s.cls}">
+                <i class="fa-solid ${s.icon} text-[9px]"></i>${s.label}
+            </span>`;
+        }
+
+        function fundingStatusSummary(r) {
+            if (r.fundingStatus !== "partial" || !Array.isArray(r.accountResults)) return "";
+            const successCount = r.accountResults.filter(x => x.status === "success").length;
+            return `<div class="text-[10px] text-amber-600 mt-1">${successCount}/${r.accountResults.length} 个账户成功</div>`;
+        }
+
+        function fmtAmount(direction, amount, currency) {
+            const sign = direction === "credit" ? "+" : "-";
+            const cls = direction === "credit" ? "text-emerald-600" : "text-rose-600";
+            const num = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return `<span class="font-mono font-bold ${cls}">${sign}${num}</span>
+                    <span class="text-[11px] text-slate-400 ml-0.5">${currency}</span>`;
+        }
+
+        function targetCell(r) {
+            if (r.targetType === "funding") {
+                return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+                    <i class="fa-solid fa-wallet text-slate-400 text-xs"></i> Funding
+                </span>`;
+            }
+            if (Array.isArray(r.accounts) && r.accounts.length > 1) {
+                const first = r.accounts[0].mt5;
+                return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+                    <i class="fa-solid fa-link text-indigo-500 text-xs"></i>
+                    <span class="font-mono text-[12px]">#${first}</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">+${r.accounts.length - 1}</span>
+                </span>`;
+            }
+            const mt5 = r.mt5 || (r.accounts && r.accounts[0] && r.accounts[0].mt5) || "-";
+            return `<span class="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+                <i class="fa-solid fa-link text-indigo-500 text-xs"></i> Acct. <span class="font-mono text-[12px]">#${mt5}</span>
+            </span>`;
+        }
+
+        function directionBadge(d) {
+            if (d === "credit") return `<span class="inline-flex items-center gap-1 text-emerald-600 font-semibold text-[12px]"><i class="fa-solid fa-arrow-down text-[10px]"></i> 赠与 Credit</span>`;
+            return `<span class="inline-flex items-center gap-1 text-rose-600 font-semibold text-[12px]"><i class="fa-solid fa-arrow-up text-[10px]"></i> 扣减 Debit</span>`;
+        }
+
+        function actionsCell(r) {
+            const detailBtn = `<button onclick="openDetailDrawer('${r.txid}')" class="text-xs font-semibold text-primary hover:bg-blue-50 px-2.5 py-1 rounded transition-colors">详情</button>`;
+            if (r.status === "pending") {
+                return `
+                    <div class="flex justify-end gap-1">
+                        ${detailBtn}
+                        <button onclick="askApprove('${r.txid}')" class="text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2.5 py-1 rounded transition-colors">通过</button>
+                        <button onclick="askReject('${r.txid}')" class="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded transition-colors">驳回</button>
+                    </div>`;
+            }
+            return `<div class="flex justify-end">${detailBtn}</div>`;
+        }
+
+        function renderTable() {
+            const sorted = [...mockAdjustments].sort((a, b) => {
+                if (a.status === "pending" && b.status !== "pending") return -1;
+                if (a.status !== "pending" && b.status === "pending") return 1;
+                return b.createdAt.localeCompare(a.createdAt);
+            }).filter(r => {
+                const txid = document.getElementById("filter-txid").value.trim().toLowerCase();
+                const user = document.getElementById("filter-user").value.trim().toLowerCase();
+                const direction = document.getElementById("filter-direction").value;
+                const reviewStatus = document.getElementById("filter-status").value;
+                const fundingStatus = document.getElementById("filter-funding-status").value;
+                const valueDate = document.getElementById("filter-value-date").value.trim();
+                return (!txid || r.txid.toLowerCase().includes(txid))
+                    && (!user || r.userId.toLowerCase().includes(user))
+                    && (!direction || r.direction === direction)
+                    && (!reviewStatus || r.status === reviewStatus)
+                    && (!fundingStatus || (r.fundingStatus || "unprocessed") === fundingStatus)
+                    && (!valueDate || r.valueDate.includes(valueDate));
+            });
+            const body = document.getElementById("table-body");
+            body.innerHTML = sorted.map(r => {
+                const customerLabel = REMARK_LABEL[r.customerRemarkKey] || "—";
+                const rejectSuffix = r.rejectReason ? `<div class="text-[11px] text-rose-500 mt-0.5 truncate" title="${r.rejectReason}">驳回：${r.rejectReason}</div>` : "";
+                return `<tr class="${r.status === 'pending' ? 'pending-row' : ''} hover:bg-slate-50/70 transition-colors">
+                    <td class="px-5 py-4 font-mono text-[12px] whitespace-nowrap"><button onclick="openDetailDrawer('${r.txid}')" class="text-primary hover:underline">${r.txid}</button></td>
+                    <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap">${r.userId}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">${targetCell(r)}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">${directionBadge(r.direction)}</td>
+                    <td class="px-5 py-4 text-right whitespace-nowrap">${fmtAmount(r.direction, r.amount, r.currency)}</td>
+                    <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap">${r.valueDate}</td>
+                    <td class="px-5 py-4 text-slate-600 text-[12px] truncate-cell" title="${r.internalRemark}">${r.internalRemark}${rejectSuffix}</td>
+                    <td class="px-5 py-4 text-slate-600 text-[12px] whitespace-nowrap">${customerLabel}</td>
+                    <td class="px-5 py-4 text-slate-700 text-[12px] whitespace-nowrap">${r.maker}</td>
+                    <td class="px-5 py-4 text-slate-700 text-[12px] whitespace-nowrap">${r.checker || '<span class="text-slate-300">—</span>'}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">${statusBadge(r.status)}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">${fundingStatusBadge(r.fundingStatus)}${fundingStatusSummary(r)}</td>
+                    <td class="px-5 py-4 pr-6 whitespace-nowrap">${actionsCell(r)}</td>
+                </tr>`;
+            }).join("");
+            document.getElementById("total-count").textContent = sorted.length;
+        }
+
+        function applyFilters() {
+            renderTable();
+        }
+
+        function resetFilters() {
+            ["filter-txid", "filter-user", "filter-value-date"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            ["filter-direction", "filter-status", "filter-funding-status"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            renderTable();
+        }
+
+        // ============================================================
+        // 新增弹窗
+        // ============================================================
+        function openCreateModal() {
+            document.getElementById("create-form").reset();
+            document.querySelector('input[name="target_type"][value="funding"]').checked = true;
+            document.querySelector('input[name="direction"][value="credit"]').checked = true;
+            document.getElementById("f-valuedate").value = new Date().toISOString().slice(0, 10);
+            onTargetTypeChange();
+            document.getElementById("form-error").classList.add("hidden");
+            document.getElementById("modal-create").classList.remove("hidden-state");
+        }
+        function closeCreateModal() {
+            document.getElementById("modal-create").classList.add("hidden-state");
+        }
+        function onTargetTypeChange() {
+            const isMt5 = document.querySelector('input[name="target_type"]:checked').value === "funding_mt5";
+            document.getElementById("row-mt5").classList.toggle("hidden", !isMt5);
+            document.getElementById("row-amount").classList.toggle("hidden", isMt5);
+            document.getElementById("row-currency").classList.toggle("hidden", isMt5);
+            // UID：联动 Acct. 时仅支持单填（因为 Acct. 需精确归属校验）
+            const userEl  = document.getElementById("f-user");
+            const userLbl = document.getElementById("lbl-user");
+            const userHnt = document.getElementById("hint-user");
+            if (isMt5) {
+                userLbl.innerHTML = '客户ID（单填）<span class="text-rose-500">*</span>';
+                userEl.placeholder = "UID_558012";
+                userEl.rows = 1;
+                userHnt.classList.remove("hidden");
+                refreshMt5Panel();
+            } else {
+                userLbl.innerHTML = '客户ID<span class="text-rose-500">*</span>';
+                userEl.placeholder = "UID_558012  或多个用英文逗号分隔：UID_558012, UID_445118";
+                userEl.rows = 2;
+                userHnt.classList.add("hidden");
+            }
+        }
+
+        // ============================================================
+        // Acct. 联动面板：按 UID 加载账号 + 逐账号扣款
+        // ============================================================
+        const ACCT_TYPE_META = {
+            self: { label: "自主交易", cls: "bg-sky-50 text-sky-700 border-sky-100" },
+            copy: { label: "跟单账号", cls: "bg-violet-50 text-violet-700 border-violet-100" }
+        };
+        function fmtNum(n, digits = 2) {
+            return (n ?? 0).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+        }
+        function refreshMt5Panel() {
+            const isMt5 = document.querySelector('input[name="target_type"]:checked').value === "funding_mt5";
+            if (!isMt5) return;
+            const uid = document.getElementById("f-user").value.trim();
+            const empty  = document.getElementById("mt5-empty");
+            const tblBox = document.getElementById("mt5-table");
+            const totBox = document.getElementById("mt5-total-row");
+            const tbody  = document.getElementById("mt5-tbody");
+            const accts  = MT5_OWNERSHIP[uid];
+            if (!uid) {
+                empty.textContent = "请先在上方填写客户ID（UID），系统会自动加载其名下所有 Acct. No 与净值信息。";
+                empty.classList.remove("hidden");
+                tblBox.classList.add("hidden");
+                totBox.classList.add("hidden");
+                return;
+            }
+            if (!accts || accts.length === 0) {
+                empty.textContent = `未找到 ${uid} 名下的任何 Acct. No，请核对客户ID是否正确。`;
+                empty.classList.remove("hidden");
+                tblBox.classList.add("hidden");
+                totBox.classList.add("hidden");
+                return;
+            }
+            empty.classList.add("hidden");
+            tblBox.classList.remove("hidden");
+            totBox.classList.remove("hidden");
+            tbody.innerHTML = accts.map(m => {
+                const info   = MT5_INFO[m] || {};
+                const base   = info.baseCurrency || "USD";
+                const equity = info.equity ?? 0;
+                const mr     = info.marginRatio;
+                const type   = info.accountType || "self";
+                const meta   = ACCT_TYPE_META[type];
+                const mrCell = (mr == null)
+                    ? '<span class="text-slate-400">-</span>'
+                    : `<span class="font-mono ${mr < 100 ? "text-rose-600 font-semibold" : "text-slate-700"}">${fmtNum(mr, 1)}%</span>`;
+                return `
+                    <tr data-mt5="${m}" data-base="${base}">
+                      <td class="px-3 py-2.5"><input type="checkbox" class="mt5-check accent-primary" onchange="onMt5Toggle('${m}')" /></td>
+                      <td class="px-3 py-2.5 font-mono text-slate-800">Acct.No ${m}</td>
+                      <td class="px-3 py-2.5 text-right font-mono">${fmtNum(equity)}<span class="text-[11px] text-slate-500 ml-1">${base}</span></td>
+                      <td class="px-3 py-2.5 text-right">${mrCell}</td>
+                      <td class="px-3 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}">${meta.label}</span></td>
+                      <td class="px-3 py-2.5 text-right">
+                        <input type="number" step="0.01" min="0" placeholder="0.00"
+                          class="mt5-amount w-32 text-right font-mono border border-slate-200 rounded-md px-2 py-1 text-[13px] focus:outline-none focus:border-primary bg-slate-50 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
+                          disabled oninput="recomputeMt5Total()" />
+                      </td>
+                    </tr>`;
+            }).join("");
+            recomputeMt5Total();
+        }
+        function onMt5Toggle(m) {
+            const row = document.querySelector(`tr[data-mt5="${m}"]`);
+            const chk = row.querySelector(".mt5-check");
+            const amt = row.querySelector(".mt5-amount");
+            amt.disabled = !chk.checked;
+            if (!chk.checked) amt.value = "";
+            recomputeMt5Total();
+        }
+        function recomputeMt5Total() {
+            const byCur = {};
+            document.querySelectorAll("#mt5-tbody tr").forEach(tr => {
+                const chk = tr.querySelector(".mt5-check");
+                const amt = parseFloat(tr.querySelector(".mt5-amount").value);
+                const base = tr.dataset.base || "USD";
+                if (chk.checked && amt > 0) {
+                    byCur[base] = (byCur[base] || 0) + amt;
+                }
+            });
+            const parts = Object.entries(byCur);
+            const html = parts.length === 0
+                ? `<span class="text-slate-400">-</span>`
+                : parts.map(([cur, tot]) => `<span class="font-mono">${fmtNum(tot)}</span> <span class="text-slate-500 text-[11px] mr-2">${cur}</span>`).join("");
+            document.getElementById("mt5-total").innerHTML = html;
+        }
+
+        // ============================================================
+        // 提交校验：4 条风控
+        // ============================================================
+        function showFormError(msg) {
+            document.getElementById("form-error-msg").textContent = msg;
+            document.getElementById("form-error").classList.remove("hidden");
+        }
+
+        function submitCreate() {
+            const targetType = document.querySelector('input[name="target_type"]:checked').value;
+            const direction  = document.querySelector('input[name="direction"]:checked').value;
+            const userIdRaw  = document.getElementById("f-user").value.trim();
+            const valueDate  = document.getElementById("f-valuedate").value;
+            const customerR  = document.getElementById("f-customer-remark").value;
+            const internalR  = document.getElementById("f-internal-remark").value.trim();
+            document.getElementById("form-error").classList.add("hidden");
+
+            // 必填校验（通用）
+            if (!userIdRaw)  return showFormError("请填写客户ID。");
+            if (!valueDate)  return showFormError("请选择账务日期。");
+            if (!customerR)  return showFormError("请选择对客原因。");
+            if (!internalR)  return showFormError("对内原因必填（如客诉 Ticket ID 或核准人）。");
+
+            const userIds = userIdRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            const firstUid = userIds[0];
+
+            if (targetType === "funding_mt5") {
+                // 联动 Acct. 必须单 UID（强约束）
+                if (userIds.length !== 1) {
+                    return showFormError("联动 Acct. 时仅支持单 UID（一个客户对应其名下多个 Acct. No）。");
+                }
+
+                // 收集已勾选账号及其金额（币种取自账号自身 baseCurrency）
+                const rows = Array.from(document.querySelectorAll("#mt5-tbody tr[data-mt5]"));
+                const entries = [];
+                for (const tr of rows) {
+                    const chk = tr.querySelector(".mt5-check");
+                    if (!chk || !chk.checked) continue;
+                    const acct = tr.dataset.mt5;
+                    const amtInp = tr.querySelector(".mt5-amount");
+                    const amt = parseFloat(amtInp && amtInp.value);
+                    if (!(amt > 0)) {
+                        return showFormError(`Acct. No ${acct} 的扣款金额必须为正数（> 0）。`);
+                    }
+                    entries.push({ acct, amt });
+                }
+                if (entries.length === 0) {
+                    return showFormError("请至少勾选 1 个 Acct. No 并填写对应扣款金额。");
+                }
+
+                const owner = MT5_OWNERSHIP[firstUid];
+                for (const { acct, amt } of entries) {
+                    // 校验 1：关联性（由面板加载已隐含满足，此处做二次防御）
+                    if (!owner || !owner.includes(acct)) {
+                        return showFormError(`校验失败：Acct. No ${acct} 不属于当前 UID（${firstUid}）。`);
+                    }
+                    // 校验 2：扣减时每个账号 Free Margin 充足（币种取自账号自身）
+                    if (direction === "debit") {
+                        const info = MT5_INFO[acct] || {};
+                        const fm = info.freeMargin || 0;
+                        const cur = info.baseCurrency || "USD";
+                        if (fm - amt < 0) {
+                            return showFormError(`校验失败：Acct. No ${acct} 可用保证金 ${fm.toFixed(2)} ${cur} 不足以扣减 ${amt.toFixed(2)}。`);
+                        }
+                    }
+                }
+
+                // 通过 → 每个 Acct. 生成 1 条 Pending 单（币种按账号自身 baseCurrency）
+                const now = new Date();
+                const ymd = now.toISOString().slice(0, 10).replace(/-/g, "");
+                entries.forEach(({ acct, amt }, i) => {
+                    const info = MT5_INFO[acct] || {};
+                    const cur = info.baseCurrency || "USD";
+                    const seq = String(mockAdjustments.length + 1 + i).padStart(3, "0");
+                    mockAdjustments.unshift({
+                        txid: `ADJ_${ymd}_${seq}`, userId: firstUid, targetType, mt5: acct,
+                        direction, amount: amt, currency: cur, valueDate,
+                        internalRemark: internalR, customerRemarkKey: customerR,
+                        maker: "admin.you", checker: null, status: "pending",
+                        createdAt: now.toISOString().replace("T", " ").slice(0, 19), rejectReason: null
+                    });
+                });
+                renderTable();
+                closeCreateModal();
+                showToast(`已生成 ${entries.length} 条调整单（用户 ${firstUid}，目标：${entries.map(e => "Acct. No " + e.acct).join(", ")}），状态：待审核`, "success");
+                return;
+            }
+
+            // 非联动分支：amount + currency 必填
+            const amount = parseFloat(document.getElementById("f-amount").value);
+            const currency = document.getElementById("f-currency").value;
+            if (!(amount > 0)) return showFormError("金额必须为正数（> 0）。");
+
+            // 仅 Funding 分支（保留批量 UID）
+            if (direction === "debit") {
+                // 校验 3：扣减 Funding 防负数（逐个 User 校验）
+                for (const uid of userIds) {
+                    const bal = FUNDING_BALANCE[uid] || 0;
+                    if (bal - amount < 0) {
+                        return showFormError(`校验失败：客户 ${uid} Funding 余额 ${bal.toFixed(2)} ${currency} 不足以扣减 ${amount.toFixed(2)}。`);
+                    }
+                }
+            }
+
+            // 校验 4：通过 → 生成 Pending 单（每个 User 1 条）
+            const now = new Date();
+            const ymd = now.toISOString().slice(0, 10).replace(/-/g, "");
+            userIds.forEach((uid, i) => {
+                const seq = String(mockAdjustments.length + 1 + i).padStart(3, "0");
+                mockAdjustments.unshift({
+                    txid: `ADJ_${ymd}_${seq}`, userId: uid, targetType, mt5: null,
+                    direction, amount, currency, valueDate,
+                    internalRemark: internalR, customerRemarkKey: customerR,
+                    maker: "admin.you", checker: null, status: "pending",
+                    createdAt: now.toISOString().replace("T", " ").slice(0, 19), rejectReason: null
+                });
+            });
+            renderTable();
+            closeCreateModal();
+            showToast(`已生成 ${userIds.length} 条调整单（目标：Funding），状态：待审核`, "success");
+        }
+
+        // ============================================================
+        // 通过 / 驳回（二次确认）
+        // ============================================================
+        let pendingAction = null;
+
+        // ============================================================
+        // 右侧详情抽屉：展示完整审核上下文
+        // ============================================================
+        function openDetailDrawer(txid) {
+            const r = mockAdjustments.find(x => x.txid === txid);
+            if (!r) return;
+            const user = USER_INFO[r.userId] || { nickName: "—", clientName: "—" };
+            const pools = FUNDING_POOLS[r.userId] || { AED: 0, USD: 0, USDT: 0 };
+            const acct = r.mt5 ? MT5_INFO[r.mt5] : null;
+            const isDebit = r.direction === "debit";
+            const sign = isDebit ? "-" : "+";
+            const amtCls = isDebit ? "text-rose-600" : "text-emerald-600";
+
+            // Header
+            document.getElementById("drawer-txid").textContent = r.txid;
+            document.getElementById("drawer-status").innerHTML = statusBadge(r.status);
+            document.getElementById("drawer-funding-status").innerHTML = fundingStatusBadge(r.fundingStatus);
+            const statusVerb = r.status === "pending" ? "提交，待审核" : (r.status === "completed" ? "已通过" : "已驳回");
+            document.getElementById("drawer-submeta").innerHTML =
+                `<span class="font-mono">${r.maker}</span> 于 <span class="font-mono">${r.createdAt}</span> ${statusVerb}`;
+
+            // Body
+            const sections = [];
+
+            // 1. 客户
+            const poolChip = (cur, val) => {
+                const active = val > 0;
+                return `<div class="flex-1 min-w-[100px] rounded-lg border ${active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/60'} px-3 py-2">
+                    <div class="text-[10px] tracking-wider font-semibold text-slate-400">Funding ${cur}</div>
+                    <div class="mt-0.5 font-mono ${active ? 'text-slate-800 font-semibold' : 'text-slate-400'} text-sm">${fmtNum(val)}</div>
+                </div>`;
+            };
+            sections.push(`
+                <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-regular fa-user text-slate-400 text-xs"></i>
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">客户</span>
+                    </div>
+                    <div class="px-4 py-3.5 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-user text-xs"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-mono text-sm font-semibold text-slate-800">${r.userId}</div>
+                                <div class="text-[12px] text-slate-500 mt-0.5">${user.nickName} · <span class="font-mono">${user.clientName}</span></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            ${poolChip("AED", pools.AED)}
+                            ${poolChip("USD", pools.USD)}
+                            ${poolChip("USDT", pools.USDT)}
+                        </div>
+                    </div>
+                </section>
+            `);
+
+            // 2. 调整明细（融合目标账号）
+            const dirBadge = isDebit
+                ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-100"><i class="fa-solid fa-arrow-up text-[9px]"></i> 扣减 Debit</span>'
+                : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100"><i class="fa-solid fa-arrow-down text-[9px]"></i> 赠与 Credit</span>';
+
+            // 归一化 accounts 数组：多账号取 r.accounts，单账号（含 funding_mt5 & funding）走 fallback
+            const isMt5 = r.targetType === "funding_mt5";
+            const rows = Array.isArray(r.accounts) && r.accounts.length
+                ? r.accounts
+                : (isMt5 ? [{ mt5: r.mt5, amount: r.amount }] : []);
+            const total = rows.length ? rows.reduce((s, x) => s + Number(x.amount || 0), 0) : Number(r.amount || 0);
+            const totalDisplay = `${sign}${fmtNum(total)} <span class="text-[11px] text-slate-400 font-normal">${r.currency}</span>`;
+
+            let detailBody = "";
+            if (rows.length) {
+                // funding_mt5 单账号或多账号：账户卡片列表
+                const cards = rows.map(a => {
+                    const info = MT5_INFO[a.mt5] || { accountType: "self", baseCurrency: r.currency };
+                    const meta = ACCT_TYPE_META[info.accountType] || ACCT_TYPE_META.self;
+                    return `
+                    <div class="rounded-lg border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-link text-indigo-500 text-[11px]"></i>
+                            <span class="font-mono font-bold text-slate-800 text-[13px]">Acct.No ${a.mt5}</span>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide border ${meta.cls}">${meta.label}</span>
+                        </div>
+                        <span class="font-mono font-bold text-[15px] ${amtCls}">${sign}${fmtNum(a.amount)} <span class="text-[10px] text-slate-400 font-normal">${info.baseCurrency}</span></span>
+                    </div>`;
+                }).join("");
+
+                const totalRow = rows.length > 1 ? `
+                    <div class="mt-3 pt-3 border-t border-dashed border-slate-200 flex items-center justify-between">
+                        <span class="text-[12px] text-slate-500">合计 <span class="text-slate-400">（${rows.length} 个账号）</span></span>
+                        <span class="font-mono font-bold text-[16px] ${amtCls}">${totalDisplay}</span>
+                    </div>` : "";
+
+                detailBody = `
+                    <div class="space-y-2.5">${cards}</div>
+                    ${totalRow}
+                    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[12px]">
+                        <span class="text-slate-500">账务日期</span>
+                        <span class="font-mono text-slate-800">${r.valueDate}</span>
+                    </div>
+                `;
+            } else {
+                // funding 目标（无 Acct.No）
+                detailBody = `
+                    <div class="space-y-2.5 text-[13px]">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">目标</span>
+                            <span>${targetCell(r)}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">金额</span>
+                            <span class="font-mono font-bold text-base ${amtCls}">${sign}${fmtNum(r.amount)} <span class="text-[11px] text-slate-400 font-normal">${r.currency}</span></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">账务日期</span>
+                            <span class="font-mono text-slate-800">${r.valueDate}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            sections.push(`
+                <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-money-bill-transfer text-slate-400 text-xs"></i>
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">调整明细</span>
+                        <span class="ml-auto flex items-center gap-2">
+                            ${dirBadge}
+                            <span class="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${r.currency}</span>
+                        </span>
+                    </div>
+                    <div class="px-4 py-3.5">${detailBody}</div>
+                </section>
+            `);
+
+            // 3. 资金处理结果（审核通过后独立于审核状态展示）
+            const processingRows = Array.isArray(r.accountResults) && r.accountResults.length
+                ? r.accountResults.map(result => {
+                    const processed = Number(result.processedAmount || 0);
+                    const amountText = `${fmtNum(processed)} <span class="text-[10px] text-slate-400 font-normal">${r.currency}</span>`;
+                    const acctLabel = `Acct.No ${result.mt5}`;
+                    return `<div class="rounded-lg border ${result.status === 'success' ? 'border-emerald-100 bg-emerald-50/30' : 'border-rose-100 bg-rose-50/30'} px-3.5 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="font-mono text-[12px] font-semibold text-slate-800">${acctLabel}</span>
+                            ${fundingStatusBadge(result.status)}
+                        </div>
+                        <div class="flex items-center justify-between mt-2 text-[11px]">
+                            <span class="text-slate-500">实际处理金额</span>
+                            <span class="font-mono font-semibold ${result.status === 'success' ? 'text-emerald-600' : 'text-rose-600'}">${amountText}</span>
+                        </div>
+                        <div class="text-[11px] ${result.status === 'success' ? 'text-emerald-600' : 'text-rose-600'} mt-1">${result.message || '—'}</div>
+                    </div>`;
+                }).join("")
+                : `<div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/60 px-3.5 py-3">
+                    <div>
+                        <div class="text-[12px] font-semibold text-slate-700">${r.fundingStatus === 'processing' ? '系统正在执行账务划转' : (r.fundingStatus === 'success' ? '账务划转已全部完成' : (r.fundingStatus === 'failed' ? '账务划转未成功' : '审核通过后等待执行'))}</div>
+                        <div class="text-[11px] text-slate-400 mt-1">${r.fundingStatus === 'processing' ? '请稍后刷新查看最终结果' : '本笔工单无分账户处理明细'}</div>
+                    </div>
+                    ${fundingStatusBadge(r.fundingStatus)}
+                </div>`;
+            sections.push(`
+                <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate text-slate-400 text-xs"></i>
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">资金处理结果</span>
+                        <span class="text-[10px] text-slate-400 ml-auto">审核通过后独立更新</span>
+                    </div>
+                    <div class="px-4 py-3.5 space-y-2.5">${processingRows}</div>
+                </section>
+            `);
+
+            // 4. 原因
+            const remarkLabel = REMARK_LABEL[r.customerRemarkKey] || "—";
+            sections.push(`
+                <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-regular fa-comment-dots text-slate-400 text-xs"></i>
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">调整原因</span>
+                    </div>
+                    <div class="px-4 py-3.5 space-y-3 text-[13px]">
+                        <div>
+                            <div class="text-[11px] text-slate-500 mb-1">对客原因</div>
+                            <div class="text-slate-800">${remarkLabel}</div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-500 mb-1">对内原因</div>
+                            <div class="text-slate-800 leading-relaxed break-words">${r.internalRemark}</div>
+                        </div>
+                    </div>
+                </section>
+            `);
+
+            // 5. 时间线
+            const timelineItems = [
+                `<li class="flex gap-3">
+                    <span class="timeline-dot border-emerald-500 bg-emerald-500 mt-1 shrink-0"></span>
+                    <div class="flex-1">
+                        <div class="text-[13px] text-slate-800"><span class="font-semibold">提交</span> · <span class="font-mono">${r.maker}</span></div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5">${r.createdAt}</div>
+                    </div>
+                </li>`
+            ];
+            if (r.status === "completed") {
+                const processingTimeline = r.fundingStatus === "partial"
+                    ? `<span class="font-semibold text-amber-600">部分成功</span> · 已完成 ${r.accountResults.filter(x => x.status === "success").length}/${r.accountResults.length} 个账户`
+                    : r.fundingStatus === "processing"
+                        ? `<span class="font-semibold text-amber-600">处理中</span> · 系统执行中`
+                        : r.fundingStatus === "failed"
+                            ? `<span class="font-semibold text-rose-600">失败</span> · 未完成账务划转`
+                            : `<span class="font-semibold text-emerald-600">成功</span> · 全部账务划转完成`;
+                const processingNote = r.fundingStatus === "partial"
+                    ? "部分账户成功，详见资金处理结果"
+                    : r.fundingStatus === "processing"
+                        ? "等待账务引擎返回最终结果"
+                        : r.fundingStatus === "failed"
+                            ? "请检查失败原因后重新发起调整"
+                            : "全部目标账户已完成处理";
+                timelineItems.push(`<li class="flex gap-3">
+                    <span class="timeline-dot ${r.fundingStatus === 'success' ? 'border-emerald-500 bg-emerald-500' : r.fundingStatus === 'partial' ? 'border-amber-500 bg-amber-500' : r.fundingStatus === 'failed' ? 'border-rose-500 bg-rose-500' : 'border-amber-500 bg-amber-500'} mt-1 shrink-0"></span>
+                    <div class="flex-1">
+                        <div class="text-[13px] text-slate-800">${processingTimeline} · <span class="font-mono">${r.checker}</span></div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${processingNote}</div>
+                    </div>
+                </li>`);
+            } else if (r.status === "rejected") {
+                timelineItems.push(`<li class="flex gap-3">
+                    <span class="timeline-dot border-rose-500 bg-rose-500 mt-1 shrink-0"></span>
+                    <div class="flex-1">
+                        <div class="text-[13px] text-slate-800"><span class="font-semibold text-rose-600">驳回</span> · <span class="font-mono">${r.checker}</span></div>
+                        <div class="text-[11px] text-rose-500 mt-0.5 break-words">原因：${r.rejectReason || "—"}</div>
+                    </div>
+                </li>`);
+            } else {
+                timelineItems.push(`<li class="flex gap-3">
+                    <span class="timeline-dot border-slate-300 bg-white mt-1 shrink-0"></span>
+                    <div class="flex-1">
+                        <div class="text-[13px] text-slate-500">待审核</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">等待复核人操作</div>
+                    </div>
+                </li>`);
+            }
+            sections.push(`
+                <section class="rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-regular fa-clock text-slate-400 text-xs"></i>
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">审批时间线</span>
+                    </div>
+                    <ul class="px-4 py-3.5 space-y-3">${timelineItems.join("")}</ul>
+                </section>
+            `);
+
+            document.getElementById("drawer-body").innerHTML = sections.join("");
+
+            // Footer：仅 pending 时展示
+            const footer = document.getElementById("drawer-footer");
+            if (r.status === "pending") {
+                footer.classList.remove("hidden");
+                document.getElementById("drawer-approve").onclick = () => { closeDetailDrawer(); askApprove(r.txid); };
+                document.getElementById("drawer-reject").onclick  = () => { closeDetailDrawer(); askReject(r.txid);  };
+            } else {
+                footer.classList.add("hidden");
+            }
+            document.getElementById("drawer-detail").classList.remove("hidden-state");
+        }
+        function closeDetailDrawer() {
+            document.getElementById("drawer-detail").classList.add("hidden-state");
+        }
+
+        function askApprove(txid) {
+            const r = mockAdjustments.find(x => x.txid === txid);
+            const isMulti = Array.isArray(r.accounts) && r.accounts.length > 1;
+            const isMt5 = r.targetType === "funding_mt5";
+            const tip = isMt5
+                ? (isMulti
+                    ? `通过后将逐个 Acct. 生成 2 条流水（共 ${r.accounts.length * 2} 条），系统按每个账号从 Acct. 提款至 Funding，再从 Funding 扣除。`
+                    : (r.direction === "credit"
+                        ? "通过后将生成 2 条流水：① 充入 Funding ② 系统自动从 Funding 转入 Acct.。"
+                        : "通过后将生成 2 条流水：① 系统自动从 Acct. 提款至 Funding ② 从 Funding 扣除目标资金。"))
+                : (r.direction === "credit"
+                    ? "通过后将生成 1 条流水：资金直接充入客户 Funding。"
+                    : "通过后将生成 1 条流水：扣除 Funding 中已冻结的对应资金。");
+
+            // 构造审批快照（资金在提交时已划入 Funding，此处仅展示凭证要素，不再复核 Free Margin）
+            const user = USER_INFO[r.userId] || { nickName: "—", clientName: "—" };
+            const isDebit = r.direction === "debit";
+            const sign = isDebit ? "-" : "+";
+            const amtCls = isDebit ? "text-rose-600" : "text-emerald-600";
+            const rowsArr = isMt5 ? (Array.isArray(r.accounts) && r.accounts.length ? r.accounts : [{ mt5: r.mt5, amount: r.amount }]) : [];
+            let snapshotRows = [
+                `<div class="flex items-center justify-between">
+                    <span class="text-slate-500">客户</span>
+                    <span><span class="font-mono font-semibold text-slate-800">${r.userId}</span> · ${user.nickName}</span>
+                </div>`,
+                `<div class="flex items-center justify-between">
+                    <span class="text-slate-500">目标</span>
+                    <span>${targetCell(r)}</span>
+                </div>`,
+                `<div class="flex items-center justify-between">
+                    <span class="text-slate-500">方向 / 合计</span>
+                    <span class="font-mono font-bold ${amtCls}">${sign}${fmtNum(r.amount)} <span class="text-[10px] text-slate-400 font-normal">${r.currency}</span></span>
+                </div>`,
+            ];
+            if (isMt5 && rowsArr.length > 1) {
+                const lines = rowsArr.map(a => `
+                    <div class="flex items-center justify-between py-1 border-t border-slate-100 first:border-t-0">
+                        <span class="font-mono text-slate-700 text-[12px]">#${a.mt5}</span>
+                        <span class="font-mono text-[11px] ${amtCls} font-semibold">${sign}${fmtNum(a.amount)} <span class="text-slate-400 font-normal">${r.currency}</span></span>
+                    </div>`).join("");
+                snapshotRows.push(`
+                    <div class="mt-2 pt-2 border-t border-slate-200/60">
+                        <div class="text-[10px] text-slate-400 tracking-wide mb-0.5">分账号明细（${rowsArr.length} 个账号）</div>
+                        ${lines}
+                    </div>`);
+            }
+
+            openConfirm({
+                txid, type: "approve",
+                icon: "fa-check", iconCls: "bg-emerald-50 text-emerald-600",
+                title: `确认通过 ${txid}？`,
+                desc: tip,
+                okCls: "bg-emerald-600 hover:bg-emerald-700",
+                showReason: false,
+                snapshotHtml: snapshotRows.join("")
+            });
+        }
+        function askReject(txid) {
+            openConfirm({
+                txid, type: "reject",
+                icon: "fa-xmark", iconCls: "bg-rose-50 text-rose-600",
+                title: `确认驳回 ${txid}？`,
+                desc: "驳回后单据状态变更为「已驳回」，流程终结；若为扣减单，将自动解冻 Funding 中对应资金。",
+                okCls: "bg-rose-600 hover:bg-rose-700",
+                showReason: true
+            });
+        }
+        function openConfirm(opts) {
+            pendingAction = opts;
+            const iconEl = document.getElementById("confirm-icon");
+            iconEl.className = `w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${opts.iconCls}`;
+            iconEl.innerHTML = `<i class="fa-solid ${opts.icon}"></i>`;
+            document.getElementById("confirm-title").textContent = opts.title;
+            document.getElementById("confirm-desc").textContent = opts.desc;
+            // 快照
+            const snapWrap = document.getElementById("confirm-snapshot");
+            const snapBody = document.getElementById("confirm-snapshot-body");
+            if (opts.snapshotHtml) {
+                snapBody.innerHTML = opts.snapshotHtml;
+                snapWrap.classList.remove("hidden");
+            } else {
+                snapWrap.classList.add("hidden");
+                snapBody.innerHTML = "";
+            }
+            document.getElementById("confirm-reason-wrap").classList.toggle("hidden", !opts.showReason);
+            document.getElementById("confirm-reason").value = "";
+            const okBtn = document.getElementById("confirm-ok");
+            okBtn.className = `text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors ${opts.okCls}`;
+            okBtn.textContent = opts.type === "approve" ? "确认通过" : "确认驳回";
+            okBtn.disabled = false;
+            okBtn.title = "";
+            okBtn.onclick = doConfirm;
+            document.getElementById("modal-confirm").classList.remove("hidden-state");
+        }
+        function closeConfirm() {
+            document.getElementById("modal-confirm").classList.add("hidden-state");
+            pendingAction = null;
+        }
+        function doConfirm() {
+            const op = pendingAction; if (!op) return;
+            const r = mockAdjustments.find(x => x.txid === op.txid); if (!r) return;
+            if (op.type === "approve") {
+                r.status = "completed";
+                r.fundingStatus = "processing";
+                r.checker = "admin.you";
+                showToast(`已通过 ${r.txid}，账务划转执行中...`, "success");
+            } else {
+                const reason = document.getElementById("confirm-reason").value.trim();
+                if (!reason) {
+                    showToast("驳回原因必填", "error");
+                    return;
+                }
+                r.status = "rejected";
+                r.checker = "admin.you";
+                r.rejectReason = reason;
+                showToast(`已驳回 ${r.txid}` + (r.direction === "debit" ? "，Funding 冻结资金已释放" : ""), "warn");
+            }
+            renderTable();
+            closeConfirm();
+        }
+
+        // ============================================================
+        // Toast
+        // ============================================================
+        function showToast(msg, type = "info") {
+            const el = document.getElementById("toast");
+            const map = {
+                success: { bg: "bg-emerald-600", icon: "fa-check-circle" },
+                warn:    { bg: "bg-amber-600",   icon: "fa-circle-exclamation" },
+                error:   { bg: "bg-rose-600",    icon: "fa-circle-xmark" },
+                info:    { bg: "bg-slate-800",   icon: "fa-circle-info" }
+            };
+            const t = map[type] || map.info;
+            el.className = `toast fixed bottom-6 right-6 ${t.bg} text-white px-5 py-3 rounded-lg shadow-2xl text-sm z-[100] flex items-center gap-2`;
+            el.innerHTML = `<i class="fa-solid ${t.icon}"></i> ${msg}`;
+            requestAnimationFrame(() => el.classList.add("show"));
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+        }
+
+        // 初始化
+        renderTable();
+    </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.env.*
+*.pem
+*.key
+*.tar.gz
+__pycache__/

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tier Management - CFD Admin Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .submenu-container { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium">
+                <span class="text-slate-400">System</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">Content</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">Partner</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">Tier Management</span>
+            </div>
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <div class="mb-6 flex items-end justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Tier Management</h1>
+                    <p class="text-sm text-slate-500 mt-2">Configure Partner tier thresholds & evaluation rules. Rebate percentages are managed in <a href="rebate-settings.html" class="text-primary hover:underline font-medium">Rebate Settings →</a></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-add-level" class="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm shadow-blue-500/30">
+                        <i class="fa-solid fa-plus text-xs"></i> Add Tier
+                    </button>
+                    <button id="btn-logs" class="relative inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-100 transition-colors">
+                        <i class="fa-solid fa-clipboard-check text-xs"></i> Approval Logs
+                        <span id="badge-pending" class="absolute -top-2 -right-2 min-w-[20px] h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 hidden">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6 bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-sliders text-slate-600 text-sm"></i>
+                    <span class="text-[13px] font-semibold text-slate-800">Global clearing parameters (read-only · sync from clearing engine · see PRD §4.3 / §4.6)</span>
+                </div>
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
+                        <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-1">Rolling Window</div>
+                        <div class="text-sm font-bold font-mono text-slate-800">3 months</div>
+                        <div class="text-[11px] text-slate-500 mt-1">Preceding 3 full calendar months</div>
+                    </div>
+                    <div class="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
+                        <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-1">Batch Run</div>
+                        <div class="text-sm font-bold font-mono text-slate-800">1st of month 00:00</div>
+                        <div class="text-[11px] text-slate-500 mt-1">GMT+0 · triggered by clearing hub</div>
+                    </div>
+                    <div class="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
+                        <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-1">Judge Logic</div>
+                        <div class="text-sm font-bold font-mono text-slate-800">Up: AND · Down: OR</div>
+                        <div class="text-[11px] text-slate-500 mt-1">Active clients ∧ Margin must both hit</div>
+                    </div>
+                    <div class="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
+                        <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-1">Edit Effect</div>
+                        <div class="text-sm font-bold text-amber-600">Submit for Approval</div>
+                        <div class="text-[11px] text-slate-500 mt-1">Takes effect on next batch after approval</div>
+                    </div>
+                </div>
+                <div class="mt-4 px-4 py-3 bg-amber-50 border border-amber-100 rounded-md flex items-start gap-2 text-[12px] text-amber-800 leading-relaxed">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                    <div>
+                        <strong>L1 special note</strong>: L1 is the default rebate tier granted to every registered user upon account creation — <strong>it is NOT a Partner tier</strong>, has no thresholds, and only the name is editable. <strong>Partner status starts at L2</strong>. Initial-tier dropdowns in Affiliates / one-click activation / application approval only offer L2 and above.
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-slate-600 text-sm"></i>
+                        <span class="text-[14px] font-semibold text-slate-800">Tier List</span>
+                        <span class="text-[11px] text-slate-500 ml-2" id="level-count">4 tiers</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500">
+                        <i class="fa-solid fa-circle-info mr-1"></i>Rebate % is configured elsewhere. Go to <a href="rebate-settings.html" class="text-primary hover:underline font-medium">Rebate Settings</a>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[13px]">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr class="text-left">
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500 w-24">Code</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Name (English)</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Name (العربية)</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Type</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500 text-right">3-Level Active Clients ≥</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500 text-right">3-Level Team Margin (USD) ≥</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500 text-center w-20">POA</th>
+                                <th class="px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500 text-right w-40">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="edit-drawer" class="fixed inset-0 z-40 hidden">
+        <div id="edit-backdrop" class="drawer-backdrop absolute inset-0 bg-slate-900/40"></div>
+        <div id="edit-panel" class="drawer-panel absolute top-0 right-0 h-full w-[520px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+                <div>
+                    <div class="text-[11px] tracking-wider font-semibold text-slate-500" id="edit-title-code">L1</div>
+                    <div class="text-base font-bold text-slate-800" id="edit-title-name">Edit Tier</div>
+                </div>
+                <button id="edit-close" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <section>
+                    <h3 class="text-[12px] tracking-wider font-semibold text-slate-500 mb-3">Basic</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">Tier Code</label>
+                            <input id="ed-code" readonly class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm font-mono bg-slate-100 text-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">Name (English) <span class="text-rose-500">*</span></label>
+                            <input id="ed-name-en" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="e.g. Starter">
+                        </div>
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">Name (العربية) <span class="text-rose-500">*</span></label>
+                            <input id="ed-name-ar" dir="rtl" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="مثال: البادئ">
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">Tier Type</label>
+                            <select id="ed-type" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
+                                <option value="nonpartner">Non-Partner</option>
+                                <option value="partner">Partner</option>
+                            </select>
+                            <p class="text-[11px] text-slate-500 mt-1">Type determines availability in dropdowns (Partner types appear in one-click activation / application approval)</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="ed-threshold-section">
+                    <h3 class="text-[12px] tracking-wider font-semibold text-slate-500 mb-3">Thresholds (Upgrade AND · Downgrade OR · see PRD §4.6)</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">3-Level Active Clients (direct + level 1–3 downline, deduped · 3-month rolling) ≥</label>
+                            <input id="ed-active" type="number" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-[12px] text-slate-600 mb-1">3-Level Team Margin (direct + level 1–3 downline, USD · 3-month rolling peak) ≥</label>
+                            <input id="ed-margin" type="number" min="0" step="1000" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
+                        </div>
+                    </div>
+                    <div class="mt-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-600 leading-relaxed">
+                        <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>Relationships may extend indefinitely; these thresholds only include direct and level 1–3 downline, excluding the current Partner.<br>
+                        Upgrade: <span class="font-mono">active ≥ threshold <strong>AND</strong> margin ≥ threshold</span><br>
+                        Downgrade: <span class="font-mono">active &lt; threshold <strong>OR</strong> margin &lt; threshold</span> (both survive → hold)
+                    </div>
+
+                    <!-- POA required -->
+                    <div class="mt-4 flex items-start gap-3 px-4 py-3 bg-sky-50/40 border border-sky-100 rounded-lg">
+                        <input id="ed-require-poa" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30 cursor-pointer shrink-0">
+                        <label for="ed-require-poa" class="flex-1 cursor-pointer">
+                            <div class="flex items-center gap-2 text-[13px] font-semibold text-slate-800">
+                                <i class="fa-solid fa-file-lines text-sky-600 text-[12px]"></i>
+                                Require POA (Proof of Address)
+                            </div>
+                            <div class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                When enabled, IBs at this tier must pass POA review before conducting business; otherwise only POI (Proof of Identity) is required.
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+                <section id="ed-nonpartner-notice" class="hidden">
+                    <div class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-slate-600 leading-relaxed">
+                        <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>
+                        <strong>Non-Partner tiers have no thresholds</strong>: L1 is auto-granted at account creation, no evaluation required. Only the name is editable here.
+                    </div>
+                </section>
+
+                <section id="ed-danger" class="hidden">
+                    <h3 class="text-[12px] tracking-wider font-semibold text-rose-500 mb-3">Danger Zone</h3>
+                    <div class="px-4 py-3 bg-rose-50 border border-rose-200 rounded-lg">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="text-[12px] text-rose-700 leading-relaxed">
+                                Before deletion, please confirm:
+                                <ul class="list-disc list-inside mt-1 space-y-0.5">
+                                    <li><span id="ed-danger-count" class="font-mono font-bold">0</span> Partner(s) currently sit at this tier</li>
+                                    <li>Rebate Settings entries for this tier will be invalidated</li>
+                                    <li>Deletion is only allowed for the tail-most tier (prevents historical order settlement chaos)</li>
+                                </ul>
+                            </div>
+                            <button id="ed-delete" class="shrink-0 px-3 py-1.5 border border-rose-300 text-rose-600 text-[12px] font-semibold rounded hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-trash-can text-[11px] mr-1"></i>Delete Tier
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="h-16 border-t border-slate-200 flex items-center justify-end gap-3 px-6 shrink-0">
+                <button id="edit-cancel" class="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-md hover:bg-slate-50">Cancel</button>
+                <button id="edit-save" class="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm shadow-blue-500/30">
+                    <i class="fa-solid fa-paper-plane text-xs mr-1"></i>Submit for Approval
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Logs Drawer -->
+    <div id="log-drawer" class="fixed inset-0 z-40 hidden">
+        <div id="log-backdrop" class="drawer-backdrop absolute inset-0 bg-slate-900/40"></div>
+        <div id="log-panel" class="drawer-panel absolute top-0 right-0 h-full w-[720px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+                <div>
+                    <div class="text-[11px] tracking-wider font-semibold text-slate-500">Approval Logs</div>
+                    <div class="text-base font-bold text-slate-800">Approval Logs</div>
+                </div>
+                <button id="log-close" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex-1 overflow-hidden flex">
+                <div class="flex-1 overflow-y-auto p-6 border-r border-slate-200" id="log-list"></div>
+                <div class="w-[260px] shrink-0 p-6 overflow-y-auto bg-slate-50/50" id="log-detail">
+                    <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Action</div>
+                    <div class="text-[12px] text-slate-400" id="log-detail-placeholder">Click an item to view details</div>
+                    <div id="log-detail-content" class="hidden space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/40" id="confirm-backdrop"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-[480px] max-h-[85vh] overflow-y-auto z-10">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                    <i class="fa-solid fa-paper-plane text-amber-600 text-sm"></i>
+                </div>
+                <div>
+                    <div class="text-sm font-bold text-slate-800" id="confirm-title">Confirm Submission</div>
+                    <div class="text-[11px] text-slate-500" id="confirm-subtitle"></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] text-slate-600 leading-relaxed" id="confirm-diff"></div>
+                <div>
+                    <label class="block text-[12px] text-slate-600 mb-1">Approval Reason <span class="text-rose-500">*</span></label>
+                    <textarea id="confirm-reason" rows="3" maxlength="500" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none" placeholder="Briefly describe the reason for this change"></textarea>
+                    <div class="flex justify-between mt-1"><span class="text-[11px] text-slate-400">Approval record will be kept in logs</span><span class="text-[11px] text-slate-400"><span id="confirm-char-count">0</span>/500</span></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                <button id="confirm-cancel" class="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-md hover:bg-slate-50">Cancel</button>
+                <button id="confirm-ok" class="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm shadow-blue-500/30">
+                    <i class="fa-solid fa-paper-plane text-xs mr-1"></i>Confirm Submit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast fixed bottom-8 right-8 z-50 px-5 py-3 bg-slate-900 text-white text-sm rounded-lg shadow-xl"></div>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script src="lang-switch.js?v=202607039500"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / Tier Management", lang: 'en' });
+
+        let LEVELS = [
+            { code: 'L1', name: 'Registered Default', nameEn: 'Default', nameAr: 'الافتراضي', type: 'nonpartner', active: null, margin: null, requirePoa: false, memberCount: 0 },
+            { code: 'L2', name: 'Starter',            nameEn: 'Starter', nameAr: 'بادئ', type: 'partner',    active: 1,   margin: 0,      requirePoa: false, memberCount: 6 },
+            { code: 'L3', name: 'Professional',       nameEn: 'Pro', nameAr: 'محترف', type: 'partner',    active: 10,  margin: 50000,  requirePoa: true,  memberCount: 3 },
+            { code: 'L4', name: 'Elite',              nameEn: 'Elite', nameAr: 'النخبة', type: 'partner',    active: 30,  margin: 200000, requirePoa: true,  memberCount: 2 },
+        ];
+
+        const TYPE_META = {
+            'nonpartner': { label: 'Non-Partner', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+            'partner':    { label: 'Partner',     cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+        };
+
+        // Pending approval queue
+        let PENDING_LOGS = [
+            { id: 'PL_L_demo1', action: 'Edit', code: 'L3', name: 'Pro',
+              oldData: { name: 'Professional', nameEn: 'Pro', nameAr: 'محترف', type: 'partner', active: 10, margin: 50000, requirePoa: true },
+              newData: { name: 'Pro', nameEn: 'Pro', nameAr: 'محترف', type: 'partner', active: 15, margin: 80000, requirePoa: true },
+              diffText: 'Active threshold 10→15, Margin 50000→80000',
+              reason: 'Tightening Professional tier requirements per risk policy', status: 'pending',
+              createTime: '2026-07-03 16:00', actor: 'Operations Admin' }
+        ];
+
+        // Approval history
+        const APPROVAL_HISTORY = [
+            { id: 'H1', action: 'Add', code: 'L4', name: 'Elite',
+              oldData: null, newData: { name: 'Elite', nameEn: 'Elite', nameAr: 'النخبة', type: 'partner', active: 30, margin: 200000, requirePoa: true },
+              reason: 'Added Elite tier for high-end market segmentation', status: 'approved',
+              createTime: '2026-06-28 09:15', actor: 'Operations Admin', reviewer: 'Risk Reviewer' },
+            { id: 'H2', action: 'Edit', code: 'L2', name: 'Starter',
+              oldData: { name: 'Junior', nameEn: 'Junior', nameAr: 'مبتدئ', type: 'partner', active: 1, margin: 0, requirePoa: false },
+              newData: { name: 'Starter', nameEn: 'Starter', nameAr: 'بادئ', type: 'partner', active: 1, margin: 0, requirePoa: false },
+              diffText: 'Name: Junior → Starter',
+              reason: 'Branding alignment — unified naming convention', status: 'approved',
+              createTime: '2026-06-20 14:30', actor: 'Operations Admin', reviewer: 'Risk Reviewer' }
+        ];
+
+        // No-change detection
+        function getLevelDiff(oldLv, newLv) {
+            const diffs = [];
+            if (oldLv.nameEn !== newLv.nameEn) diffs.push('English name: ' + (oldLv.nameEn || '—') + ' → ' + (newLv.nameEn || '—'));
+            if (oldLv.nameAr !== newLv.nameAr) diffs.push('Arabic name: ' + (oldLv.nameAr || '—') + ' → ' + (newLv.nameAr || '—'));
+            if (oldLv.active !== newLv.active) diffs.push('Active clients: ' + (oldLv.active ?? '—') + ' → ' + (newLv.active ?? '—'));
+            if (oldLv.margin !== newLv.margin) diffs.push('Margin: ' + (oldLv.margin ?? '—') + ' → ' + (newLv.margin ?? '—'));
+            if (oldLv.requirePoa !== newLv.requirePoa) diffs.push('POA: ' + (oldLv.requirePoa ? 'Yes' : 'No') + ' → ' + (newLv.requirePoa ? 'Yes' : 'No'));
+            return diffs;
+        }
+
+        function fmtNum(n) {
+            if (n == null) return '<span class="text-slate-300 font-mono">—</span>';
+            return `<span class="font-mono text-slate-700">${n.toLocaleString('en-US')}</span>`;
+        }
+
+        function renderLevels() {
+            const tbody = document.getElementById('tbody');
+            tbody.innerHTML = LEVELS.map((lv, idx) => {
+                const meta = TYPE_META[lv.type] || TYPE_META['partner'];
+                const isLast = idx === LEVELS.length - 1;
+                const canDelete = isLast && idx > 1 && lv.memberCount === 0;
+                return `
+                <tr class="hover:bg-slate-50/70">
+                    <td class="px-5 py-4 font-mono font-bold text-slate-800">${lv.code}</td>
+                    <td class="px-5 py-4">
+                        <div class="font-semibold text-slate-800">${lv.nameEn || lv.name}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5"><span class="font-mono">${lv.memberCount}</span> Partner(s) at this tier</div>
+                    </td>
+                    <td class="px-5 py-4" dir="rtl">
+                        <div class="font-semibold text-slate-800">${lv.nameAr || '—'}</div>
+                    </td>
+                    <td class="px-5 py-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}">
+                            ${meta.label}
+                        </span>
+                    </td>
+                    <td class="px-5 py-4 text-right">${fmtNum(lv.active)}</td>
+                    <td class="px-5 py-4 text-right">${fmtNum(lv.margin)}</td>
+                    <td class="px-5 py-4 text-center">
+                        ${lv.type === 'nonpartner'
+                            ? '<span class="text-slate-300">—</span>'
+                            : (lv.requirePoa
+                                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-100"><i class="fa-solid fa-check mr-1"></i>Required</span>'
+                                : '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-50 text-slate-500 border border-slate-200">Not required</span>')}
+                    </td>
+                    <td class="px-5 py-4 text-right">
+                        <button onclick="openEdit(${idx})" class="text-primary hover:underline text-[12px] font-semibold mr-3">
+                            <i class="fa-solid fa-pen text-[11px] mr-1"></i>Edit
+                        </button>
+                        ${canDelete ? `<button onclick="openDeleteConfirm(${idx})" class="text-rose-600 hover:underline text-[12px] font-semibold"><i class="fa-solid fa-trash-can text-[11px] mr-1"></i>Delete</button>` : `<span class="text-slate-300 text-[12px]">—</span>`}
+                    </td>
+                </tr>`;
+            }).join('');
+            document.getElementById('level-count').textContent = `${LEVELS.length} tiers`;
+        }
+
+        let editIdx = -1;
+
+        function openEdit(idx) {
+            editIdx = idx;
+            const lv = idx < 0 ? {
+                code: 'L' + (LEVELS.length + 1),
+                name: '', nameEn: '', nameAr: '',
+                type: 'partner',
+                active: 0, margin: 0, requirePoa: false, memberCount: 0
+            } : LEVELS[idx];
+
+            // Title area: highlight when adding (green) so users don't mistake it for editing an existing L5
+            const titleCode = document.getElementById('edit-title-code');
+            const titleName = document.getElementById('edit-title-name');
+            if (idx < 0) {
+                titleCode.textContent = 'ADD NEW TIER';
+                titleCode.className = 'text-[11px] tracking-wider font-bold text-emerald-600';
+                titleName.textContent = `Tier #${LEVELS.length + 1} · System will assign code ${lv.code}`;
+            } else {
+                titleCode.textContent = lv.code;
+                titleCode.className = 'text-[11px] tracking-wider font-semibold text-slate-500';
+                titleName.textContent = 'Edit Tier';
+            }
+            // Code input: emerald bg + hint when adding, to avoid the "L5 already exists" illusion
+            const codeInput = document.getElementById('ed-code');
+            codeInput.value = idx < 0 ? `${lv.code} (auto-assigned on save)` : lv.code;
+            codeInput.className = idx < 0
+                ? 'w-full px-3 py-2 border border-emerald-200 rounded-md text-sm font-mono bg-emerald-50 text-emerald-700'
+                : 'w-full px-3 py-2 border border-slate-200 rounded-md text-sm font-mono bg-slate-100 text-slate-500';
+            document.getElementById('ed-name-en').value = lv.nameEn || lv.name || '';
+            document.getElementById('ed-name-ar').value = lv.nameAr || '';
+            document.getElementById('ed-type').value = lv.type;
+            document.getElementById('ed-type').value = lv.type;
+            document.getElementById('ed-active').value = lv.active ?? 0;
+            document.getElementById('ed-margin').value = lv.margin ?? 0;
+            document.getElementById('ed-require-poa').checked = !!lv.requirePoa;
+
+            // Type dropdown rule: L1 fixed = Non-Partner, others = Partner (locked, driven by code)
+            const typeSel = document.getElementById('ed-type');
+            const isL1 = lv.code === 'L1';
+            typeSel.disabled = true;
+            typeSel.classList.toggle('bg-slate-50', true);
+            typeSel.classList.toggle('text-slate-500', true);
+            if (idx < 0 && !isL1) {
+                typeSel.value = 'partner';
+            }
+
+            toggleThresholdSection(typeSel.value);
+
+            const dangerBox = document.getElementById('ed-danger');
+            if (idx >= 0 && idx === LEVELS.length - 1 && idx > 1) {
+                dangerBox.classList.remove('hidden');
+                document.getElementById('ed-danger-count').textContent = lv.memberCount;
+                document.getElementById('ed-delete').disabled = lv.memberCount > 0;
+            } else {
+                dangerBox.classList.add('hidden');
+            }
+
+            document.getElementById('edit-drawer').classList.remove('hidden');
+            requestAnimationFrame(() => document.getElementById('edit-panel').classList.add('open'));
+        }
+
+        function toggleThresholdSection(type) {
+            const isNP = type === 'nonpartner';
+            document.getElementById('ed-threshold-section').classList.toggle('hidden', isNP);
+            document.getElementById('ed-nonpartner-notice').classList.toggle('hidden', !isNP);
+        }
+
+        document.getElementById('ed-type').addEventListener('change', e => toggleThresholdSection(e.target.value));
+
+        function closeEdit() {
+            document.getElementById('edit-panel').classList.remove('open');
+            setTimeout(() => document.getElementById('edit-drawer').classList.add('hidden'), 250);
+        }
+        document.getElementById('edit-close').addEventListener('click', closeEdit);
+        document.getElementById('edit-backdrop').addEventListener('click', closeEdit);
+        document.getElementById('edit-cancel').addEventListener('click', closeEdit);
+
+        // Save → Submit for Approval
+        document.getElementById('edit-save').addEventListener('click', () => {
+            const nameEn = document.getElementById('ed-name-en').value.trim();
+            const nameAr = document.getElementById('ed-name-ar').value.trim();
+            const type = document.getElementById('ed-type').value;
+            const active = parseInt(document.getElementById('ed-active').value) || 0;
+            const margin = parseInt(document.getElementById('ed-margin').value) || 0;
+            const requirePoa = document.getElementById('ed-require-poa').checked;
+            if (!nameEn) { toast('English name is required', 'error'); return; }
+            if (!nameAr) { toast('Arabic name is required', 'error'); return; }
+
+            if (editIdx < 0) {
+                const code = 'L' + (LEVELS.length + 1);
+                const newData = { name: nameEn, nameEn, nameAr, type, active: type === 'nonpartner' ? null : active, margin: type === 'nonpartner' ? null : margin, requirePoa: type === 'nonpartner' ? false : requirePoa };
+                pendingSubmit = { action: 'add', idx: -1, oldData: null, newData, diffText: 'Add tier ' + code + ' · ' + nameEn + ' / ' + nameAr, name: nameEn, code };
+                openConfirmModal('add');
+            } else {
+                const lv = LEVELS[editIdx];
+                const newData = { name: nameEn, nameEn, nameAr, type, active: type === 'nonpartner' ? null : active, margin: type === 'nonpartner' ? null : margin, requirePoa: type === 'nonpartner' ? false : requirePoa };
+                const oldData = { name: lv.name, nameEn: lv.nameEn, nameAr: lv.nameAr, type: lv.type, active: lv.active, margin: lv.margin, requirePoa: lv.requirePoa };
+                const diffs = getLevelDiff(oldData, newData);
+                if (diffs.length === 0) { toast('No changes made', 'error'); return; }
+                pendingSubmit = { action: 'edit', idx: editIdx, oldData, newData, diffText: diffs.join(', '), name: nameEn, code: lv.code };
+                openConfirmModal('edit');
+            }
+        });
+
+        // Delete → Submit for Approval
+        function openDeleteConfirm(idx) {
+            const lv = LEVELS[idx];
+            if (lv.memberCount > 0) { toast('Cannot delete: Partners still at this tier', 'error'); return; }
+            if (idx !== LEVELS.length - 1) { toast('Only the tail-most tier can be deleted', 'error'); return; }
+            if (idx <= 1) { toast('L1 / L2 are baseline tiers and cannot be deleted', 'error'); return; }
+            const oldData = { name: lv.name, type: lv.type, active: lv.active, margin: lv.margin, requirePoa: lv.requirePoa };
+            pendingSubmit = { action: 'delete', idx, oldData, newData: null, diffText: 'Delete tier ' + lv.code + ' · ' + lv.name + ' (' + lv.memberCount + ' partners)', name: lv.name, code: lv.code };
+            openConfirmModal('delete');
+        }
+
+        document.getElementById('ed-delete').addEventListener('click', () => {
+            if (editIdx < 0) return;
+            openDeleteConfirm(editIdx);
+            closeEdit();
+        });
+
+        document.getElementById('btn-add-level').addEventListener('click', () => openEdit(-1));
+
+        // ============ Approval Confirm Modal ============
+        let pendingSubmit = null; // { action, idx, oldData, newData, diffText, name, code }
+
+        function openConfirmModal(actionType) {
+            const EN = {
+                add: { title: 'Confirm Submission — Add Tier', subtitle: pendingSubmit.code + ' · ' + pendingSubmit.name + ' / ' + (pendingSubmit.newData.nameAr || '') },
+                edit: { title: 'Confirm Submission — Edit Tier', subtitle: pendingSubmit.code + ' · ' + pendingSubmit.name + ' / ' + (pendingSubmit.newData.nameAr || '') },
+                delete: { title: 'Confirm Submission — Delete Tier', subtitle: pendingSubmit.code + ' · ' + pendingSubmit.name + ' / ' + (pendingSubmit.newData.nameAr || '') }
+            };
+            document.getElementById('confirm-title').textContent = EN[actionType].title;
+            document.getElementById('confirm-subtitle').textContent = EN[actionType].subtitle;
+            document.getElementById('confirm-diff').textContent = pendingSubmit.diffText;
+            document.getElementById('confirm-reason').value = '';
+            document.getElementById('confirm-char-count').textContent = '0';
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('confirm-reason').addEventListener('input', function() {
+            document.getElementById('confirm-char-count').textContent = this.value.length;
+        });
+
+        document.getElementById('confirm-cancel').addEventListener('click', () => {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingSubmit = null;
+        });
+        document.getElementById('confirm-backdrop').addEventListener('click', () => {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingSubmit = null;
+        });
+
+        document.getElementById('confirm-ok').addEventListener('click', () => {
+            const reason = document.getElementById('confirm-reason').value.trim();
+            if (!reason) { toast('Approval reason is required', 'error'); return; }
+            if (!pendingSubmit) return;
+
+            const id = 'PL_' + pendingSubmit.code + '_' + Date.now();
+            const actLabel = pendingSubmit.action === 'add' ? 'Add' : (pendingSubmit.action === 'delete' ? 'Delete' : 'Edit');
+            PENDING_LOGS.push({
+                id, action: actLabel, code: pendingSubmit.code, name: pendingSubmit.name,
+                oldData: pendingSubmit.oldData, newData: pendingSubmit.newData,
+                diffText: pendingSubmit.diffText, reason,
+                status: 'pending', createTime: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                actor: 'Operations Admin'
+            });
+
+            toast('Submitted ' + actLabel.toLowerCase() + ' ' + pendingSubmit.code + ' for approval', 'success');
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingSubmit = null;
+            closeEdit();
+            updatePendingBadge();
+        });
+
+        // ============ Approval Logs Drawer ============
+        function openApprovalLogs() {
+            renderApprovalLogs();
+            document.getElementById('log-drawer').classList.remove('hidden');
+            requestAnimationFrame(() => document.getElementById('log-panel').classList.add('open'));
+        }
+
+        function closeLogDrawer() {
+            document.getElementById('log-panel').classList.remove('open');
+            setTimeout(() => document.getElementById('log-drawer').classList.add('hidden'), 250);
+        }
+        document.getElementById('log-close').addEventListener('click', closeLogDrawer);
+        document.getElementById('log-backdrop').addEventListener('click', closeLogDrawer);
+        document.getElementById('btn-logs').addEventListener('click', openApprovalLogs);
+
+        function renderApprovalLogs() {
+            const allLogs = [...PENDING_LOGS.map(p => ({ ...p, isHistory: false })), ...APPROVAL_HISTORY.map(h => ({ ...h, isHistory: true }))];
+            allLogs.sort((a, b) => b.createTime.localeCompare(a.createTime));
+
+            const listEl = document.getElementById('log-list');
+            if (allLogs.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-slate-400 text-sm py-12"><i class="fa-solid fa-inbox text-3xl mb-3 block"></i>No approval logs</div>';
+            } else {
+                listEl.innerHTML = allLogs.map(l => renderLogItem(l)).join('');
+                listEl.querySelectorAll('.log-item').forEach(el => {
+                    el.addEventListener('click', () => showLogDetail(el.dataset.id, allLogs));
+                });
+            }
+        }
+
+        function renderLogItem(l) {
+            const badgeMap = {
+                pending: 'bg-amber-50 text-amber-600 border-amber-100',
+                approved: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                rejected: 'bg-rose-50 text-rose-600 border-rose-100'
+            };
+            const statusEN = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+            const dotColor = l.status === 'pending' ? 'bg-amber-500' : (l.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500');
+
+            return `
+            <div class="log-item flex gap-3 py-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 px-2 -mx-2 rounded transition-colors" data-id="${l.id}">
+                <div class="flex flex-col items-center pt-1 shrink-0">
+                    <div class="w-2.5 h-2.5 rounded-full ${dotColor}"></div>
+                    <div class="w-px flex-1 bg-slate-200 mt-1"></div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-[13px] text-slate-800">${l.code} · ${l.name || (l.newData ? l.newData.name : (l.oldData ? l.oldData.name : ''))}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeMap[l.status]}">${statusEN[l.status]}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 leading-relaxed">${l.diffText}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${l.createTime} · ${l.actor}</div>
+                </div>
+            </div>`;
+        }
+
+        function showLogDetail(id, allLogs) {
+            const l = allLogs.find(x => x.id === id);
+            if (!l) return;
+
+            const statusEN = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+            document.getElementById('log-detail-placeholder').classList.add('hidden');
+            const contentEl = document.getElementById('log-detail-content');
+            contentEl.classList.remove('hidden');
+            contentEl.innerHTML = `
+                <div>
+                    <div class="text-[10px] text-slate-400 mb-1">Action Type</div>
+                    <div class="text-[13px] font-semibold text-slate-800">${l.action} Tier</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 mb-1">Changes</div>
+                    <div class="text-[12px] text-slate-700 leading-relaxed">${l.diffText}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 mb-1">Reason</div>
+                    <div class="text-[12px] text-slate-700">${l.reason || '—'}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400 mb-1">Status</div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${l.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' : (l.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100')}">${statusEN[l.status]}</span>
+                </div>
+                ${l.reviewer ? '<div><div class="text-[10px] text-slate-400 mb-1">Reviewer</div><div class="text-[12px] text-slate-700">' + l.reviewer + '</div></div>' : ''}
+                ${l.status === 'pending' ? `
+                <div class="flex gap-2 pt-2">
+                    <button onclick="approvePending('${l.id}')" class="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold rounded-md"><i class="fa-solid fa-check mr-1"></i>Approve</button>
+                    <button onclick="openReject('${l.id}')" class="flex-1 px-3 py-1.5 border border-rose-300 text-rose-600 text-[12px] font-semibold rounded-md hover:bg-rose-50"><i class="fa-solid fa-xmark mr-1"></i>Reject</button>
+                </div>` : ''}
+            `;
+        }
+
+        // Approve
+        function approvePending(id) {
+            const idx = PENDING_LOGS.findIndex(p => p.id === id);
+            if (idx < 0) return;
+            const p = PENDING_LOGS[idx];
+
+            if (p.action === 'Add') {
+                LEVELS.push({ ...p.newData, code: p.code, memberCount: 0 });
+            } else if (p.action === 'Edit') {
+                const lv = LEVELS.find(l => l.code === p.code);
+                if (lv) { Object.assign(lv, p.newData); }
+            } else if (p.action === 'Delete') {
+                LEVELS = LEVELS.filter(l => l.code !== p.code);
+            }
+            renderLevels();
+
+            p.status = 'approved'; p.reviewer = 'Risk Reviewer';
+            APPROVAL_HISTORY.unshift(p);
+            PENDING_LOGS.splice(idx, 1);
+            updatePendingBadge();
+            renderApprovalLogs();
+            toast(p.code + ' approved — changes applied', 'success');
+        }
+
+        // Reject modal
+        let rejectTargetId = null;
+        function openReject(id) {
+            rejectTargetId = id;
+            openRejectModal();
+        }
+        function openRejectModal() {
+            document.getElementById('confirm-title').textContent = 'Confirm Rejection';
+            document.getElementById('confirm-subtitle').textContent = 'Rejected changes will be discarded';
+            document.getElementById('confirm-diff').textContent = 'Please provide a reason for rejection';
+            document.getElementById('confirm-reason').value = '';
+            document.getElementById('confirm-char-count').textContent = '0';
+            document.getElementById('confirm-ok').innerHTML = '<i class="fa-solid fa-xmark text-xs mr-1"></i>Confirm Reject';
+            document.getElementById('confirm-ok').className = 'px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-md';
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('confirm-ok').addEventListener('click', function(e) {
+            const cls = this.className;
+            if (cls.includes('bg-rose')) {
+                const reason = document.getElementById('confirm-reason').value.trim();
+                if (!reason) { toast('Rejection reason is required', 'error'); return; }
+                const idx = PENDING_LOGS.findIndex(p => p.id === rejectTargetId);
+                if (idx < 0) return;
+                const p = PENDING_LOGS[idx];
+                p.status = 'rejected'; p.reason = reason; p.reviewer = 'Risk Reviewer';
+                APPROVAL_HISTORY.unshift(p);
+                PENDING_LOGS.splice(idx, 1);
+                document.getElementById('confirm-modal').classList.add('hidden');
+                rejectTargetId = null;
+                document.getElementById('confirm-ok').innerHTML = '<i class="fa-solid fa-paper-plane text-xs mr-1"></i>Confirm Submit';
+                document.getElementById('confirm-ok').className = 'px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm shadow-blue-500/30';
+                updatePendingBadge();
+                renderApprovalLogs();
+                toast(p.code + ' rejected', 'success');
+            }
+        });
+
+        function updatePendingBadge() {
+            const badge = document.getElementById('badge-pending');
+            const count = PENDING_LOGS.length;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function toast(msg, type = 'success') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast fixed bottom-8 right-8 z-50 px-5 py-3 text-white text-sm rounded-lg shadow-xl '
+                + (type === 'error' ? 'bg-rose-600' : 'bg-slate-900');
+            requestAnimationFrame(() => el.classList.add('show'));
+            setTimeout(() => el.classList.remove('show'), 2400);
+        }
+
+        renderLevels();
+        updatePendingBadge();
+    </script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,2661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clients · CFD Admin Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.cn/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ui-kit.css?v=20260731" />
+  <style>
+    :root { --sidebar:#0B1120; --sidebar-deep:#080d17; --sidebar-hover:#1E293B; --primary:#3B82F6; }
+    body { font-family:'Inter',ui-sans-serif,system-ui,sans-serif; }
+    .bg-sidebar { background:var(--sidebar); }
+    .bg-sidebar-deep { background:var(--sidebar-deep); }
+    .hover\:bg-sidebarHover:hover { background:var(--sidebar-hover); }
+    .bg-sidebarHover { background:var(--sidebar-hover); }
+    .text-primary { color:var(--primary); }
+    .submenu-container {
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .submenu-container.expanded {
+      max-height: 1000px;
+      opacity: 1;
+    }
+    .chevron { transition: transform 0.3s ease; }
+    .chevron.rotated { transform: rotate(90deg); }
+    .menu-level-1 { padding-left: 1rem; }
+    .menu-level-2 { padding-left: 2.75rem; }
+    .menu-level-3 { padding-left: 4.5rem; }
+    .menu-level-4 { padding-left: 6.25rem; }
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-thumb { background:rgba(148,163,184,.35); border-radius:4px; }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(148,163,184,.55); }
+  </style>
+  <script>
+    tailwind.config = { theme:{ extend:{
+      colors:{ sidebar:'var(--sidebar)', sidebarDeep:'var(--sidebar-deep)', sidebarHover:'var(--sidebar-hover)', primary:'var(--primary)' }
+    }}};
+  </script>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+    <div id="breadcrumb" class="flex items-center text-sm text-slate-500 gap-2">
+      <i class="fa-solid fa-users text-slate-400 text-xs"></i>
+      <span>Customer</span>
+      <i class="fa-solid fa-angle-right text-[10px] text-slate-300"></i>
+      <span class="text-slate-800 font-medium">Customer</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="lang-switch"></div>
+      <button class="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition"><i class="fa-regular fa-bell"></i></button>
+      <button class="text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-right-from-bracket text-xs"></i>Sign out</button>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-auto p-8 bg-slate-50">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">Client List</h1>
+        <p class="text-sm text-slate-500 mt-2">Search, filter and browse all platform clients. Click a <span class="font-mono text-slate-700">UID</span> to expand details.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="h-9 px-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-file-arrow-down text-xs"></i>Export
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div>
+          <label class="block text-[11px] tracking-wider font-semibold text-slate-500 mb-1.5">UID</label>
+          <input id="f-uid" type="text" placeholder="e.g. 10938472" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-mono placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-50" />
+        </div>
+        <div>
+          <label class="block text-[11px] tracking-wider font-semibold text-slate-500 mb-1.5">Reg. Date Range</label>
+          <input id="f-reg-range" type="text" placeholder="mm/dd/yyyy ～ mm/dd/yyyy" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-50" />
+        </div>
+        <div>
+          <label class="block text-[11px] tracking-wider font-semibold text-slate-500 mb-1.5">Real Name</label>
+          <input id="f-name" type="text" placeholder="John Doe" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-50" />
+        </div>
+        <div>
+          <label class="block text-[11px] tracking-wider font-semibold text-slate-500 mb-1.5">Contact Info</label>
+          <input id="f-contact" type="text" placeholder="Phone or Email" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-50" />
+        </div>
+        <div>
+          <label class="block text-[11px] tracking-wider font-semibold text-slate-500 mb-1.5">KYC Status</label>
+          <select id="f-kyc" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-50">
+            <option value="">All Statuses</option>
+            <option value="pass">POI Pass</option>
+            <option value="pend">POI Pending</option>
+            <option value="fail">POI Fail</option>
+            <option value="none">Not Submitted</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+        <button onclick="resetFilters()" class="h-9 px-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 transition">Reset</button>
+        <button onclick="applyFilters()" class="h-9 px-5 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-medium transition shadow-sm shadow-blue-500/30 flex items-center gap-1.5">
+          <i class="fa-solid fa-magnifying-glass text-xs"></i>Search
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50/70 border-b border-slate-200">
+            <tr class="text-slate-500 text-[11px] tracking-wider font-semibold">
+              <th class="px-5 py-3.5 text-left">UID</th>
+              <th class="px-5 py-3.5 text-left">Nick Name</th>
+              <th class="px-5 py-3.5 text-left">Country</th>
+              <th class="px-5 py-3.5 text-left">Reg. Time</th>
+              <th class="px-5 py-3.5 text-left">KYC Status</th>
+              <th class="px-5 py-3.5 text-left">Deposit</th>
+              <th class="px-5 py-3.5 text-left">IB</th>
+              <th class="px-5 py-3.5 text-left">Referrer IB</th>
+            </tr>
+          </thead>
+          <tbody id="client-tbody"></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between px-5 py-3.5 border-t border-slate-200 bg-slate-50/40">
+        <div id="client-count" class="text-xs text-slate-500">Showing <span class="font-mono text-slate-800 font-semibold">1-8</span> of <span class="font-mono text-slate-800 font-semibold">12,492</span> clients</div>
+        <div class="flex items-center gap-1">
+          <button class="w-8 h-8 rounded-md text-slate-400 hover:bg-white hover:text-slate-700 text-xs"><i class="fa-solid fa-angle-left"></i></button>
+          <button class="w-8 h-8 rounded-md bg-primary text-white text-xs font-semibold">1</button>
+          <button class="w-8 h-8 rounded-md text-slate-500 hover:bg-white hover:text-slate-700 text-xs">2</button>
+          <button class="w-8 h-8 rounded-md text-slate-500 hover:bg-white hover:text-slate-700 text-xs">3</button>
+          <span class="text-slate-400 text-xs px-1">…</span>
+          <button class="w-10 h-8 rounded-md text-slate-500 hover:bg-white hover:text-slate-700 text-xs">312</button>
+          <button class="w-8 h-8 rounded-md text-slate-500 hover:bg-white hover:text-slate-700 text-xs"><i class="fa-solid fa-angle-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Client detail modal -->
+<div id="client-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-slate-900/45" onclick="closeClient()"></div>
+  <div class="absolute right-0 top-0 h-full w-[92%] max-w-[1400px] bg-white shadow-2xl flex flex-col overflow-hidden">
+    <div class="flex items-center gap-4 px-6 py-4 border-b border-slate-200">
+      <button onclick="closeClient()" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-bold text-slate-800">Client Detail</h2>
+        <span class="text-slate-300">·</span>
+        <span id="client-modal-uid" class="font-mono text-primary font-semibold">—</span>
+        <span class="text-slate-300">·</span>
+        <span id="client-modal-name" class="text-slate-600">—</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-6 px-6 border-b border-slate-200 bg-slate-50/40">
+      <button data-tab="basic"   onclick="switchTab('basic')"   class="tab-btn px-1 py-3 text-sm text-primary border-b-2 border-primary font-semibold">Basic Info</button>
+      <button data-tab="account" onclick="switchTab('account')" class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Trading Accounts</button>
+      <button data-tab="trading" onclick="switchTab('trading')" class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Trading Info</button>
+      <button data-tab="ledger"  onclick="switchTab('ledger')"  class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Ledger</button>
+      <button data-tab="funding" onclick="switchTab('funding')" class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Funding</button>
+      <button data-tab="rebate"  onclick="switchTab('rebate')"  class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Rebates</button>
+      <button data-tab="risk"    onclick="switchTab('risk')"    class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Risk Alert Records</button>
+      <button data-tab="risk"    onclick="switchTab('risk')"    class="tab-btn px-1 py-3 text-sm text-slate-500 border-b-2 border-transparent font-medium">Risk Alert Records</button>
+    </div>
+    <div class="flex-1 overflow-auto bg-slate-50/40 p-6">
+      <div id="tab-basic"   class="tab-panel">
+        <!-- 4 stat cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div class="text-[11px] font-semibold text-slate-500 tracking-wider">TOTAL DEPOSIT</div>
+            <div id="cb-stat-deposit" class="mt-2 font-mono font-bold text-[22px] text-slate-800">0.00</div>
+            <div class="mt-1 text-[11px] text-slate-400">Total deposit · USD</div>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div class="text-[11px] font-semibold text-slate-500 tracking-wider">TOTAL WITHDRAWAL</div>
+            <div id="cb-stat-withdraw" class="mt-2 font-mono font-bold text-[22px] text-slate-800">0.00</div>
+            <div class="mt-1 text-[11px] text-slate-400">Total withdrawal · USD</div>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div class="text-[11px] font-semibold text-slate-500 tracking-wider">NET DEPOSIT</div>
+            <div id="cb-stat-net" class="mt-2 font-mono font-bold text-[22px] text-slate-800">0.00</div>
+            <div class="mt-1 text-[11px] text-slate-400">Net deposit · USD</div>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div class="text-[11px] font-semibold text-slate-500 tracking-wider">TOTAL VOLUME</div>
+            <div id="cb-stat-volume" class="mt-2 font-mono font-bold text-[22px] text-slate-800">0</div>
+            <div class="mt-1 text-[11px] text-slate-400">Total trading lots</div>
+          </div>
+        </div>
+
+        <!-- Information -->
+        <div class="ui-card bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-primary text-[13px]"></i>
+            <span class="font-semibold text-sm text-slate-800">Information</span>
+          </div>
+          <div id="cb-info" class="p-5 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5 text-sm"></div>
+        </div>
+
+        <!-- IB Info -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary"><i class="fa-solid fa-handshake text-[11px]"></i></span>
+            <span class="font-semibold text-sm text-slate-800">IB Info</span>
+            <span class="text-[11px] text-slate-400">Upline & Self</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 divide-x divide-slate-100">
+            <!-- Upline -->
+            <div class="p-5">
+              <div class="flex items-center gap-2 mb-3.5">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded bg-sky-50 text-sky-600"><i class="fa-solid fa-arrow-turn-up text-[9px]"></i></span>
+                <span class="text-[12px] font-semibold text-slate-700 tracking-wide">Upline</span>
+                <span class="text-[10px] text-slate-400">Direct Superior</span>
+              </div>
+              <div id="cb-parent-ib" class="space-y-2.5 text-[13px]"></div>
+            </div>
+            <!-- IB Identity -->
+            <div class="p-5">
+              <div class="flex items-center gap-2 mb-3.5">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-id-badge text-[9px]"></i></span>
+                <span class="text-[12px] font-semibold text-slate-700 tracking-wide">IB Identity</span>
+                <span id="cb-self-ib-badge" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide border bg-slate-100 text-slate-500 border-slate-200">--</span>
+              </div>
+              <div id="cb-self-ib" class="space-y-2.5 text-[13px]"></div>
+            </div>
+          </div>
+          <!-- Transfer History -->
+          <div class="border-t border-slate-100 bg-slate-50/20">
+            <div class="px-5 py-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 text-amber-600"><i class="fa-solid fa-shuffle text-[11px]"></i></span>
+                <span class="font-semibold text-sm text-slate-800">Transfer History</span>
+                <span class="text-[11px] text-slate-400">Upline Reassignment Records</span>
+              </div>
+              <span id="cb-transfer-count" class="text-[11px] text-slate-400 font-mono">0</span>
+            </div>
+            <div id="cb-transfer-list" class="px-5 pb-5"></div>
+          </div>
+        </div>
+
+        <!-- Risk Labels -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-50 text-rose-500"><i class="fa-solid fa-triangle-exclamation text-[11px]"></i></span>
+              <span class="font-semibold text-sm text-slate-800">Risk Labels</span>
+              <span class="text-[11px] text-slate-400">风险标签</span>
+            </div>
+            <span id="rl-count" class="text-[11px] text-slate-400 font-mono">0</span>
+          </div>
+          <div id="rl-list" class="p-5 flex flex-wrap gap-2.5">
+            <div class="text-sm text-slate-400">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Risk Labels -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-50 text-rose-500"><i class="fa-solid fa-triangle-exclamation text-[11px]"></i></span>
+              <span class="font-semibold text-sm text-slate-800">Risk Labels</span>
+              <span class="text-[11px] text-slate-400">风险标签</span>
+            </div>
+            <span id="rl-count" class="text-[11px] text-slate-400 font-mono">0</span>
+          </div>
+          <div id="rl-list" class="p-5 flex flex-wrap gap-2.5">
+            <div class="text-sm text-slate-400">Loading...</div>
+          </div>
+        </div>
+
+        <!-- KYC -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary"><i class="fa-solid fa-shield-halved text-[11px]"></i></span>
+              <span class="font-semibold text-sm text-slate-800">KYC</span>
+            </div>
+            <span id="cb-kyc-level" class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border bg-emerald-50 text-emerald-600 border-emerald-100">Lv1</span>
+          </div>
+          <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-slate-50/40">
+              <div class="px-4 py-3 border-b border-slate-200/70 text-[12px] font-semibold text-slate-600 tracking-wide">Personal Information</div>
+              <div id="cb-kyc-personal" class="p-4 space-y-3 text-[13px]"></div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50/40">
+              <div class="px-4 py-3 border-b border-slate-200/70 flex items-center justify-between">
+                <span class="text-[12px] font-semibold text-slate-600 tracking-wide">ID Proof · Latest Review</span>
+                <span id="cb-kyc-poi-badge" class="text-[10px] text-slate-400">--</span>
+              </div>
+              <div id="cb-kyc-poi" class="p-4 space-y-3 text-[13px]"></div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50/40">
+              <div class="px-4 py-3 border-b border-slate-200/70 flex items-center justify-between">
+                <span class="text-[12px] font-semibold text-slate-600 tracking-wide">POA Latest Review</span>
+                <span id="cb-kyc-poa-badge" class="text-[10px] text-slate-400">--</span>
+              </div>
+              <div id="cb-kyc-poa" class="p-4 space-y-3 text-[13px]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="tab-account" class="tab-panel hidden">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-800">Trading Accounts</h3>
+            <p class="text-[12px] text-slate-500 mt-1">Account purpose and identity are shown separately. A Master can only use a live self-directed account.</p>
+          </div>
+          <span id="ca-count" class="text-xs text-slate-500 font-mono">—</span>
+        </div>
+        <div id="ca-list" class="space-y-4"></div>
+      </div>
+      <div id="tab-trading" class="tab-panel hidden bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-slate-400 text-sm">Trading info module — coming soon</div>
+      <div id="tab-ledger" class="tab-panel hidden">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Trading Account</label>
+              <select id="cl-account" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All accounts</option>
+                <option>8802917</option>
+                <option>8802918</option>
+                <option>8802930</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Type</label>
+              <select id="cl-type" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All types</option>
+                <option>Transfer In</option>
+                <option>Transfer Out</option>
+                <option>Profit</option>
+                <option>Admin Fee</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Time Range</label>
+              <div class="flex items-center gap-2">
+                <input id="cl-date-start" type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+                <span class="text-slate-400">—</span>
+                <input id="cl-date-end"   type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button onclick="resetCLFilter()" class="h-10 px-5 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 font-medium">Reset</button>
+            <button onclick="renderClientLedger()" class="h-10 px-5 rounded-md bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">Search</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50/70 border-b border-slate-200">
+                <tr class="text-slate-500 text-[11px] tracking-wider font-semibold">
+                  <th class="px-4 py-3 text-left">Tx ID</th>
+                  <th class="px-4 py-3 text-left">Acct. No</th>
+                  <th class="px-4 py-3 text-left">Type</th>
+                  <th class="px-4 py-3 text-right">Balance Before</th>
+                  <th class="px-4 py-3 text-right">Amount</th>
+                  <th class="px-4 py-3 text-right">Balance After</th>
+                  <th class="px-4 py-3 text-left">Currency</th>
+                  <th class="px-4 py-3 text-left">Time</th>
+                </tr>
+              </thead>
+              <tbody id="cl-ledger-tbody"></tbody>
+            </table>
+          </div>
+          <div id="cl-ledger-count" class="px-5 py-3 text-xs text-slate-500 border-t border-slate-200 bg-slate-50/40">—</div>
+        </div>
+      </div>
+      <!-- Funding -->
+      <div id="tab-funding" class="tab-panel hidden">
+        <!-- Fund Pools Overview -->
+        <div id="cf-pools" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"></div>
+        <!-- filter -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Business Type</label>
+              <select id="cf-type" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Types</option>
+                <option>Deposit</option>
+                <option>Withdrawal</option>
+                <option>Withdrawal Fee</option>
+                <option>Transfer In</option>
+                <option>Transfer Out</option>
+                <option>IB Commission</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Currency</label>
+              <select id="cf-currency" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Currencies</option>
+                <option>USD</option>
+                <option>AED</option>
+                <option>CNY</option>
+                <option>USDT</option>
+                <option>USDC</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Time Range</label>
+              <div class="flex items-center gap-2">
+                <input id="cf-date-start" type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+                <span class="text-slate-400">—</span>
+                <input id="cf-date-end"   type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button onclick="resetCFFilter()" class="h-10 px-5 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 font-medium">Reset</button>
+            <button onclick="renderClientFunding()" class="h-10 px-5 rounded-md bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">Search</button>
+          </div>
+        </div>
+        <!-- table -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50/70 border-b border-slate-200">
+                <tr class="text-slate-500 text-[11px] tracking-wider font-semibold">
+                  <th class="px-4 py-3 text-left">Tx ID</th>
+                  <th class="px-4 py-3 text-left">Time</th>
+                  <th class="px-4 py-3 text-left">Business Type</th>
+                  <th class="px-4 py-3 text-left">Source</th>
+                  <th class="px-4 py-3 text-left">Destination</th>
+                  <th class="px-4 py-3 text-left">Currency</th>
+                  <th class="px-4 py-3 text-right">Amount</th>
+                  <th class="px-4 py-3 text-right">Balance After</th>
+                  <th class="px-4 py-3 text-left">Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="cf-tbody"></tbody>
+            </table>
+          </div>
+          <div id="cf-count" class="px-5 py-3 text-xs text-slate-500 border-t border-slate-200 bg-slate-50/40">—</div>
+        </div>
+      </div>
+      <!-- Rebates: commissions earned by this client as an IB -->
+      <div id="tab-rebate" class="tab-panel hidden">
+        <div id="cr-empty" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
+          <div class="text-slate-400 text-sm mb-2"><i class="fa-solid fa-circle-info mr-1"></i>This client is not an IB · No rebate records</div>
+          <div class="text-slate-400 text-xs">To enable IB status, submit an application via <span class="font-mono text-primary">Partner / Applications</span>.</div>
+        </div>
+
+        <div id="cr-body" class="hidden">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <div class="text-[11px] font-semibold text-slate-500 tracking-wider">TOTAL REBATE</div>
+              <div id="cr-stat-total" class="mt-2 font-mono font-bold text-[22px] text-slate-800">0.00</div>
+              <div class="mt-1 text-[11px] text-slate-400">Cumulative · <span id="cr-unit-total">—</span></div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <div class="text-[11px] font-semibold text-slate-500 tracking-wider">MONTH TO DATE</div>
+              <div id="cr-stat-month" class="mt-2 font-mono font-bold text-[22px] text-emerald-600">0.00</div>
+              <div class="mt-1 text-[11px] text-slate-400">Settled this month · <span id="cr-unit-month">—</span></div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <div class="text-[11px] font-semibold text-slate-500 tracking-wider">PENDING</div>
+              <div id="cr-stat-pending" class="mt-2 font-mono font-bold text-[22px] text-amber-600">0.00</div>
+              <div class="mt-1 text-[11px] text-slate-400">Awaiting settlement · <span id="cr-unit-pending">—</span></div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <div class="text-[11px] font-semibold text-slate-500 tracking-wider">FROZEN</div>
+              <div id="cr-stat-frozen" class="mt-2 font-mono font-bold text-[22px] text-rose-600">0.00</div>
+              <div class="mt-1 text-[11px] text-slate-400">Frozen · <span id="cr-unit-frozen">—</span></div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Originating Trader UID</label>
+                <input id="cr-trader" type="text" placeholder="e.g. 10938481" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Symbol</label>
+                <input id="cr-symbol" type="text" placeholder="e.g. XAUUSD" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Settlement Status</label>
+                <select id="cr-status" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                  <option value="">All statuses</option>
+                  <option value="settled">Settled</option>
+                  <option value="pending">Pending</option>
+                  <option value="frozen">Frozen</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Settle Time</label>
+                <div class="flex items-center gap-2">
+                  <input id="cr-date-start" type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+                  <span class="text-slate-400">—</span>
+                  <input id="cr-date-end"   type="date" class="flex-1 h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary"/>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+              <button onclick="resetCRFilter()" class="h-10 px-5 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 font-medium">Reset</button>
+              <button onclick="renderClientRebate()" class="h-10 px-5 rounded-md bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">Search</button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50/70 border-b border-slate-200">
+                  <tr class="text-slate-500 text-[11px] tracking-wider font-semibold">
+                    <th class="px-4 py-3 text-left">Rebate ID</th>
+                    <th class="px-4 py-3 text-left">Settle Time</th>
+                    <th class="px-4 py-3 text-left">Order ID</th>
+                    <th class="px-4 py-3 text-left">Trader</th>
+                    <th class="px-4 py-3 text-left">Symbol · Lots</th>
+                    <th class="px-4 py-3 text-center">Chain Layer</th>
+                    <th class="px-4 py-3 text-right">Delta %</th>
+                    <th class="px-4 py-3 text-center">Currency</th>
+                    <th class="px-4 py-3 text-right">Net</th>
+                    <th class="px-4 py-3 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="cr-tbody"></tbody>
+              </table>
+            </div>
+            <div id="cr-count" class="px-5 py-3 text-xs text-slate-500 border-t border-slate-200 bg-slate-50/40">—</div>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-2">
+            <i class="fa-solid fa-circle-info mr-1"></i>Shares the same data source as <span class="font-mono">Partner / Rebate Ledger</span>; only lines where this client is the beneficiary IB are shown here.
+          </div>
+        </div>
+      </div>
+      <!-- Risk Alert Records -->
+      <div id="tab-risk" class="tab-panel hidden">
+        <!-- Filter -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Risk Type</label>
+              <select id="rl-filter-type" onchange="onRiskTypeChange(); renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Types</option>
+                <option value="deposit">Deposit</option>
+                <option value="trading">Trading</option>
+                <option value="negative_balance">Negative Balance Protection</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Risk Scenario</label>
+              <select id="rl-filter-scenario" onchange="renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Scenarios</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Triggered At</label>
+              <input id="rl-date-start" type="date" onchange="renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">&nbsp;</label>
+              <button onclick="resetRiskFilter()" class="w-full h-10 px-4 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right text-[11px]"></i>Reset
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- List -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-50/80 text-[11px] text-slate-500 tracking-wider">
+                  <th class="text-left px-5 py-3 font-semibold">Alert ID</th>
+                  <th class="text-left px-4 py-3 font-semibold">Risk Type</th>
+                  <th class="text-left px-4 py-3 font-semibold">Risk Scenario</th>
+                  <th class="text-left px-4 py-3 font-semibold">Alert Subject</th>
+                  <th class="text-left px-4 py-3 font-semibold">Triggered At</th>
+                  <th class="text-left px-4 py-3 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rl-tbody"></tbody>
+            </table>
+          </div>
+          <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50/40">
+            <div id="rl-page-info" class="text-xs text-slate-500">0 records</div>
+            <div class="flex items-center gap-1">
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-400 text-sm flex items-center justify-center hover:bg-white transition-colors"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
+              <button class="w-8 h-8 rounded-md bg-primary text-white text-sm font-medium flex items-center justify-center">1</button>
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-500 text-sm flex items-center justify-center hover:bg-white transition-colors">2</button>
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-500 text-sm flex items-center justify-center hover:bg-white transition-colors"><i class="fa-solid fa-chevron-right text-[10px]"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Alert Records -->
+      <div id="tab-risk" class="tab-panel hidden">
+        <!-- Filter -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Risk Type</label>
+              <select id="rl-filter-type" onchange="onRiskTypeChange(); renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Types</option>
+                <option value="deposit">Deposit</option>
+                <option value="trading">Trading</option>
+                <option value="negative_balance">Negative Balance Protection</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Risk Scenario</label>
+              <select id="rl-filter-scenario" onchange="renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+                <option value="">All Scenarios</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">Triggered At</label>
+              <input id="rl-date-start" type="date" onchange="renderRiskAlerts();" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 tracking-wider mb-2">&nbsp;</label>
+              <button onclick="resetRiskFilter()" class="w-full h-10 px-4 rounded-md border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right text-[11px]"></i>Reset
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- List -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-50/80 text-[11px] text-slate-500 tracking-wider">
+                  <th class="text-left px-5 py-3 font-semibold">Alert ID</th>
+                  <th class="text-left px-4 py-3 font-semibold">Risk Type</th>
+                  <th class="text-left px-4 py-3 font-semibold">Risk Scenario</th>
+                  <th class="text-left px-4 py-3 font-semibold">Alert Subject</th>
+                  <th class="text-left px-4 py-3 font-semibold">Triggered At</th>
+                  <th class="text-left px-4 py-3 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rl-tbody"></tbody>
+            </table>
+          </div>
+          <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50/40">
+            <div id="rl-page-info" class="text-xs text-slate-500">0 records</div>
+            <div class="flex items-center gap-1">
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-400 text-sm flex items-center justify-center hover:bg-white transition-colors"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
+              <button class="w-8 h-8 rounded-md bg-primary text-white text-sm font-medium flex items-center justify-center">1</button>
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-500 text-sm flex items-center justify-center hover:bg-white transition-colors">2</button>
+              <button class="w-8 h-8 rounded-md border border-slate-200 text-slate-500 text-sm flex items-center justify-center hover:bg-white transition-colors"><i class="fa-solid fa-chevron-right text-[10px]"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Risk Alert Detail Drawer (nested) -->
+<div id="risk-alert-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="absolute inset-0 bg-slate-900/30" onclick="closeRiskAlert()"></div>
+  <div class="absolute right-0 top-0 h-full w-[92%] max-w-[820px] bg-white shadow-2xl flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+      <div class="flex items-center gap-3">
+        <button onclick="closeRiskAlert()" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <h3 class="text-base font-bold text-slate-800">Alert Detail</h3>
+        <span class="text-slate-300">·</span>
+        <span id="ra-alert-id" class="font-mono text-primary text-sm font-semibold">—</span>
+      </div>
+      <span id="ra-scenario-badge" class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-rose-50 text-rose-600 border border-rose-100">—</span>
+    </div>
+    <div class="flex-1 overflow-y-auto">
+      <!-- Base fields -->
+      <div class="bg-slate-50/40 border-b border-slate-200 px-6 py-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Type</div>
+            <div id="ra-risk-type" class="text-slate-700">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Scenario</div>
+            <div id="ra-risk-scenario" class="text-slate-700">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Condition</div>
+            <div id="ra-risk-condition" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Alert Subject</div>
+            <div id="ra-subject" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">User ID</div>
+            <div id="ra-uid" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Rule ID</div>
+            <div id="ra-rule-id" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+        </div>
+      </div>
+      <!-- Scenario detail (dynamic) -->
+      <div id="ra-scenario-detail" class="p-6">
+        <div class="text-sm text-slate-400">Loading...</div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/40">
+      <button onclick="closeRiskAlert()" class="px-4 py-2 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white transition-colors">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Close Label Confirm Modal -->
+<div id="close-label-modal" class="fixed inset-0 z-[70] hidden">
+  <div class="absolute inset-0 bg-slate-900/45" onclick="closeLabelCancel()"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[520px] bg-white rounded-xl shadow-2xl">
+    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-800">Close Risk Label</h3>
+      <button onclick="closeLabelCancel()" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="px-6 py-5 space-y-5">
+      <div class="bg-rose-50/60 border border-rose-100 rounded-lg px-4 py-3">
+        <div class="text-sm text-rose-700 font-medium">
+          <i class="fa-solid fa-triangle-exclamation mr-1.5 text-rose-500"></i>
+          After closing, the label for this scenario will be hidden. New trigger events during suppression will still be recorded but not displayed.
+        </div>
+      </div>
+      <div>
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">Close Reason <span class="text-rose-500">*</span></label>
+        <select id="cl-reason" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+          <option value="">Select reason</option>
+          <option value="false_positive">False Positive / 误判</option>
+          <option value="reviewed_no_risk">Reviewed — No Risk / 已复核—无风险</option>
+          <option value="risk_handled">Risk Handled / 风险已处理</option>
+          <option value="duplicate">Duplicate Alert / 重复预警</option>
+          <option value="other">Other / 其他</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">Suppression Duration <span class="text-rose-500">*</span></label>
+        <div class="grid grid-cols-4 gap-2">
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="none" class="peer hidden" checked>
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">Current Only</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="24h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">24 Hours</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="48h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">48 Hours</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="72h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">72 Hours</div>
+          </label>
+        </div>
+      </div>
+      <div id="cl-note-wrap">
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">
+          Handling Note
+          <span id="cl-note-required" class="text-rose-500 hidden">*</span>
+        </label>
+        <textarea id="cl-note" rows="3" maxlength="500" placeholder="Enter additional notes (required when selecting 'Other', max 500 characters)" class="w-full px-3 py-2 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary resize-none"></textarea>
+        <div class="text-right text-[11px] text-slate-400 mt-1"><span id="cl-note-count">0</span>/500</div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/40">
+      <button onclick="closeLabelCancel()" class="px-4 py-2 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white transition-colors">Cancel</button>
+      <button onclick="closeLabelConfirm()" class="px-4 py-2 text-sm rounded-md bg-rose-500 hover:bg-rose-600 text-white font-medium transition-colors">Confirm Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Risk Alert Detail Drawer (nested) -->
+<div id="risk-alert-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="absolute inset-0 bg-slate-900/30" onclick="closeRiskAlert()"></div>
+  <div class="absolute right-0 top-0 h-full w-[92%] max-w-[820px] bg-white shadow-2xl flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+      <div class="flex items-center gap-3">
+        <button onclick="closeRiskAlert()" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <h3 class="text-base font-bold text-slate-800">Alert Detail</h3>
+        <span class="text-slate-300">·</span>
+        <span id="ra-alert-id" class="font-mono text-primary text-sm font-semibold">—</span>
+      </div>
+      <span id="ra-scenario-badge" class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-rose-50 text-rose-600 border border-rose-100">—</span>
+    </div>
+    <div class="flex-1 overflow-y-auto">
+      <!-- Base fields -->
+      <div class="bg-slate-50/40 border-b border-slate-200 px-6 py-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Type</div>
+            <div id="ra-risk-type" class="text-slate-700">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Scenario</div>
+            <div id="ra-risk-scenario" class="text-slate-700">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Condition</div>
+            <div id="ra-risk-condition" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Alert Subject</div>
+            <div id="ra-subject" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">User ID</div>
+            <div id="ra-uid" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider mb-1">Risk Rule ID</div>
+            <div id="ra-rule-id" class="text-slate-700 font-mono text-[13px]">—</div>
+          </div>
+        </div>
+      </div>
+      <!-- Scenario detail (dynamic) -->
+      <div id="ra-scenario-detail" class="p-6">
+        <div class="text-sm text-slate-400">Loading...</div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/40">
+      <button onclick="closeRiskAlert()" class="px-4 py-2 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white transition-colors">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Close Label Confirm Modal -->
+<div id="close-label-modal" class="fixed inset-0 z-[70] hidden">
+  <div class="absolute inset-0 bg-slate-900/45" onclick="closeLabelCancel()"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[520px] bg-white rounded-xl shadow-2xl">
+    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-800">Close Risk Label</h3>
+      <button onclick="closeLabelCancel()" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="px-6 py-5 space-y-5">
+      <div class="bg-rose-50/60 border border-rose-100 rounded-lg px-4 py-3">
+        <div class="text-sm text-rose-700 font-medium">
+          <i class="fa-solid fa-triangle-exclamation mr-1.5 text-rose-500"></i>
+          After closing, the label for this scenario will be hidden. New trigger events during suppression will still be recorded but not displayed.
+        </div>
+      </div>
+      <div>
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">Close Reason <span class="text-rose-500">*</span></label>
+        <select id="cl-reason" class="w-full h-10 px-3 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary">
+          <option value="">Select reason</option>
+          <option value="false_positive">False Positive / 误判</option>
+          <option value="reviewed_no_risk">Reviewed — No Risk / 已复核—无风险</option>
+          <option value="risk_handled">Risk Handled / 风险已处理</option>
+          <option value="duplicate">Duplicate Alert / 重复预警</option>
+          <option value="other">Other / 其他</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">Suppression Duration <span class="text-rose-500">*</span></label>
+        <div class="grid grid-cols-4 gap-2">
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="none" class="peer hidden" checked>
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">Current Only</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="24h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">24 Hours</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="48h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">48 Hours</div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="cl-duration" value="72h" class="peer hidden">
+            <div class="h-10 rounded-md border border-slate-200 text-sm text-slate-600 flex items-center justify-center peer-checked:border-primary peer-checked:text-primary peer-checked:bg-primary/5 transition-colors">72 Hours</div>
+          </label>
+        </div>
+      </div>
+      <div id="cl-note-wrap">
+        <label class="block text-[12px] font-semibold text-slate-600 mb-2">
+          Handling Note
+          <span id="cl-note-required" class="text-rose-500 hidden">*</span>
+        </label>
+        <textarea id="cl-note" rows="3" maxlength="500" placeholder="Enter additional notes (required when selecting 'Other', max 500 characters)" class="w-full px-3 py-2 rounded-md border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-primary resize-none"></textarea>
+        <div class="text-right text-[11px] text-slate-400 mt-1"><span id="cl-note-count">0</span>/500</div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/40">
+      <button onclick="closeLabelCancel()" class="px-4 py-2 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white transition-colors">Cancel</button>
+      <button onclick="closeLabelConfirm()" class="px-4 py-2 text-sm rounded-md bg-rose-500 hover:bg-rose-600 text-white font-medium transition-colors">Confirm Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="sidebar.js?v=202607221300"></script>
+<script src="lang-switch.js?v=202607039500"></script>
+<script>
+  injectSidebar({ activePath: "Customer / Customer", lang: "en" });
+
+  const KYC_META = {
+    "POI: Pass":  { cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+    "POI: Fail":  { cls: "bg-rose-50 text-rose-600 border-rose-100" },
+    "POI: Pend":  { cls: "bg-amber-50 text-amber-600 border-amber-100" },
+    "POA: Pass":  { cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+    "OTP: Pass":  { cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+  };
+
+  const mockClients = [
+    { uid:"10938472", nickname:"John Doe",     country:"United Kingdom", regTime:"2026-06-16 14:22:05", kyc:["POI: Pass","OTP: Pass"], deposit:true,  ib:true,  referrer:"IB_Asia_05" },
+    { uid:"10938481", nickname:"Li Wei",        country:"Singapore",       regTime:"2026-06-16 15:04:12", kyc:["POI: Pass"],              deposit:true,  ib:false, referrer:"Direct" },
+    { uid:"10938505", nickname:"Sarah Jenkins", country:"United States",  regTime:"2026-06-16 16:30:55", kyc:["POA: Pass","OTP: Pass"], deposit:false, ib:false, referrer:"IB_Global_01" },
+    { uid:"10938612", nickname:"Marco Rossi",   country:"Italy",           regTime:"2026-06-17 09:15:00", kyc:["POI: Fail","OTP: Pass"], deposit:false, ib:true,  referrer:"IB_Europe_03" },
+    { uid:"10938701", nickname:"Ahmed Zaid",    country:"United Arab Emirates", regTime:"2026-06-17 10:38:44", kyc:["POI: Pend"], deposit:false, ib:false, referrer:"IB_MENA_11" },
+    { uid:"10938755", nickname:"Priya Sharma",  country:"India",           regTime:"2026-06-17 11:07:23", kyc:["POI: Pass","POA: Pass","OTP: Pass"], deposit:true, ib:false, referrer:"IB_Asia_05" },
+    { uid:"10938812", nickname:"Emma Watson",   country:"United Kingdom", regTime:"2026-06-17 13:24:19", kyc:["POI: Pass"],              deposit:true,  ib:true,  referrer:"Direct" },
+    { uid:"10938877", nickname:"Yamamoto Kenji",country:"Japan",           regTime:"2026-06-17 14:56:41", kyc:["POI: Pend"],              deposit:false, ib:false, referrer:"IB_Asia_02" },
+  ];
+
+  function renderKycBadges(list) {
+    return list.map(t => {
+      const meta = KYC_META[t] || { cls:"bg-slate-100 text-slate-600 border-slate-200" };
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}">${t}</span>`;
+    }).join(" ");
+  }
+
+  function renderDeposit(yes) {
+    return yes
+      ? `<span class="inline-flex items-center gap-1 text-emerald-600 text-[12px] font-semibold"><i class="fa-solid fa-circle-check text-[11px]"></i>YES</span>`
+      : `<span class="text-slate-400 text-[12px]">No</span>`;
+  }
+
+  function renderIb(yes) {
+    return yes
+      ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border bg-violet-50 text-violet-600 border-violet-100">IB</span>`
+      : `<span class="text-slate-400 text-[12px]">No</span>`;
+  }
+
+  function renderClients() {
+    const tbody = document.getElementById("client-tbody");
+    tbody.innerHTML = mockClients.map(c => `
+      <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors">
+        <td class="px-5 py-4"><a href="javascript:;" onclick="openClient('${c.uid}','${c.nickname}')" class="font-mono text-primary hover:underline font-semibold">${c.uid}</a></td>
+        <td class="px-5 py-4 text-slate-700">${c.nickname}</td>
+        <td class="px-5 py-4 text-slate-600 text-[13px]">${c.country}</td>
+        <td class="px-5 py-4 font-mono text-slate-500 text-[12px]">${c.regTime}</td>
+        <td class="px-5 py-4"><div class="flex flex-wrap gap-1">${renderKycBadges(c.kyc)}</div></td>
+        <td class="px-5 py-4">${renderDeposit(c.deposit)}</td>
+        <td class="px-5 py-4">${renderIb(c.ib)}</td>
+        <td class="px-5 py-4 font-mono text-slate-600 text-[12px]">${c.referrer}</td>
+      </tr>
+    `).join("");
+    document.getElementById("client-count").innerHTML = `Showing <span class="font-mono text-slate-800 font-semibold">1-${mockClients.length}</span> of <span class="font-mono text-slate-800 font-semibold">12,492</span> clients · demo data`;
+  }
+
+  function applyFilters() { renderClients(); }
+  function resetFilters() {
+    ["f-uid","f-reg-range","f-name","f-contact"].forEach(id => document.getElementById(id).value="");
+    document.getElementById("f-kyc").value="";
+    renderClients();
+  }
+
+  renderClients();
+
+  /* ================= Client detail modal ================= */
+  const STATUS_META = {
+    "Completed": "bg-emerald-50 text-emerald-600 border-emerald-100",
+    "Processing": "bg-amber-50 text-amber-600 border-amber-100",
+    "Failed": "bg-rose-50 text-rose-600 border-rose-100",
+  };
+  const TYPE_COLOR = {
+    "Deposit":"emerald", "Withdrawal":"rose", "Adjustment":"slate",
+    "Rebate":"indigo",   "Transfer In":"indigo", "Transfer Out":"amber",
+  };
+
+  const mockClientLedger = [
+    { txId:"TX99284102", account:"8802917", type:"Transfer In",  before:10000.00, delta: 2000.00, after:12000.00, currency:"USD", time:"2026-06-16 15:30:22",
+      fx:{ rate:1.0003, counterCurrency:"USDT", counterAmount:-1999.40, note:"Funding USDT → Acct.No USD" } },
+    { txId:"TX99284108", account:"8802917", type:"Profit",       before:12000.00, delta: 1500.00, after:13500.00, currency:"USD", time:"2026-06-18 09:14:07" },
+    { txId:"TX99284126", account:"8802918", type:"Admin Fee",    before:13500.00, delta:  -50.00, after:13450.00, currency:"USD", time:"2026-06-19 11:22:48" },
+    { txId:"TX99284157", account:"8802917", type:"Profit",       before:13450.00, delta:   32.40, after:13482.40, currency:"USD", time:"2026-06-22 00:05:11" },
+    { txId:"TX99284188", account:"8802918", type:"Transfer Out", before:13482.40, delta: -800.00, after:12682.40, currency:"USD", time:"2026-06-23 14:47:33",
+      fx:{ rate:0.9997, counterCurrency:"USDT", counterAmount: 799.76, note:"Acct.No USD → Funding USDT" } },
+    { txId:"TX99284199", account:"8802930", type:"Transfer In",  before:    0.00, delta:  800.00, after:  800.00, currency:"USD", time:"2026-06-23 14:47:33" },
+    { txId:"TX99284231", account:"8802917", type:"Transfer Out", before:12682.40, delta:-1500.00, after:11182.40, currency:"USD", time:"2026-06-25 10:38:22" },
+    { txId:"TX99284255", account:"8802917", type:"Admin Fee",    before:11182.40, delta: -300.00, after:10882.40, currency:"USD", time:"2026-06-26 16:11:04" },
+  ];
+
+  const fmtMoney = (n, cur) => {
+    const sign = n < 0 ? "-" : n > 0 ? "+" : "";
+    const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (sign ? sign : "") + "$" + abs + (cur && cur !== "USD" ? " " + cur : "");
+  };
+
+  function fmtDeltaCell(r) {
+    const deltaCls = r.delta > 0 ? "text-emerald-600" : r.delta < 0 ? "text-rose-600" : "text-slate-600";
+    const main = `<div class="font-mono font-bold text-[13px] ${deltaCls}">${fmtMoney(r.delta, r.currency)}</div>`;
+    if (!r.fx) return main;
+    const cs = r.fx.counterAmount > 0 ? "+" : r.fx.counterAmount < 0 ? "-" : "";
+    const cAbs = Math.abs(r.fx.counterAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const cCls = r.fx.counterAmount > 0 ? "text-emerald-600" : "text-rose-600";
+    // Label direction follows real money flow: In = counter→main, Out = main→counter
+    const [fromCur, toCur] = r.delta > 0
+      ? [r.fx.counterCurrency, r.currency]
+      : [r.currency, r.fx.counterCurrency];
+    const rateLabel = `${fromCur}→${toCur}`;
+    return `${main}
+      <div class="mt-1 leading-tight text-[11px] font-mono"><span class="text-slate-400">${rateLabel}</span> <span class="text-slate-400">=</span> <span class="${cCls}">${cs}${cAbs}</span> <span class="text-slate-400">${r.fx.counterCurrency}</span></div>`;
+  }
+
+  function openClient(uid, name) {
+    document.getElementById("client-modal-uid").textContent = uid;
+    document.getElementById("client-modal-name").textContent = name;
+    document.getElementById("client-modal").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    switchTab("basic");
+  }
+  function openClientFromQuery() {
+    const uid = new URLSearchParams(window.location.search).get('uid');
+    if (!uid) return;
+    const client = mockClients.find(item => item.uid === uid);
+    openClient(uid, client ? client.nickname : '—');
+  }
+  window.addEventListener('DOMContentLoaded', openClientFromQuery, { once: true });
+  function closeClient() {
+    document.getElementById("client-modal").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      const on = b.dataset.tab === name;
+      b.classList.toggle("text-primary", on);
+      b.classList.toggle("border-primary", on);
+      b.classList.toggle("font-semibold", on);
+      b.classList.toggle("text-slate-500", !on);
+      b.classList.toggle("border-transparent", !on);
+      b.classList.toggle("font-medium", !on);
+    });
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+    document.getElementById("tab-" + name).classList.remove("hidden");
+    if (name === "ledger" && typeof renderClientLedger === 'function') renderClientLedger();
+    if (name === "funding") renderClientFunding();
+    if (name === "account") renderClientAccounts();
+    if (name === "basic") renderClientBasic();
+    if (name === "rebate") renderClientRebate();
+    if (name === "risk") { onRiskTypeChange(); renderRiskAlerts(); }
+    if (name === "risk") { onRiskTypeChange(); renderRiskAlerts(); }
+  }
+
+  // ============================ Basic Info ============================
+  // ============================ Trading Accounts ============================
+  const mockClientAccounts = {
+    "10938472": [
+      { account:"8802917", name:"Apex USD", environment:"Live", accountType:"Standard", currency:"USD", leverage:"1:500", purpose:"self", identity:"master", masterId:"MST_202607_008", masterStatus:"Listed", balance:12580.80, pnl:428.60, positions:4, volume:128.45, deposit:15000.00, withdraw:3000.00, netDeposit:12000.00, appliedAt:"2026-06-16 14:38:42", updatedAt:"2026-09-01 05:18:29" },
+      { account:"8802918", name:"Personal AED", environment:"Live", accountType:"Islamic", currency:"AED", leverage:"1:500", purpose:"self", identity:"normal", balance:18420.00, pnl:-126.50, positions:2, volume:61.20, deposit:25000.00, withdraw:4200.00, netDeposit:20800.00, appliedAt:"2026-06-18 09:12:16", updatedAt:"2026-09-01 05:18:29" },
+      { account:"90012345", name:"Copy · Sam Morgan", environment:"Live", accountType:"Standard", currency:"USD", leverage:"1:500", purpose:"copy", identity:"normal", relationship:"CT_20260701_001 · Sam Morgan", copyStatus:"Following", balance:7620.00, pnl:286.50, positions:3, volume:18.90, deposit:7500.00, withdraw:0.00, netDeposit:7500.00, appliedAt:"2026-07-01 10:24:00", updatedAt:"2026-09-01 05:18:29" },
+      { account:"D-001234", name:"Practice USD", environment:"Demo", accountType:"Standard", currency:"USD", leverage:"1:1000", purpose:"demo", identity:"normal", balance:100000.00, pnl:1240.00, positions:1, volume:8.10, deposit:100000.00, withdraw:0.00, netDeposit:100000.00, appliedAt:"2026-06-16 14:25:30", updatedAt:"2026-09-01 05:18:29" }
+    ]
+  };
+
+  function accountPurposeBadge(purpose) {
+    const meta = {
+      self: { label:"Self-directed", cls:"bg-sky-50 text-sky-600 border-sky-100", icon:"fa-chart-line" },
+      copy: { label:"Copy account", cls:"bg-indigo-50 text-indigo-600 border-indigo-100", icon:"fa-arrows-turn-to-dots" },
+      demo: { label:"Demo account", cls:"bg-slate-100 text-slate-600 border-slate-200", icon:"fa-flask" }
+    }[purpose] || { label:"—", cls:"bg-slate-100 text-slate-500 border-slate-200", icon:"fa-minus" };
+    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}"><i class="fa-solid ${meta.icon} text-[10px]"></i>${meta.label}</span>`;
+  }
+
+  function accountIdentityBadge(account) {
+    const isMaster = account.purpose === "self" && account.identity === "master";
+    const cls = isMaster ? "bg-violet-50 text-violet-600 border-violet-100" : "bg-slate-100 text-slate-600 border-slate-200";
+    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${cls}"><i class="fa-solid ${isMaster ? "fa-crown" : "fa-user"} text-[10px]"></i>${isMaster ? "Master" : "Standard"}</span>`;
+  }
+
+  function accountMetric(label, value, tone) {
+    return `<div><div class="text-[11px] text-slate-400 mb-1 tracking-wide">${label}</div><div class="font-mono text-[15px] font-bold ${tone || "text-slate-800"}">${value}</div></div>`;
+  }
+
+  function renderClientAccounts() {
+    const uid = document.getElementById("client-modal-uid").textContent;
+    const accounts = mockClientAccounts[uid] || [
+      { account:"88029" + uid.slice(-3), name:"Primary USD", environment:"Live", accountType:"Standard", currency:"USD", leverage:"1:500", purpose:"self", identity:"normal", balance:0, pnl:0, positions:0, volume:0, deposit:0, withdraw:0, netDeposit:0, appliedAt:"—", updatedAt:"2026-09-01 05:18:29" }
+    ];
+    document.getElementById("ca-count").textContent = `${accounts.length} accounts · demo data`;
+    document.getElementById("ca-list").innerHTML = accounts.map(account => {
+      const isMaster = account.purpose === "self" && account.identity === "master";
+      const relation = isMaster
+        ? `<span class="font-mono text-violet-600 font-semibold">${account.masterId}</span><span class="text-slate-400"> · ${account.masterStatus}</span>`
+        : account.purpose === "copy"
+          ? `<span class="font-mono text-indigo-600 font-semibold">${account.relationship.split(" · ")[0]}</span><span class="text-slate-400"> · ${account.relationship.split(" · ")[1]} · </span><span class="text-emerald-600 font-semibold">${account.copyStatus}</span>`
+          : `<span class="text-slate-400">—</span>`;
+      const pnlTone = account.pnl > 0 ? "text-emerald-600" : account.pnl < 0 ? "text-rose-600" : "text-slate-800";
+      const pnlPrefix = account.pnl > 0 ? "+" : "";
+      return `<section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2"><span class="text-[11px] font-semibold tracking-wide text-slate-500">${account.environment} ACCOUNT</span>${accountPurposeBadge(account.purpose)}${accountIdentityBadge(account)}</div>
+            <div class="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-mono text-base font-bold text-slate-800">Acct.No ${account.account}</span><span class="text-sm font-semibold text-slate-700">${account.name}</span></div>
+          </div>
+          <div class="text-right"><div class="text-[11px] text-slate-400 mb-1">Data updated</div><div class="font-mono text-[12px] text-slate-500">${account.updatedAt}</div></div>
+        </div>
+        <div class="p-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-x-6 gap-y-5 border-b border-slate-100">
+          ${kv("Account type", account.accountType)}${kv("Currency", `<span class="font-mono font-semibold">${account.currency}</span>`)}${kv("Leverage", account.leverage)}${kv("Account purpose", accountPurposeBadge(account.purpose))}${kv("Account identity", accountIdentityBadge(account))}${kv(isMaster ? "Master identity" : account.purpose === "copy" ? "Copy relationship" : "Relationship", relation)}
+        </div>
+        <div class="p-5 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-x-6 gap-y-5">
+          ${accountMetric("Balance", `${account.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${account.currency}`)}${accountMetric("Current P/L", `${pnlPrefix}${account.pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${account.currency}`, pnlTone)}${accountMetric("Open positions", account.positions.toLocaleString())}${accountMetric("Historical volume", `${account.volume.toFixed(2)} Lots`)}${accountMetric("Total deposit", `${account.deposit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${account.currency}`)}${accountMetric("Total withdrawal", `${account.withdraw.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${account.currency}`)}${accountMetric("Net deposit", `${account.netDeposit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} ${account.currency}`)}
+        </div>
+      </section>`;
+    }).join("");
+  }
+
+  const mockClientProfile = {
+    "10938472": { clientName:"John Doe",           gender:"Male",   dob:"1988-04-12", country:"United Kingdom", nationality:"British",   email:"john.doe@example.com",         phone:"+44 7911 000472",  status:"Active",   regTime:"2026-06-16 14:22:05", ib:"IB_Asia_05",
+                  stats:{ deposit:25420.00, withdraw:8730.00, volume:148200 },
+                  kyc:{ level:"Lv2", personalName:"John Doe",  poiDoc:"Passport",   poiFile:"passport_john.pdf",  poiStatus:"Approved", poiTime:"2026-06-16 18:04:00", poaDoc:"Utility Bill", poaFile:"bill_john.pdf", poaStatus:"Approved", poaTime:"2026-06-17 09:11:00" } },
+    "10938481": { clientName:"Li Wei",             gender:"Male",   dob:"1992-09-24", country:"Singapore",     nationality:"Singaporean",email:"li.wei@example.com",           phone:"+65 8100 0481",    status:"Active",   regTime:"2026-06-16 15:04:12", ib:"Direct",
+                  stats:{ deposit: 4995.00, withdraw:   0.00, volume: 21400 },
+                  kyc:{ level:"Lv1", personalName:"Li Wei",    poiDoc:"ID Card",    poiFile:"idcard_liwei.jpg",   poiStatus:"Approved", poiTime:"2026-06-16 17:22:00", poaDoc:"--",           poaFile:"--",            poaStatus:"Pending",  poaTime:"--" } },
+    "10938505": { clientName:"Sarah Jenkins",      gender:"Female", dob:"--",         country:"United States", nationality:"American",  email:"sarah.j@example.com",          phone:"+1 415 555 0505",  status:"Inactive", regTime:"2026-06-16 16:30:55", ib:"IB_Global_01",
+                  stats:{ deposit:    0.00, withdraw:   0.00, volume:     0 },
+                  kyc:{ level:"Lv0", personalName:"--",         poiDoc:"--",         poiFile:"--",                 poiStatus:"--",      poiTime:"--",                  poaDoc:"--",           poaFile:"--",            poaStatus:"--",       poaTime:"--" } },
+    "10938612": { clientName:"Marco Rossi",        gender:"Male",   dob:"1985-01-30", country:"Italy",         nationality:"Italian",   email:"marco.rossi@example.com",      phone:"+39 320 000 0612", status:"Suspended",regTime:"2026-06-17 09:15:00", ib:"IB_Europe_03",
+                  stats:{ deposit: 3200.00, withdraw:3200.00, volume:  8600 },
+                  kyc:{ level:"Lv1", personalName:"Marco Rossi",poiDoc:"Passport",   poiFile:"passport_marco.pdf",poiStatus:"Rejected", poiTime:"2026-06-17 12:14:00", poaDoc:"--",           poaFile:"--",            poaStatus:"--",       poaTime:"--" } },
+    "10938701": { clientName:"Ahmed Zaid",         gender:"Male",   dob:"1990-06-08", country:"UAE",           nationality:"Emirati",   email:"ahmed.zaid@example.com",       phone:"+971 50 000 0701", status:"Pending",  regTime:"2026-06-17 10:38:44", ib:"IB_MENA_11",
+                  stats:{ deposit:    0.00, withdraw:   0.00, volume:     0 },
+                  kyc:{ level:"Lv0", personalName:"Ahmed Zaid", poiDoc:"Emirates ID",poiFile:"emid_ahmed.jpg",    poiStatus:"Reviewing",poiTime:"2026-06-17 11:02:00", poaDoc:"--",           poaFile:"--",            poaStatus:"--",       poaTime:"--" } },
+    "10938755": { clientName:"Priya Sharma",       gender:"Female", dob:"1994-11-17", country:"India",         nationality:"Indian",    email:"priya.sharma@example.com",     phone:"+91 98100 00755",  status:"Active",   regTime:"2026-06-17 11:07:23", ib:"IB_Asia_05",
+                  stats:{ deposit:12000.00, withdraw:2500.00, volume: 64800 },
+                  kyc:{ level:"Lv2", personalName:"Priya Sharma",poiDoc:"Passport",  poiFile:"passport_priya.pdf",poiStatus:"Approved", poiTime:"2026-06-17 15:38:00", poaDoc:"Utility Bill", poaFile:"bill_priya.pdf",poaStatus:"Approved", poaTime:"2026-06-18 09:41:00" } },
+    "10938812": { clientName:"Emma Watson",        gender:"Female", dob:"1990-04-15", country:"United Kingdom",nationality:"British",   email:"emma.watson@example.com",      phone:"+44 7911 000812",  status:"Active",   regTime:"2026-06-17 13:24:19", ib:"Direct",
+                  stats:{ deposit:18800.00, withdraw:4200.00, volume:112400 },
+                  kyc:{ level:"Lv2", personalName:"Emma Watson", poiDoc:"Passport",  poiFile:"passport_emma.pdf", poiStatus:"Approved", poiTime:"2026-06-17 16:00:00", poaDoc:"Bank Statement",poaFile:"stmt_emma.pdf",poaStatus:"Approved", poaTime:"2026-06-17 20:12:00" } },
+    "10938877": { clientName:"Yamamoto Kenji",     gender:"Male",   dob:"--",         country:"Japan",         nationality:"Japanese",  email:"yamamoto.k@example.com",       phone:"+81 90 0000 0877", status:"Pending",  regTime:"2026-06-17 14:56:41", ib:"IB_Asia_02",
+                  stats:{ deposit:    0.00, withdraw:   0.00, volume:     0 },
+                  kyc:{ level:"Lv0", personalName:"Yamamoto K.",poiDoc:"--",         poiFile:"--",                 poiStatus:"Reviewing",poiTime:"2026-06-17 15:22:00", poaDoc:"--",           poaFile:"--",            poaStatus:"--",       poaTime:"--" } },
+  };
+  const STATUS_META_BASIC = {
+    "Active":    { cls:"bg-emerald-50 text-emerald-600 border-emerald-100" },
+    "Inactive":  { cls:"bg-slate-100 text-slate-500 border-slate-200" },
+    "Suspended": { cls:"bg-rose-50 text-rose-600 border-rose-100" },
+    "Pending":   { cls:"bg-amber-50 text-amber-600 border-amber-100" },
+  };
+
+  // ============================ IB Info (Parent IB + Self IB) ============================
+  const mockClientIb = {
+    "10938472": { parentIb:{ uid:"IB_10098211", inviteCode:"KYE342", nickname:"Alex Wong",     level:"L3", status:"Active" },
+                  selfIb:  { isIb:true,  inviteCode:"KYE342", settleCurrency:"AED", level:"L2", status:"Active",    joinedAt:"2026-06-18", traderCount:8,  activeCount:6, cumRebate:3820.55, monthRebate:412.30, pendingRebate:82.50, frozenRebate:0.00 , activeReq:10, depositReq:20000, depositCur:12000 },
+                  transferRecords: [] },
+    "10938481": { parentIb:null,
+                  selfIb:  { isIb:false, inviteCode:"NVA284", activeCount:4, activeReq:10, depositCur:12500, depositReq:20000 },
+                  transferRecords: [] },
+    "10938505": { parentIb:{ uid:"IB_10032087", inviteCode:"GPX205", nickname:"Global Prime",  level:"L4", status:"Active" },
+                  selfIb:  { isIb:false, inviteCode:"GPX205", activeCount:7, activeReq:10, depositCur:18400, depositReq:20000 },
+                  transferRecords: [
+                    { reqId:"TR_20260615_011", applyTime:"2026-06-15 11:20:45", fromUid:"IB_10078812", fromNick:"MENA Trader",   fromLevel:"L3", toUid:"IB_10032087", toNick:"Global Prime",  toLevel:"L4", status:"approved", reviewer:"ops_lead_bob", reviewTime:"2026-06-15 16:05:12", reviewNote:"BD attribution adjustment, confirmed with client" },
+                    { reqId:"TR_20260502_004", applyTime:"2026-05-02 09:12:33", fromUid:"IB_10056912", fromNick:"Milano Cap",    fromLevel:"L2", toUid:"IB_10078812", toNick:"MENA Trader",   toLevel:"L3", status:"approved", reviewer:"ops_lead_alice", reviewTime:"2026-05-02 14:28:00", reviewNote:"Client requested upline change" },
+                  ] },
+    "10938612": { parentIb:{ uid:"IB_10056912", inviteCode:"MLN614", nickname:"Milano Cap",    level:"L2", status:"Suspended" },
+                  selfIb:  { isIb:true,  inviteCode:"MZX918", settleCurrency:"USD", level:"L1", status:"Suspended", joinedAt:"2026-06-19", traderCount:3,  activeCount:0, cumRebate: 120.00, monthRebate:  0.00, pendingRebate: 0.00, frozenRebate:60.30 , activeReq:5, depositReq:5000, depositCur:3000 },
+                  transferRecords: [
+                    { reqId:"TR_20260620_009", applyTime:"2026-06-20 10:42:18", fromUid:"IB_10098211", fromNick:"Alex Wong",     fromLevel:"L3", toUid:"IB_10056912", toNick:"Milano Cap",    toLevel:"L2", status:"approved", reviewer:"ops_lead_bob", reviewTime:"2026-06-20 15:30:00", reviewNote:"IB requested migration to Milano Cap team" },
+                  ] },
+    "10938701": { parentIb:{ uid:"IB_10078812", inviteCode:"MNA873", nickname:"MENA Trader",   level:"L3", status:"Active" },
+                  selfIb:  { isIb:false, inviteCode:"MNA873", activeCount:2, activeReq:5, depositCur:3200, depositReq:10000 },
+                  transferRecords: [] },
+    "10938755": { parentIb:{ uid:"IB_10098211", inviteCode:"KYE342", nickname:"Alex Wong",     level:"L3", status:"Active" },
+                  selfIb:  { isIb:false, inviteCode:"PRS617", activeCount:12, activeReq:10, depositCur:24500, depositReq:20000 },
+                  transferRecords: [
+                    { reqId:"TR_20260628_004", applyTime:"2026-06-28 13:55:02", fromUid:"IB_10032087", fromNick:"Global Prime",  fromLevel:"L4", toUid:"IB_10098211", toNick:"Alex Wong",     toLevel:"L3", status:"rejected", reviewer:"ops_lead_alice", reviewTime:"2026-06-28 17:20:11", reviewNote:"Rejected: client confirmation letter not provided" },
+                  ] },
+    "10938812": { parentIb:null,
+                  selfIb:  { isIb:true,  inviteCode:"KYE342", settleCurrency:"USDT", level:"L3", status:"Active",    joinedAt:"2026-06-17", traderCount:15, activeCount:11,cumRebate:8420.10, monthRebate:915.20, pendingRebate:220.00, frozenRebate:0.00 , activeReq:20, depositReq:100000, depositCur:60000 },
+                  transferRecords: [
+                    { reqId:"TR_20260710_006", applyTime:"2026-07-10 09:18:24", fromUid:"IB_10098211", fromNick:"Alex Wong",     fromLevel:"L3", toUid:"IB_10078812", toNick:"MENA Trader",   toLevel:"L3",  status:"pending",  reviewer:"—",              reviewTime:"—",                reviewNote:"Waiting for Partner Operations review of the attribution change" },
+                    { reqId:"TR_20260702_002", applyTime:"2026-07-02 10:05:42", fromUid:"IB_10098211", fromNick:"Alex Wong",     fromLevel:"L3", toUid:"— Top —",       toNick:"— Top —",       toLevel:"—",  status:"approved", reviewer:"ops_lead_bob", reviewTime:"2026-07-02 15:30:18", reviewNote:"IB willingness confirmed by phone, independence approved" },
+                    { reqId:"TR_20260605_007", applyTime:"2026-06-05 14:22:10", fromUid:"IB_10032087", fromNick:"Global Prime",  fromLevel:"L4", toUid:"IB_10098211", toNick:"Alex Wong",     toLevel:"L3", status:"approved", reviewer:"ops_lead_alice", reviewTime:"2026-06-05 17:45:00", reviewNote:"BD attribution adjustment" },
+                    { reqId:"TR_20260520_003", applyTime:"2026-05-20 09:30:55", fromUid:"IB_10056912", fromNick:"Milano Cap",    fromLevel:"L2", toUid:"IB_10032087", toNick:"Global Prime",  toLevel:"L4", status:"approved", reviewer:"ops_lead_bob", reviewTime:"2026-05-20 14:12:33", reviewNote:"IB requested upgrade to L4 team" },
+                  ] },
+    "10938877": { parentIb:{ uid:"IB_10032451", inviteCode:"TYO492", nickname:"Tokyo IB",      level:"L2", status:"Active" },
+                  selfIb:  { isIb:false, inviteCode:"TYO492", activeCount:1, activeReq:5, depositCur:1800, depositReq:5000 },
+                  transferRecords: [] },
+  };
+
+  const IB_LEVEL_CLS = {
+    "L1": "bg-slate-100 text-slate-600 border-slate-200",
+    "L2": "bg-sky-50 text-sky-600 border-sky-100",
+    "L3": "bg-indigo-50 text-indigo-600 border-indigo-100",
+    "L4": "bg-violet-50 text-violet-600 border-violet-100",
+    "L5": "bg-amber-50 text-amber-600 border-amber-100",
+  };
+  function ibLevelBadge(level) {
+    const cls = IB_LEVEL_CLS[level] || "bg-slate-100 text-slate-600 border-slate-200";
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${cls}">${level}</span>`;
+  }
+  function ibStatusBadge(status) {
+    const meta = STATUS_META_BASIC[status] || { cls:"bg-slate-100 text-slate-500 border-slate-200" };
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}">${status}</span>`;
+  }
+
+  const KYC_STATUS_META = {
+    "Approved":  "text-emerald-600",
+    "Rejected":  "text-rose-600",
+    "Reviewing": "text-amber-600",
+    "Pending":   "text-amber-600",
+    "--":        "text-slate-400",
+  };
+  function fmtStatNum(n, digits) {
+    return Number(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+  function kv(label, value, editable) {
+    const editBtn = editable
+      ? `<button class="ml-2 text-primary text-[11px] hover:underline" onclick="alert('Prototype only — edit action not wired')">Edit</button>`
+      : "";
+    const val = (value === undefined || value === null || value === "") ? "--" : value;
+    const isDash = val === "--";
+    return `<div>
+      <div class="text-[11px] text-slate-400 mb-1 tracking-wide">${label}</div>
+      <div class="flex items-center text-slate-800 ${isDash ? "text-slate-400" : ""}">
+        <span class="truncate">${val}</span>${editBtn}
+      </div>
+    </div>`;
+  }
+  function renderClientBasic() {
+    const uid = document.getElementById("client-modal-uid").textContent;
+    const nickname = document.getElementById("client-modal-name").textContent;
+    const p = mockClientProfile[uid];
+    if (!p) {
+      document.getElementById("cb-info").innerHTML = `<div class="col-span-3 text-center text-slate-400 py-8">No extended profile for this client (demo data).</div>`;
+      return;
+    }
+    document.getElementById("cb-stat-deposit").textContent  = fmtStatNum(p.stats.deposit, 2);
+    document.getElementById("cb-stat-withdraw").textContent = fmtStatNum(p.stats.withdraw, 2);
+    document.getElementById("cb-stat-net").textContent      = fmtStatNum(p.stats.deposit - p.stats.withdraw, 2);
+    document.getElementById("cb-stat-volume").textContent   = fmtStatNum(p.stats.volume, 0);
+
+    const st = STATUS_META_BASIC[p.status] || { cls:"bg-slate-100 text-slate-500 border-slate-200" };
+    const statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${st.cls}">${p.status}</span>`;
+    document.getElementById("cb-info").innerHTML = [
+      kv("UID",           `<span class="font-mono">${uid}</span>`, false),
+      kv("Nick Name",     nickname, true),
+      kv("Client Name",   p.clientName, true),
+      kv("Gender",        p.gender),
+      kv("Date of Birth", p.dob),
+      kv("Country",       p.country),
+      kv("Nationality",   p.nationality),
+      kv("Email",         p.email),
+      kv("Phone",         `<span class="font-mono">${p.phone}</span>`),
+      kv("Client Status", statusBadge),
+      kv("Reg Time",      `<span class="font-mono text-slate-600 text-[12.5px]">${p.regTime}</span>`),
+      kv("Upline IB",     (mockClientIb[uid] && mockClientIb[uid].parentIb)
+                            ? `<span class="font-mono font-bold text-primary">${mockClientIb[uid].parentIb.inviteCode}</span> <span class="text-slate-400">·</span> ${mockClientIb[uid].parentIb.nickname}`
+                            : `<span class="text-slate-400">Direct</span>`),
+    ].join("");
+
+    const lv = p.kyc.level || "Lv0";
+    const lvBadge = document.getElementById("cb-kyc-level");
+    lvBadge.textContent = lv;
+    lvBadge.className = "inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border " +
+      (lv === "Lv2" ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+        : lv === "Lv1" ? "bg-sky-50 text-sky-600 border-sky-100"
+        : "bg-slate-100 text-slate-500 border-slate-200");
+
+    document.getElementById("cb-kyc-personal").innerHTML =
+      kv("KYC Client Name", p.kyc.personalName);
+
+    const poiCls = KYC_STATUS_META[p.kyc.poiStatus] || "text-slate-400";
+    document.getElementById("cb-kyc-poi").innerHTML =
+      kv("ID Card / Passport", p.kyc.poiDoc) +
+      kv("File",               p.kyc.poiFile) +
+      kv("Application",        `<span class="${poiCls} font-semibold">${p.kyc.poiStatus}</span>`) +
+      kv("Reviewed At",        `<span class="font-mono text-[12px] text-slate-600">${p.kyc.poiTime}</span>`);
+    document.getElementById("cb-kyc-poi-badge").innerHTML = `<span class="${poiCls} font-semibold">${p.kyc.poiStatus}</span>`;
+
+    const poaCls = KYC_STATUS_META[p.kyc.poaStatus] || "text-slate-400";
+    document.getElementById("cb-kyc-poa").innerHTML =
+      kv("Document",           p.kyc.poaDoc) +
+      kv("File",               p.kyc.poaFile) +
+      kv("Application",        `<span class="${poaCls} font-semibold">${p.kyc.poaStatus}</span>`) +
+      kv("Reviewed At",        `<span class="font-mono text-[12px] text-slate-600">${p.kyc.poaTime}</span>`);
+    document.getElementById("cb-kyc-poa-badge").innerHTML = `<span class="${poaCls} font-semibold">${p.kyc.poaStatus}</span>`;
+
+    renderClientIbInfo(uid);
+    renderRiskLabels();
+    renderRiskLabels();
+  }
+
+  function renderClientIbInfo(uid) {
+    const ib = mockClientIb[uid] || { parentIb:null, selfIb:{ isIb:false } };
+    const gf = (k,v) => `<div class="flex items-center justify-between py-1.5 gap-2"><span class="text-[11px] text-slate-500">${k}</span><span class="text-[13px] font-medium text-slate-800">${v}</span></div>`;
+    
+    // Labels (pre-resolved)
+    const L_NICK     = "Nickname";
+    const L_LEVEL    = "Level";
+    const L_STATUS   = "Status";
+    const L_NO_UP    = "Direct · No upline IB";
+    const L_NO_UP_S  = "This client has no parent IB";
+    const L_DEFAULT  = "Default tier";
+    const L_INVITE   = "Can invite clients with this code";
+    const L_NON_IB   = "Non-IB";
+    const L_IB_ACT   = "IB Active";
+    const L_ACTIVE   = "Active Clients";
+    const L_DEPOSIT  = "Deposit";
+    const L_CUM      = "Cum. Rebate";
+    const L_PEND     = "Pending";
+    
+    // 上级 IB
+    const parentBox = document.getElementById("cb-parent-ib");
+    if (parentBox) {
+      if (!ib.parentIb) {
+        parentBox.innerHTML = `<div class="flex items-center gap-2.5 py-2">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-400"><i class="fa-solid fa-user-slash text-[11px]"></i></span>
+            <div>
+              <div class="text-[13px] font-semibold text-slate-600">${L_NO_UP}</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">${L_NO_UP_S}</div>
+            </div>
+          </div>`;
+      } else {
+        const pi = ib.parentIb;
+        parentBox.innerHTML =
+          `<div class="grid grid-cols-2 gap-x-4">` +
+          gf("Invite Code", `<span class="font-mono font-bold tracking-wider text-primary">${pi.inviteCode || "—"}</span>`) +
+          gf(L_NICK,     pi.nickname) +
+          gf(L_LEVEL,    ibLevelBadge(pi.level)) +
+          gf(L_STATUS,   ibStatusBadge(pi.status)) +
+          `</div>`;
+      }
+    }
+    // IB 身份
+    const selfBox = document.getElementById("cb-self-ib");
+    const selfBadge = document.getElementById("cb-self-ib-badge");
+    if (selfBox) {
+      const si = ib.selfIb || { isIb:false };
+      if (!si.isIb) {
+        selfBadge.textContent = L_NON_IB;
+        selfBadge.className = "inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide border bg-slate-100 text-slate-500 border-slate-200";
+        selfBox.innerHTML = `<div class="flex items-center justify-between mb-3">
+            <div class="text-[11px] text-slate-500">${L_DEFAULT}</div>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border bg-slate-100 text-slate-600 border-slate-200"><i class="fa-solid fa-layer-group text-[9px]"></i>Current Level L1</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-5 gap-y-1">
+            ${gf("Invite Code", `<span class="font-mono font-bold tracking-wider text-primary">${si.inviteCode || "—"}</span>`)}
+            ${gf("Invite Permission", `<span class="text-slate-600">${L_INVITE}</span>`)}
+            ${gf("3-Level Active Clients", `<span class="font-mono font-semibold text-slate-700">${si.activeCount || 0} <span class="text-slate-400">/ ${si.activeReq || 0}</span></span>`)}
+            ${gf("3-Level Team Margin", `<span class="font-mono font-semibold text-slate-700">${fmtStatNum(si.depositCur || 0,0)} <span class="text-slate-400">/ ${fmtStatNum(si.depositReq || 0,0)}</span> USD</span>`)}
+          </div>`;
+      } else {
+        selfBadge.textContent = L_IB_ACT;
+        selfBadge.className = "inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide border bg-emerald-50 text-emerald-600 border-emerald-100";
+        const settleCurrency = si.settleCurrency || "USD";
+        
+        const activeOk = si.activeCount >= si.activeReq;
+        const depositOk = si.depositCur >= si.depositReq;
+        const statusTag = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border bg-sky-50 text-sky-600 border-sky-100"><i class="fa-solid fa-layer-group text-[9px]"></i>Current Level ${si.level}</span>`;
+        
+        selfBox.innerHTML =
+          `<div class="flex items-center justify-between mb-3">` +
+            `<div class="text-[11px] text-slate-500">IB account summary</div>` +
+            statusTag +
+          `</div>` +
+          `<div class="grid grid-cols-2 gap-x-5 gap-y-1 border-t border-slate-100 pt-2">` +
+            gf("Invite Code", `<span class="font-mono font-bold tracking-wider text-primary">${si.inviteCode}</span>`) +
+            gf(L_STATUS, ibStatusBadge(si.status)) +
+            gf('3-Level Active Clients', `<span class="font-mono ${activeOk ? 'text-emerald-600 font-bold' : 'text-slate-700'}">${si.activeCount} <span class="text-slate-400">/ ${si.activeReq}</span></span>`) +
+            gf('3-Level Team Margin', `<span class="font-mono ${depositOk ? 'text-emerald-600 font-bold' : 'text-slate-700'}">${fmtStatNum(si.depositCur,0)} <span class="text-slate-400">/ ${fmtStatNum(si.depositReq,0)}</span> ${settleCurrency}</span>`) +
+            gf(L_CUM, `<span class="font-mono font-bold text-slate-800">${fmtStatNum(si.cumRebate,2)} <span class="text-[11px] font-semibold text-slate-500">${settleCurrency}</span></span>`) +
+            gf(L_PEND, `<span class="font-mono font-semibold text-amber-600">${fmtStatNum(si.pendingRebate,2)} <span class="text-[11px] font-semibold text-slate-500">${settleCurrency}</span></span>`) +
+          `</div>`;
+      }
+    }
+
+    // Transfer History
+    const transferCountEl = document.getElementById("cb-transfer-count");
+    const transferListEl  = document.getElementById("cb-transfer-list");
+    if (transferListEl) {
+      const records = (ib.transferRecords || []).slice().sort((a,b) => b.applyTime.localeCompare(a.applyTime));
+      if (transferCountEl) transferCountEl.textContent = records.length;
+      if (records.length === 0) {
+        transferListEl.innerHTML = `
+          <div class="flex items-center gap-2.5 py-3 px-3 border border-dashed border-slate-200 rounded-lg bg-slate-50/40">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-400"><i class="fa-solid fa-inbox text-[11px]"></i></span>
+            <div>
+              <div class="text-[12.5px] font-semibold text-slate-600">No transfer records</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">This IB has never been reassigned</div>
+            </div>
+          </div>`;
+      } else {
+        const statusCls = {
+          approved: "bg-emerald-50 text-emerald-600 border-emerald-100",
+          pending:  "bg-amber-50 text-amber-600 border-amber-100",
+          rejected: "bg-rose-50 text-rose-600 border-rose-100"
+        };
+        const statusLabel = {
+          approved: "Approved",
+          pending:  "Pending",
+          rejected: "Rejected"
+        };
+        const statusIcon = {
+          approved: "fa-check",
+          pending:  "fa-circle-notch fa-spin",
+          rejected: "fa-xmark"
+        };
+        transferListEl.innerHTML = `
+          <div class="relative border-l-2 border-slate-200 ml-3 space-y-4">
+            ${records.map((r, idx) => `
+              <div class="relative pl-6">
+                <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 ${r.status === 'approved' ? 'border-emerald-500' : r.status === 'pending' ? 'border-amber-500' : 'border-rose-500'} flex items-center justify-center">
+                  <i class="fa-solid ${r.status === 'approved' ? 'fa-check text-[7px] text-emerald-500' : r.status === 'pending' ? 'fa-circle-notch fa-spin text-[7px] text-amber-500' : 'fa-xmark text-[7px] text-rose-500'}"></i>
+                </span>
+                <div class="flex items-start justify-between gap-3 mb-1.5">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono text-[12px] font-semibold text-slate-700">${r.reqId}</span>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${statusCls[r.status]}">
+                      <i class="fa-solid ${statusIcon[r.status]} text-[8px]"></i>${statusLabel[r.status]}
+                    </span>
+                    <span class="text-[11px] text-slate-400 font-mono">${r.applyTime}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 text-[12.5px] mb-1.5">
+                  <span class="font-mono text-slate-500">${r.fromUid}</span>
+                  <span class="text-slate-400">·</span>
+                  <span class="text-slate-700 font-medium">${r.fromNick}</span>
+                  ${ibLevelBadge(r.fromLevel)}
+                  <i class="fa-solid fa-arrow-right text-[10px] text-primary"></i>
+                  <span class="font-mono text-slate-500">${r.toUid}</span>
+                  <span class="text-slate-400">·</span>
+                  <span class="text-slate-700 font-medium">${r.toNick}</span>
+                  ${r.toLevel !== "—" ? ibLevelBadge(r.toLevel) : ''}
+                </div>
+                ${r.reviewNote ? `
+                  <div class="text-[11.5px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-100 rounded-md px-2.5 py-1.5">
+                    <i class="fa-regular fa-comment-dots text-slate-400 mr-1"></i>${r.reviewNote}
+                    ${r.reviewer ? `<span class="text-slate-400 ml-2">— ${r.reviewer}</span>` : ''}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>`;
+      }
+    }
+  }
+
+  // ============================ Funding ledger ============================
+  const FUNDING_TYPE_COLOR = {
+    "Deposit":"emerald", "Withdrawal":"rose", "Withdrawal Fee":"rose",
+    "Transfer In":"indigo", "Transfer Out":"amber", "IB Commission":"violet",
+  };
+
+  // Funding pools per UID: 3 pools AED / USD / USDT — balance = available, frozen = held
+  const mockClientPools = {
+    "10938472": { AED:{balance:12480.50, frozen:  0.00}, USD:{balance: 8420.00, frozen:250.00}, USDT:{balance:15320.60, frozen:1200.00} },
+    "10938473": { AED:{balance:    0.00, frozen:  0.00}, USD:{balance:    0.00, frozen:  0.00}, USDT:{balance:    0.00, frozen:   0.00} },
+    "10938474": { AED:{balance: 3620.00, frozen:180.00}, USD:{balance:  520.75, frozen:  0.00}, USDT:{balance:  980.00, frozen:   0.00} },
+    "10938475": { AED:{balance:    0.00, frozen:  0.00}, USD:{balance:12800.00, frozen:  0.00}, USDT:{balance: 4560.20, frozen: 300.00} },
+    "10938612": { AED:{balance:24500.00, frozen:800.00}, USD:{balance: 6120.00, frozen:  0.00}, USDT:{balance: 8420.00, frozen:   0.00} },
+    "10938713": { AED:{balance:  380.00, frozen:  0.00}, USD:{balance:    0.00, frozen:  0.00}, USDT:{balance:  120.00, frozen:   0.00} },
+    "10938812": { AED:{balance: 5820.00, frozen:  0.00}, USD:{balance: 3100.00, frozen:100.00}, USDT:{balance: 7200.00, frozen: 450.00} },
+    "10938913": { AED:{balance:    0.00, frozen:  0.00}, USD:{balance:  240.00, frozen:  0.00}, USDT:{balance:    0.00, frozen:   0.00} },
+  };
+
+  const POOL_META = [
+    { code:"AED",  label:"Dirham",   accent:"amber",   icon:"fa-money-bill-wave" },
+    { code:"USD",  label:"US Dollar", accent:"emerald", icon:"fa-dollar-sign"    },
+    { code:"USDT", label:"Tether",   accent:"sky",     icon:"fa-coins"           },
+  ];
+
+  const fmtPool = (n) => Number(n).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
+
+  function renderClientPools() {
+    const box = document.getElementById("cf-pools");
+    if (!box) return;
+    const uid = document.getElementById("client-modal-uid").textContent.trim();
+    const pools = mockClientPools[uid] || { AED:{balance:0,frozen:0}, USD:{balance:0,frozen:0}, USDT:{balance:0,frozen:0} };
+    box.innerHTML = POOL_META.map(m => {
+      const p = pools[m.code] || {balance:0, frozen:0};
+      const total = (p.balance || 0) + (p.frozen || 0);
+      const frozenTone = (p.frozen > 0) ? "text-rose-600" : "text-slate-400";
+      return `
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-md bg-${m.accent}-50 text-${m.accent}-600 inline-flex items-center justify-center border border-${m.accent}-100">
+                <i class="fa-solid ${m.icon} text-[13px]"></i>
+              </span>
+              <div>
+                <div class="text-[13px] font-bold text-slate-800">${m.code} · ${m.label}</div>
+                <div class="text-[11px] text-slate-400">Total ${fmtPool(total)}</div>
+              </div>
+            </div>
+
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
+              <div class="text-[11px] text-slate-500 mb-1">Available</div>
+              <div class="font-mono font-bold text-[18px] text-slate-800 leading-tight">${fmtPool(p.balance)}</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
+              <div class="text-[11px] text-slate-500 mb-1">Frozen</div>
+              <div class="font-mono font-bold text-[18px] ${frozenTone} leading-tight">${fmtPool(p.frozen)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const mockClientFunding = [
+    { txId:"LG_20260627_0089", ts:"2026-06-27 14:32:15", type:"Deposit",
+      source:"USDT-TRC20",     destination:"Funding USDT", currency:"USDT", amount: 4995.00, balance: 28420.00, remarks:"" },
+    { txId:"LG_20260627_0085", ts:"2026-06-27 13:45:02", type:"IB Commission",
+      source:"IB_System",      destination:"Funding USD", currency:"USD",  amount:  127.50, balance: 23425.00, remarks:"" },
+    { txId:"LG_20260627_0072", ts:"2026-06-27 11:20:48", type:"Withdrawal",
+      source:"Funding AED",destination:"Bank Wire AED",   currency:"AED",  amount:-7300.00, balance: 12840.00, remarks:"" },
+    { txId:"LG_20260627_0071", ts:"2026-06-27 11:20:46", type:"Withdrawal Fee",
+      source:"Funding AED",destination:"Channel Fee",     currency:"AED",  amount:  -45.00, balance: 20140.00, remarks:"" },
+    { txId:"LG_20260627_0058", ts:"2026-06-27 10:08:14", type:"Transfer Out",
+      source:"Funding USD",destination:"Acct.No 8802917",     currency:"USD",  amount:-3000.00, balance: 23297.50, remarks:"Move to MT5 trading account" },
+    { txId:"LG_20260626_0218", ts:"2026-06-26 22:11:08", type:"Transfer In",
+      source:"Acct.No 8802917",    destination:"Funding USD", currency:"USD",  amount: 2000.00, balance: 26297.50, remarks:"Recall from MT5 trading account" },
+    { txId:"LG_20260626_0198", ts:"2026-06-26 20:41:12", type:"Transfer In",
+      source:"Acct.No 8802917",      destination:"Funding USDT",     currency:"USDT", amount: 1987.36, balance:  6421.20,
+      remarks:"Cross-currency conversion in (AED → USDT)",
+      fx:{ rate:0.2722, counterCurrency:"AED", counterAmount:-7300.00 } },
+  ];
+
+  function fmtMoneyRaw(n, cur) {
+    const sign = n < 0 ? "-" : n > 0 ? "+" : "";
+    const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${sign}${abs} <span class="text-[11px] text-slate-400">${cur}</span>`;
+  }
+
+  function fmtFundingAmount(r) {
+    const cls = r.amount > 0 ? "text-emerald-600" : r.amount < 0 ? "text-rose-600" : "text-slate-600";
+    const main = `<div class="font-mono font-bold text-[13px] ${cls}">${fmtMoneyRaw(r.amount, r.currency)}</div>`;
+    if (!r.fx) return main;
+    const cs = r.fx.counterAmount > 0 ? "+" : r.fx.counterAmount < 0 ? "-" : "";
+    const cAbs = Math.abs(r.fx.counterAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const cCls = r.fx.counterAmount > 0 ? "text-emerald-600" : "text-rose-600";
+    const [fromCur, toCur] = r.amount > 0
+      ? [r.fx.counterCurrency, r.currency]
+      : [r.currency, r.fx.counterCurrency];
+    return `${main}
+      <div class="mt-1 leading-tight text-[11px] font-mono"><span class="text-slate-400">${fromCur}→${toCur}</span> <span class="text-slate-400">=</span> <span class="${cCls}">${cs}${cAbs}</span> <span class="text-slate-400">${r.fx.counterCurrency}</span></div>`;
+  }
+
+  function renderClientFunding() {
+    renderClientPools();
+    const t = document.getElementById("cf-type").value;
+    const c = document.getElementById("cf-currency").value;
+    const s = document.getElementById("cf-date-start").value;
+    const e = document.getElementById("cf-date-end").value;
+    const rows = mockClientFunding.filter(r => {
+      if (t && r.type !== t) return false;
+      if (c && r.currency !== c) return false;
+      const d = r.ts.slice(0, 10);
+      if (s && d < s) return false;
+      if (e && d > e) return false;
+      return true;
+    });
+    const tbody = document.getElementById("cf-tbody");
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="px-5 py-12 text-center text-slate-400 text-sm">No matching Funding entries</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(r => {
+        const tc = FUNDING_TYPE_COLOR[r.type] || "slate";
+        const typeCls = `bg-${tc}-50 text-${tc}-600 border-${tc}-100`;
+        const rowExtra = r.fx ? "bg-sky-50/20" : "";
+        const bal = r.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const remark = r.remarks
+          ? `<span class="text-slate-500 text-[12px]" title="${r.remarks}">${r.remarks}</span>`
+          : `<span class="text-slate-300 text-[12px]">—</span>`;
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${rowExtra}">
+            <td class="px-4 py-3.5 font-mono text-primary text-[12.5px] font-semibold align-top">${r.txId}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-500 text-[12px] align-top whitespace-nowrap">${r.ts}</td>
+            <td class="px-4 py-3.5 align-top"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${typeCls}">${r.type}</span></td>
+            <td class="px-4 py-3.5 text-slate-700 text-[12.5px] align-top">${r.source}</td>
+            <td class="px-4 py-3.5 text-slate-700 text-[12.5px] align-top">${r.destination}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-600 text-[12.5px] align-top">${r.currency}</td>
+            <td class="px-4 py-3.5 text-right whitespace-nowrap align-top">${fmtFundingAmount(r)}</td>
+            <td class="px-4 py-3.5 text-right font-mono font-bold text-slate-800 bg-slate-50/40 text-[13px] align-top">${bal}</td>
+            <td class="px-4 py-3.5 align-top max-w-[220px]">${remark}</td>
+          </tr>`;
+      }).join("");
+    }
+    document.getElementById("cf-count").innerHTML = `Showing <span class="font-mono text-slate-800 font-semibold">${rows.length}</span> rows · demo data`;
+  }
+
+  function resetCFFilter() {
+    ["cf-type","cf-currency","cf-date-start","cf-date-end"].forEach(id => document.getElementById(id).value = "");
+    renderClientFunding();
+  }
+
+  // ============================ Rebates · Client-scoped rebate ledger ============================
+  const REBATE_STATUS_META = {
+    settled: { label:"Settled", cls:"bg-emerald-50 text-emerald-600 border-emerald-100", icon:"fa-check" },
+    pending: { label:"Pending", cls:"bg-amber-50 text-amber-600 border-amber-100",       icon:"fa-circle-notch fa-spin" },
+    frozen:  { label:"Frozen",  cls:"bg-rose-50 text-rose-600 border-rose-100",           icon:"fa-snowflake" },
+  };
+
+  const mockClientRebates = {
+    "IB_10938472": [
+      { rebateId:"RB_20260629_000101", settleTime:"2026-06-29 00:00:15", orderId:"MT5-8802917-33081029", traderUid:"10938481", symbol:"XAUUSD", lots:1.50, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd:82.50, status:"pending", currency: "AED" },
+      { rebateId:"RB_20260628_000097", settleTime:"2026-06-28 00:00:12", orderId:"MT5-8907632-33082217", traderUid:"10938481", symbol:"EURUSD", lots:5.00, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd:120.00, status:"settled", currency: "AED" },
+      { rebateId:"RB_20260628_000098", settleTime:"2026-06-28 00:00:12", orderId:"MT5-8802918-33082255", traderUid:"10938755", symbol:"USOIL",  lots:2.00, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd: 44.80, status:"settled", currency: "AED" },
+      { rebateId:"RB_20260627_000082", settleTime:"2026-06-27 00:00:15", orderId:"MT5-8802918-33081102", traderUid:"10938755", symbol:"XAUUSD", lots:0.80, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd: 40.20, status:"settled", currency: "AED" },
+      { rebateId:"RB_20260627_000083", settleTime:"2026-06-27 00:00:15", orderId:"MT5-8802930-33081115", traderUid:"10938481", symbol:"EURGBP", lots:3.00, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd: 82.20, status:"settled", currency: "AED" },
+      { rebateId:"RB_20260626_000079", settleTime:"2026-06-26 00:00:11", orderId:"MT5-8802917-33077710", traderUid:"10938755", symbol:"BTCUSD", lots:0.10, layer:1, level:"L2", absPct:10.00, deltaPct:2.00, netUsd: 62.85, status:"settled", currency: "AED" },
+    ],
+    "IB_10938612": [
+      { rebateId:"RB_20260626_000041", settleTime:"2026-06-26 00:00:11", orderId:"MT5-8802917-33077712", traderUid:"10938701", symbol:"XAUUSD", lots:1.00, layer:1, level:"L1", absPct: 6.00, deltaPct:1.00, netUsd: 30.15, status:"frozen", frozenReason:"IB suspended · will resume after reinstatement" },
+      { rebateId:"RB_20260625_000039", settleTime:"2026-06-25 00:00:15", orderId:"MT5-8907632-33076611", traderUid:"10938701", symbol:"EURUSD", lots:2.00, layer:1, level:"L1", absPct: 6.00, deltaPct:1.00, netUsd: 30.15, status:"frozen", frozenReason:"IB suspended · will resume after reinstatement" },
+      { rebateId:"RB_20260624_000037", settleTime:"2026-06-24 00:00:11", orderId:"MT5-8802918-33075500", traderUid:"10938877", symbol:"USOIL",  lots:1.50, layer:1, level:"L1", absPct: 6.00, deltaPct:1.00, netUsd: 60.00, status:"settled", currency: "USD" },
+      { rebateId:"RB_20260623_000032", settleTime:"2026-06-23 00:00:11", orderId:"MT5-8802917-33074487", traderUid:"10938877", symbol:"XAUUSD", lots:0.80, layer:1, level:"L1", absPct: 6.00, deltaPct:1.00, netUsd: 60.00, status:"settled", currency: "USD" },
+    ],
+    "IB_10938812": [
+      { rebateId:"RB_20260629_000108", settleTime:"2026-06-29 00:00:15", orderId:"MT5-8802930-33081118", traderUid:"10938612", symbol:"XAUUSD", lots:2.20, layer:2, level:"L3", absPct:15.00, deltaPct:5.00, netUsd:220.00, status:"pending", currency: "USDT" },
+      { rebateId:"RB_20260628_000102", settleTime:"2026-06-28 00:00:12", orderId:"MT5-8802917-33080012", traderUid:"10938701", symbol:"EURUSD", lots:8.00, layer:1, level:"L3", absPct:15.00, deltaPct:5.00, netUsd:480.00, status:"settled", currency: "USDT" },
+      { rebateId:"RB_20260628_000103", settleTime:"2026-06-28 00:00:12", orderId:"MT5-8802918-33080108", traderUid:"10938755", symbol:"USOIL",  lots:5.00, layer:1, level:"L3", absPct:15.00, deltaPct:5.00, netUsd:280.00, status:"settled", currency: "USDT" },
+      { rebateId:"RB_20260627_000091", settleTime:"2026-06-27 00:00:15", orderId:"MT5-8802917-33078802", traderUid:"10938877", symbol:"BTCUSD", lots:0.20, layer:1, level:"L3", absPct:15.00, deltaPct:5.00, netUsd:155.20, status:"settled", currency: "USDT" },
+    ],
+  };
+
+  function renderClientRebate() {
+    const uid = document.getElementById("client-modal-uid").textContent.trim();
+    const ib = mockClientIb[uid] || { selfIb:{ isIb:false } };
+    const empty = document.getElementById("cr-empty");
+    const body  = document.getElementById("cr-body");
+    if (!ib.selfIb || !ib.selfIb.isIb) {
+      empty.classList.remove("hidden");
+      body.classList.add("hidden");
+      return;
+    }
+    empty.classList.add("hidden");
+    body.classList.remove("hidden");
+
+    const ibUid = "IB_" + uid;
+    const settleCurrency = ib.selfIb.settleCurrency || "USD";
+    const rows  = (mockClientRebates[ibUid] || []).slice();
+    
+    // Update stat card units
+    document.getElementById("cr-unit-total").textContent   = settleCurrency;
+    document.getElementById("cr-unit-month").textContent   = settleCurrency;
+    document.getElementById("cr-unit-pending").textContent = settleCurrency;
+    document.getElementById("cr-unit-frozen").textContent  = settleCurrency;
+
+    const nowMonthPrefix = "2026-06";
+    let total = 0, month = 0, pending = 0, frozen = 0;
+    rows.forEach(r => {
+      total += r.netUsd;
+      if (r.settleTime.startsWith(nowMonthPrefix) && r.status === "settled") month += r.netUsd;
+      if (r.status === "pending") pending += r.netUsd;
+      if (r.status === "frozen")  frozen  += r.netUsd;
+    });
+    document.getElementById("cr-stat-total").textContent   = fmtStatNum(total, 2);
+    document.getElementById("cr-stat-month").textContent   = fmtStatNum(month, 2);
+    document.getElementById("cr-stat-pending").textContent = fmtStatNum(pending, 2);
+    document.getElementById("cr-stat-frozen").textContent  = fmtStatNum(frozen, 2);
+
+    const trader = document.getElementById("cr-trader").value.trim();
+    const symbol = document.getElementById("cr-symbol").value.trim().toUpperCase();
+    const status = document.getElementById("cr-status").value;
+    const ds = document.getElementById("cr-date-start").value;
+    const de = document.getElementById("cr-date-end").value;
+    const filtered = rows.filter(r => {
+      if (trader && r.traderUid !== trader) return false;
+      if (symbol && r.symbol !== symbol)    return false;
+      if (status && r.status !== status)    return false;
+      const d = r.settleTime.slice(0, 10);
+      if (ds && d < ds) return false;
+      if (de && d > de) return false;
+      return true;
+    });
+
+    const tbody = document.getElementById("cr-tbody");
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-12 text-center text-slate-400 text-sm">No rebate records match the filters.</td></tr>`;
+    } else {
+      tbody.innerHTML = filtered.map(r => {
+        const meta = REBATE_STATUS_META[r.status] || REBATE_STATUS_META.settled;
+        const layerTxt = `Tier ${r.layer}`;
+        const layerCls = r.layer === 1 ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                       : r.layer === 2 ? "bg-sky-50 text-sky-600 border-sky-100"
+                       : "bg-violet-50 text-violet-600 border-violet-100";
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors">
+            <td class="px-4 py-3.5 font-mono text-primary text-[12.5px] font-semibold align-top">${r.rebateId}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-500 text-[12px] align-top">${r.settleTime}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-700 text-[12px] align-top">${r.orderId}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-700 text-[12.5px] align-top">${r.traderUid}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-700 text-[12.5px] align-top">${r.symbol} · ${r.lots.toFixed(2)}</td>
+            <td class="px-4 py-3.5 text-center align-top">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${layerCls}">${layerTxt}</span>
+              <div class="mt-1 text-[10px] text-slate-400 font-mono">${r.level}</div>
+            </td>
+            <td class="px-4 py-3.5 text-right font-mono text-slate-600 text-[13px] align-top">${r.deltaPct.toFixed(2)}%</td>
+            <td class="px-4 py-3.5 text-center font-mono text-[12px] font-bold text-slate-700 align-top">${r.currency}</td>
+            <td class="px-4 py-3.5 text-right font-mono font-bold text-emerald-600 bg-emerald-50/30 text-[13px] align-top">+${fmtStatNum(r.netUsd, 2)}</td>
+            <td class="px-4 py-3.5 align-top">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${meta.cls}"><i class="fa-solid ${meta.icon} mr-1 text-[10px]"></i>${meta.label}</span>
+              ${r.frozenReason ? `<div class="mt-1 text-[10px] text-rose-500 max-w-[220px] leading-tight">${r.frozenReason}</div>` : ""}
+            </td>
+          </tr>`;
+      }).join("");
+    }
+    document.getElementById("cr-count").innerHTML = `Showing <span class="font-mono text-slate-800 font-semibold">${filtered.length}</span> rebate lines · demo data`;
+  }
+
+  function resetCRFilter() {
+    ["cr-trader","cr-symbol","cr-status","cr-date-start","cr-date-end"].forEach(id => document.getElementById(id).value = "");
+    renderClientRebate();
+  }
+
+  // ========================================
+  // Risk Labels + Alert Records Module
+  // ========================================
+  const RISK_TYPE_MAP = {
+    negative_balance: { label: 'Negative Balance Protection', color: 'rose' },
+    deposit:          { label: 'Deposit',                        color: 'amber' },
+    trading:          { label: 'Trading',                        color: 'sky' },
+  };
+  const RISK_SCENARIO_MAP = {
+    negative_balance_protection: { type: 'negative_balance', label: 'Negative Balance Protection',  icon: 'fa-shield-halved' },
+    large_deposit:               { type: 'deposit',          label: 'Large Deposit',                icon: 'fa-money-bill-trend-up' },
+    cumulative_deposit:          { type: 'deposit',          label: 'Cumulative Deposit',           icon: 'fa-chart-line' },
+    frequent_profitable:         { type: 'trading',          label: 'Frequent Profitable Orders',   icon: 'fa-bolt' },
+    high_net_profit:             { type: 'trading',          label: 'High Net Profit',              icon: 'fa-arrow-trend-up' },
+    scalping:                    { type: 'trading',          label: 'Scalping',                     icon: 'fa-gauge-high' },
+    hedge_arbitrage:             { type: 'trading',          label: 'Hedge Arbitrage',              icon: 'fa-scale-balanced' },
+  };
+
+  // Risk labels per UID (dedup by scenario, keep latest)
+  const mockRiskLabels = {
+    "10938472": [
+      { scenario: 'high_net_profit', count: 2, lastTime: '2026-07-22 14:32:05' },
+      { scenario: 'scalping',        count: 2, lastTime: '2026-07-21 09:15:42' },
+      { scenario: 'large_deposit',   count: 1, lastTime: '2026-07-20 16:48:11' },
+      { scenario: 'cumulative_deposit', count: 2, lastTime: '2026-07-19 22:10:33' },
+      { scenario: 'frequent_profitable', count: 2, lastTime: '2026-07-18 11:25:08' },
+      { scenario: 'hedge_arbitrage', count: 1, lastTime: '2026-07-17 08:52:19' },
+      { scenario: 'negative_balance_protection', count: 1, lastTime: '2026-07-15 19:40:27' },
+    ],
+    "10867543": [
+      { scenario: 'large_deposit',  count: 1, lastTime: '2026-07-20 10:20:00' },
+    ],
+    "10672348": [],
+    "10723456": [
+      { scenario: 'scalping',       count: 3, lastTime: '2026-07-21 15:30:00' },
+    ],
+    "10589123": [
+      { scenario: 'high_net_profit', count: 1, lastTime: '2026-07-22 09:00:00' },
+    ],
+  };
+
+  // Risk alert records mock
+  const mockRiskAlerts = {
+    "10938472": [
+      { alertId: 'ALT_20260722_000001', type: 'trading', scenario: 'high_net_profit', subject: ['8802917','8802941'], triggerTime: '2026-07-22 14:32:05', ruleId: 'RULE_TRA_003', condition: '72H; Net Period P&L ≥ 4,000 USD', detail: { window: '72H', windowStart: '2026-07-19 14:32:05', windowEnd: '2026-07-22 14:32:05', baseThreshold: 4000, currentTier: '200%', closedPL: 3200, startFloatingPL: -800, endFloatingPL: 1850, netPL: 5850, currency: 'USD' } },
+      { alertId: 'ALT_20260721_000002', type: 'trading', scenario: 'scalping', subject: ['8802917'], triggerTime: '2026-07-21 09:15:42', ruleId: 'RULE_TRA_005', condition: '24H; holding < 2min & profitable ≥ 20', detail: { orders: [ { orderId: 'ORD_20260721_00876', symbol: 'XAUUSD', volume: 0.5, openedAt: '2026-07-21 09:12:33', closedAt: '2026-07-21 09:13:45', holdingMin: 1.2, pl: 120 }, { orderId: 'ORD_20260721_00877', symbol: 'EURUSD', volume: 1.0, openedAt: '2026-07-21 09:13:01', closedAt: '2026-07-21 09:14:08', holdingMin: 1.1, pl: 85 }, { orderId: 'ORD_20260721_00878', symbol: 'GBPUSD', volume: 0.8, openedAt: '2026-07-21 09:13:22', closedAt: '2026-07-21 09:14:35', holdingMin: 1.2, pl: 95 }, { orderId: 'ORD_20260721_00879', symbol: 'USDJPY', volume: 1.2, openedAt: '2026-07-21 09:13:55', closedAt: '2026-07-21 09:15:10', holdingMin: 1.25, pl: 110 } ] } },
+      { alertId: 'ALT_20260720_000003', type: 'deposit', scenario: 'large_deposit', subject: ['Acct.No 8802917'], triggerTime: '2026-07-20 16:48:11', ruleId: 'RULE_DEP_001', condition: 'Single deposit ≥ 10,000 USD', detail: { depositOrderId: 'DEP_20260720_88742', account: 'Acct.No 8802917', depositAmount: 15000, depositCurrency: 'USD', convertedAmount: 15000, convertedCurrency: 'USD', channel: 'Bank Transfer' } },
+      { alertId: 'ALT_20260719_000004', type: 'deposit', scenario: 'cumulative_deposit', subject: ['UID 10938472'], triggerTime: '2026-07-19 22:10:33', ruleId: 'RULE_DEP_002', condition: '24H cumulative deposit ≥ 10,000 USD (Tier: 150%)', detail: { window: '24H', tier: '150%', baseThreshold: 10000, cumulativeAmount: 18500, currency: 'USD', deposits: [ { orderId: 'DEP_20260719_88701', time: '2026-07-19 08:12:00', amount: 6000 }, { orderId: 'DEP_20260719_88715', time: '2026-07-19 14:35:00', amount: 7500 }, { orderId: 'DEP_20260719_88732', time: '2026-07-19 20:45:00', amount: 5000 } ] } },
+      { alertId: 'ALT_20260718_000005', type: 'trading', scenario: 'frequent_profitable', subject: ['8802917','8802941'], triggerTime: '2026-07-18 11:25:08', ruleId: 'RULE_TRA_004', condition: '24H; profitable closed orders ≥ 50 (Tier: 150%)', detail: { window: '24H', tier: '150%', baseThreshold: 50, hitCount: 82, accounts: ['8802917 (56 orders)', '8802941 (26 orders)'], orders: [ { orderId: 'ORD_20260718_00123', account: '8802917', symbol: 'EURUSD', side: 'Buy', volume: 0.5, openedAt: '2026-07-18 09:12:33', closedAt: '2026-07-18 09:35:12', pl: 85 }, { orderId: 'ORD_20260718_00124', account: '8802917', symbol: 'GBPUSD', side: 'Sell', volume: 0.8, openedAt: '2026-07-18 09:15:22', closedAt: '2026-07-18 09:42:18', pl: 120 }, { orderId: 'ORD_20260718_00125', account: '8802917', symbol: 'USDJPY', side: 'Buy', volume: 1.0, openedAt: '2026-07-18 09:20:05', closedAt: '2026-07-18 10:02:33', pl: 95 }, { orderId: 'ORD_20260718_00126', account: '8802941', symbol: 'XAUUSD', side: 'Buy', volume: 0.3, openedAt: '2026-07-18 10:05:11', closedAt: '2026-07-18 10:28:45', pl: 210 }, { orderId: 'ORD_20260718_00127', account: '8802941', symbol: 'EURUSD', side: 'Sell', volume: 0.6, openedAt: '2026-07-18 10:12:40', closedAt: '2026-07-18 10:35:20', pl: 75 }, { orderId: 'ORD_20260718_00128', account: '8802941', symbol: 'AUDUSD', side: 'Buy', volume: 1.2, openedAt: '2026-07-18 10:18:55', closedAt: '2026-07-18 10:50:10', pl: 130 } ] } },
+      { alertId: 'ALT_20260717_000006', type: 'trading', scenario: 'hedge_arbitrage', subject: ['8802917','8802941'], triggerTime: '2026-07-17 08:52:19', ruleId: 'RULE_TRA_006', condition: 'Cross-account hedge arbitrage, match ≥ 95%', detail: { matchedGroupCount: 3, relatedAccounts: ['8802917','8802941'], matchedGroups: [ { matchedSetId: 'MATCH_20260717_001', symbol: 'EURUSD', matchRate: '98.5%', orders: [ { orderId: 'ORD_20260717_00123', account: '8802917', side: 'Buy', volume: 5.0, openedAt: '2026-07-17 08:45:12', closedAt: '2026-07-17 08:50:33', pl: 250 }, { orderId: 'ORD_20260717_00456', account: '8802941', side: 'Sell', volume: 5.0, openedAt: '2026-07-17 08:45:18', closedAt: '2026-07-17 08:50:29', pl: -240 } ] }, { matchedSetId: 'MATCH_20260717_002', symbol: 'GBPUSD', matchRate: '96.2%', orders: [ { orderId: 'ORD_20260717_00135', account: '8802917', side: 'Sell', volume: 3.0, openedAt: '2026-07-17 08:47:20', closedAt: '2026-07-17 08:55:10', pl: 180 }, { orderId: 'ORD_20260717_00467', account: '8802941', side: 'Buy', volume: 3.0, openedAt: '2026-07-17 08:47:25', closedAt: '2026-07-17 08:55:05', pl: -175 } ] }, { matchedSetId: 'MATCH_20260717_003', symbol: 'XAUUSD', matchRate: '97.8%', orders: [ { orderId: 'ORD_20260717_00142', account: '8802917', side: 'Buy', volume: 0.8, openedAt: '2026-07-17 08:48:55', closedAt: '2026-07-17 09:02:40', pl: 320 }, { orderId: 'ORD_20260717_00478', account: '8802941', side: 'Sell', volume: 0.8, openedAt: '2026-07-17 08:49:02', closedAt: '2026-07-17 09:02:35', pl: -310 } ] } ] } },
+      { alertId: 'ALT_20260715_000007', type: 'negative_balance', scenario: 'negative_balance_protection', subject: ['8802917'], triggerTime: '2026-07-15 19:40:27', ruleId: 'RULE_NBP_001', condition: 'Account shortfall, NBP triggered', detail: { account: '8802917', triggerAmount: -3520.80, currency: 'USD', compensationStatus: 'uncompensated' } },
+      { alertId: 'ALT_20260714_000008', type: 'trading', scenario: 'high_net_profit', subject: ['8802917'], triggerTime: '2026-07-14 21:08:44', ruleId: 'RULE_TRA_003', condition: '72H; Net Period P&L ≥ 2,000 USD', detail: { window: '72H', windowStart: '2026-07-11 21:08:44', windowEnd: '2026-07-14 21:08:44', baseThreshold: 2000, currentTier: '150%', closedPL: 1800, startFloatingPL: -300, endFloatingPL: 900, netPL: 3000, currency: 'USD' } },
+      { alertId: 'ALT_20260713_000009', type: 'trading', scenario: 'scalping', subject: ['8802941'], triggerTime: '2026-07-13 16:22:10', ruleId: 'RULE_TRA_005', condition: '24H; holding < 2min & profitable ≥ 20', detail: { orders: [ { orderId: 'ORD_20260713_01522', symbol: 'GBPUSD', volume: 0.3, openedAt: '2026-07-13 16:18:05', closedAt: '2026-07-13 16:19:10', holdingMin: 1.1, pl: 45 }, { orderId: 'ORD_20260713_01523', symbol: 'AUDUSD', volume: 0.5, openedAt: '2026-07-13 16:18:33', closedAt: '2026-07-13 16:19:45', holdingMin: 1.2, pl: 60 } ] } },
+      { alertId: 'ALT_20260712_000010', type: 'deposit', scenario: 'large_deposit', subject: ['Acct.No 8802917'], triggerTime: '2026-07-12 11:30:00', ruleId: 'RULE_DEP_001', condition: 'Single deposit ≥ 10,000 USD', detail: { depositOrderId: 'DEP_20260712_88620', account: 'Acct.No 8802917', depositAmount: 12000, depositCurrency: 'USD', convertedAmount: 12000, convertedCurrency: 'USD', channel: 'Crypto' } },
+      { alertId: 'ALT_20260711_000011', type: 'deposit', scenario: 'cumulative_deposit', subject: ['UID 10938472'], triggerTime: '2026-07-11 18:42:15', ruleId: 'RULE_DEP_002', condition: '24H cumulative deposit ≥ 10,000 USD (Tier: 100%)', detail: { window: '24H', tier: '100%', baseThreshold: 10000, cumulativeAmount: 11200, currency: 'USD', deposits: [ { orderId: 'DEP_20260711_88580', time: '2026-07-11 10:15:00', amount: 5000 }, { orderId: 'DEP_20260711_88601', time: '2026-07-11 16:30:00', amount: 6200 } ] } },
+      { alertId: 'ALT_20260710_000012', type: 'trading', scenario: 'frequent_profitable', subject: ['8802917'], triggerTime: '2026-07-10 14:55:30', ruleId: 'RULE_TRA_004', condition: '24H; profitable closed orders ≥ 50 (Tier: 100%)', detail: { window: '24H', tier: '100%', baseThreshold: 50, hitCount: 53, accounts: ['8802917 (53 orders)'], orders: [ { orderId: 'ORD_20260710_01011', account: '8802917', symbol: 'EURUSD', side: 'Buy', volume: 0.5, openedAt: '2026-07-10 10:12:33', closedAt: '2026-07-10 10:35:12', pl: 45 }, { orderId: 'ORD_20260710_01012', account: '8802917', symbol: 'GBPUSD', side: 'Sell', volume: 0.7, openedAt: '2026-07-10 10:20:22', closedAt: '2026-07-10 10:42:18', pl: 62 }, { orderId: 'ORD_20260710_01013', account: '8802917', symbol: 'USDJPY', side: 'Buy', volume: 1.0, openedAt: '2026-07-10 11:05:05', closedAt: '2026-07-10 11:28:33', pl: 80 } ] } },
+    ],
+  };
+
+  // Closed labels
+  const closedRiskLabels = {};
+  let _currentCloseScenario = null;
+
+  function renderRiskLabels() {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const list = (mockRiskLabels[uid] || []).filter(l => !isLabelSuppressed(uid, l.scenario));
+    const container = document.getElementById('rl-list');
+    const countEl = document.getElementById('rl-count');
+    countEl.textContent = list.length;
+    if (list.length === 0) {
+      container.innerHTML = '<div class="w-full py-6 text-center text-sm text-slate-400"><i class="fa-solid fa-circle-check text-emerald-500 mr-1.5"></i>No Active Risk Labels</div>';
+      return;
+    }
+    list.sort((a, b) => b.lastTime.localeCompare(a.lastTime));
+    const sc = RISK_SCENARIO_MAP;
+    container.innerHTML = list.map(l => {
+      const m = sc[l.scenario];
+      if (!m) return '';
+      return `
+        <div onclick="jumpToRiskTab('${l.scenario}')" class="group relative inline-flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg cursor-pointer hover:bg-rose-100/80 transition-colors">
+          <i class="fa-solid ${m.icon} text-rose-500 text-[12px]"></i>
+          <span class="text-sm font-semibold text-rose-700">${m.label}</span>
+          ${l.count > 1 ? `<span class="text-[11px] font-bold text-rose-500 bg-rose-100 px-1.5 py-0.5 rounded">${l.count}</span>` : ''}
+          <button onclick="event.stopPropagation(); openCloseLabel('${l.scenario}')" class="opacity-0 group-hover:opacity-100 absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center hover:bg-rose-600 transition-all" title="Close label">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  function isLabelSuppressed(uid, scenario) {
+    const key = `${uid}_${scenario}`;
+    const rec = closedRiskLabels[key];
+    if (!rec) return false;
+    if (rec.duration === 'none') return true;
+    const now = new Date();
+    return now < new Date(rec.expireAt);
+  }
+
+  function jumpToRiskTab(scenario) {
+    switchTab('risk');
+    document.getElementById('rl-filter-scenario').value = scenario;
+    const sc = RISK_SCENARIO_MAP[scenario];
+    if (sc) {
+      document.getElementById('rl-filter-type').value = sc.type;
+      onRiskTypeChange();
+      document.getElementById('rl-filter-scenario').value = scenario;
+      renderRiskAlerts();
+    }
+  }
+
+  function onRiskTypeChange() {
+    const type = document.getElementById('rl-filter-type').value;
+    const sel = document.getElementById('rl-filter-scenario');
+    const allScenarios = Object.entries(RISK_SCENARIO_MAP);
+    sel.innerHTML = '<option value="">All Scenarios</option>' + allScenarios
+      .filter(([k, v]) => !type || v.type === type)
+      .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  }
+
+  function renderRiskAlerts() {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const all = mockRiskAlerts[uid] || [];
+    const type = document.getElementById('rl-filter-type').value;
+    const scenario = document.getElementById('rl-filter-scenario').value;
+    const s = document.getElementById('rl-date-start').value;
+    const rows = all.filter(r => {
+      if (type && r.type !== type) return false;
+      if (scenario && r.scenario !== scenario) return false;
+      const d = r.triggerTime.slice(0, 10);
+      if (s && d < s) return false;
+      return true;
+    });
+    const tbody = document.getElementById('rl-tbody');
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">No risk alert records</td></tr>';
+    } else {
+      const sc = RISK_SCENARIO_MAP;
+      const tm = RISK_TYPE_MAP;
+      tbody.innerHTML = rows.map(r => {
+        const sMeta = sc[r.scenario] || {};
+        const tMeta = tm[r.type] || {};
+        const subjectText = r.subject.join(', ');
+        const typeCls = `bg-${tMeta.color || 'slate'}-50 text-${tMeta.color || 'slate'}-600 border-${tMeta.color || 'slate'}-100`;
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors">
+            <td class="px-5 py-3.5 font-mono text-primary text-[12.5px] font-semibold">${r.alertId}</td>
+            <td class="px-4 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${typeCls}">${tMeta.label || r.type}</span></td>
+            <td class="px-4 py-3.5 text-sm text-slate-700">${sMeta.label || r.scenario}</td>
+            <td class="px-4 py-3.5 font-mono text-[12.5px] text-slate-600">${subjectText}</td>
+            <td class="px-4 py-3.5 font-mono text-[12px] text-slate-500">${r.triggerTime}</td>
+            <td class="px-4 py-3.5"><button onclick="openRiskAlert('${r.alertId}')" class="text-primary text-sm hover:underline font-medium">View</button></td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('rl-page-info').innerHTML = `<span class="font-mono text-slate-800 font-semibold">${rows.length}</span> records · Demo data`;
+  }
+
+  function resetRiskFilter() {
+    ['rl-filter-type','rl-filter-scenario','rl-date-start'].forEach(id => document.getElementById(id).value = '');
+    onRiskTypeChange();
+    renderRiskAlerts();
+  }
+
+  function openRiskAlert(alertId) {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const all = mockRiskAlerts[uid] || [];
+    const r = all.find(x => x.alertId === alertId);
+    if (!r) return;
+    const sc = RISK_SCENARIO_MAP[r.scenario] || {};
+    const tm = RISK_TYPE_MAP[r.type] || {};
+    document.getElementById('ra-alert-id').textContent = r.alertId;
+    document.getElementById('ra-scenario-badge').textContent = sc.label || r.scenario;
+    document.getElementById('ra-risk-type').textContent = tm.label || r.type;
+    document.getElementById('ra-risk-scenario').textContent = sc.label || r.scenario;
+    document.getElementById('ra-risk-condition').textContent = r.condition;
+    document.getElementById('ra-subject').textContent = r.subject.join(', ');
+    document.getElementById('ra-uid').textContent = uid;
+    document.getElementById('ra-rule-id').textContent = r.ruleId;
+    document.getElementById('ra-scenario-detail').innerHTML = renderScenarioDetail(r);
+    document.getElementById('risk-alert-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeRiskAlert() {
+    document.getElementById('risk-alert-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function renderScenarioDetail(r) {
+    const d = r.detail;
+    switch (r.scenario) {
+      case 'high_net_profit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-primary"></i>Net Period P&L Detail</h4>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Window</div><div class="text-sm font-semibold text-slate-700">${d.window}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Base Threshold</div><div class="text-sm font-mono font-semibold text-slate-700">${d.baseThreshold.toLocaleString()} ${d.currency}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Current Tier</div><div class="text-sm font-bold text-amber-600"><i class="fa-solid fa-layer-group mr-1 text-[10px]"></i>${d.currentTier}</div></div>
+            <div class="bg-emerald-50 rounded-lg p-3 border border-emerald-100"><div class="text-[11px] text-emerald-500 mb-1">Net Period P&L</div><div class="text-lg font-bold font-mono text-emerald-600">+${d.netPL.toLocaleString()} ${d.currency}</div></div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 font-mono text-sm space-y-2">
+            <div class="flex justify-between"><span class="text-slate-500">Closed P/L</span><span class="text-emerald-600">+${d.closedPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Start Floating P/L</span><span class="${d.startFloatingPL >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${d.startFloatingPL >= 0 ? '+' : ''}${d.startFloatingPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">End Floating P/L</span><span class="${d.endFloatingPL >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${d.endFloatingPL >= 0 ? '+' : ''}${d.endFloatingPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="border-t border-slate-200 my-1"></div>
+            <div class="flex justify-between font-bold"><span class="text-slate-700">= Net Period P&L</span><span class="text-emerald-600">+${d.netPL.toLocaleString()} ${d.currency}</span></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span><i class="fa-regular fa-clock mr-1"></i>Trigger Time: ${r.triggerTime}</span>
+            <span>Formula: Closed P/L + (End Floating P/L - Start Floating P/L) · Base threshold = 100%, +50% per tier</span>
+          </div>`;
+
+      case 'scalping':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-amber-500"></i>Scalping Order Detail</h4>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 text-sm text-amber-700">
+            <i class="fa-solid fa-clock mr-1.5"></i><span class="font-bold">${d.orders.length}</span> profitable orders with holding time < 2 min
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Symbol</th>
+                <th class="px-3 py-2 text-right font-semibold">Volume</th>
+                <th class="px-3 py-2 text-left font-semibold">Opened At</th>
+                <th class="px-3 py-2 text-left font-semibold">Closed At</th>
+                <th class="px-3 py-2 text-right font-semibold">Holding</th>
+                <th class="px-3 py-2 text-right font-semibold">P/L</th>
+              </tr></thead>
+              <tbody>
+                ${d.orders.map(o => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${o.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[12.5px]">${o.symbol}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px]">${o.volume}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${o.openedAt}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${o.closedAt}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12px] text-rose-500 font-semibold">${o.holdingMin} min</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px] text-emerald-600 font-bold">+${o.pl}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+      case 'large_deposit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i>Large Deposit Detail</h4>
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Deposit Order ID</div>
+              <div class="text-sm font-mono font-semibold text-primary">${d.depositOrderId}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Received Account</div>
+              <div class="text-sm font-mono text-slate-700">${d.account}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Deposit Amount (Original)</div>
+              <div class="text-lg font-bold font-mono text-slate-800">${d.depositAmount.toLocaleString()} ${d.depositCurrency}</div>
+            </div>
+            <div class="bg-emerald-50 rounded-lg p-4 border border-emerald-100">
+              <div class="text-[11px] text-emerald-500 mb-1">Converted (USD)</div>
+              <div class="text-lg font-bold font-mono text-emerald-600">$${d.convertedAmount.toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 grid grid-cols-2 gap-4 text-sm">
+            <div><span class="text-slate-400 text-[11px]">Channel: </span>${d.channel}</div>
+            <div><span class="text-slate-400 text-[11px]">Triggered At: </span><span class="font-mono">${r.triggerTime}</span></div>
+          </div>`;
+
+      case 'cumulative_deposit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-line text-amber-500"></i>Cumulative Deposit Detail</h4>
+          <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Window</div><div class="text-sm font-semibold text-slate-700">${d.window}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Base Threshold</div><div class="text-sm font-mono font-semibold text-slate-700">${d.baseThreshold.toLocaleString()} ${d.currency}</div></div>
+            <div class="bg-amber-50 rounded-lg p-3 border border-amber-100"><div class="text-[11px] text-amber-600 mb-1">Current Tier</div><div class="text-sm font-bold text-amber-700">${d.tier}</div></div>
+          </div>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between text-sm">
+            <span class="text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Cumulative deposit exceeded base threshold at ${d.tier}</span>
+            <span class="font-bold font-mono text-amber-700">${d.cumulativeAmount.toLocaleString()} ${d.currency}</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Deposit Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Deposited At</th>
+                <th class="px-3 py-2 text-right font-semibold">Amount (${d.currency})</th>
+              </tr></thead>
+              <tbody>
+                ${d.deposits.map((dp, i) => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${dp.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${dp.time}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px] font-semibold text-slate-700">${dp.amount.toLocaleString()}</td>
+                </tr>`).join('')}
+                <tr class="border-t-2 border-slate-200 bg-slate-50/50">
+                  <td colspan="2" class="px-3 py-2 text-sm font-semibold text-slate-600">Cumulative</td>
+                  <td class="px-3 py-2 text-right font-mono font-bold text-emerald-600">${d.cumulativeAmount.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400">Tier rule: base threshold ${d.baseThreshold.toLocaleString()} ${d.currency} = 100%; each 50% above advances one tier</div>`;
+
+      case 'frequent_profitable':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-bolt text-sky-500"></i>Frequent Profitable Orders Detail</h4>
+          <div class="grid grid-cols-4 gap-3 mb-5">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Window</div><div class="text-sm font-semibold text-slate-700">${d.window}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Base Threshold</div><div class="text-sm font-mono font-semibold text-slate-700">${d.baseThreshold} orders</div></div>
+            <div class="bg-sky-50 rounded-lg p-3 border border-sky-100"><div class="text-[11px] text-sky-500 mb-1">Hit Orders</div><div class="text-lg font-bold font-mono text-sky-600">${d.hitCount} orders</div></div>
+            <div class="bg-amber-50 rounded-lg p-3 border border-amber-100"><div class="text-[11px] text-amber-600 mb-1">Current Tier</div><div class="text-sm font-bold text-amber-700">${d.tier}</div></div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 mb-5">
+            <div class="text-[11px] text-slate-400 mb-2">Involved Accounts</div>
+            <div class="flex flex-wrap gap-3">
+              ${d.accounts.map(a => `<div class="flex items-center gap-2 text-sm"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span class="font-mono text-slate-700">${a}</span></div>`).join('')}
+            </div>
+          </div>
+          <div class="text-[11px] font-semibold text-slate-500 mb-2.5"><i class="fa-solid fa-list-ul mr-1"></i>Hit Order List (${d.orders.length} sample orders)</div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Account</th>
+                <th class="px-3 py-2 text-left font-semibold">Symbol</th>
+                <th class="px-3 py-2 text-left font-semibold">Side</th>
+                <th class="px-3 py-2 text-right font-semibold">Volume</th>
+                <th class="px-3 py-2 text-left font-semibold">Opened</th>
+                <th class="px-3 py-2 text-left font-semibold">Closed</th>
+                <th class="px-3 py-2 text-right font-semibold">P/L</th>
+              </tr></thead>
+              <tbody>
+                ${d.orders.map(o => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${o.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-600">${o.account}</td>
+                  <td class="px-3 py-2 font-mono text-[12px]">${o.symbol}</td>
+                  <td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${o.side === 'Buy' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${o.side}</span></td>
+                  <td class="px-3 py-2 text-right font-mono text-[12px]">${o.volume}</td>
+                  <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.openedAt}</td>
+                  <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.closedAt}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12px] font-bold text-emerald-600">+${o.pl}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400">Total ${d.hitCount} profitable orders, showing sample only</div>`;
+
+      case 'hedge_arbitrage':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-scale-balanced text-violet-500"></i>Hedge Arbitrage Detail</h4>
+          <div class="bg-violet-50/60 border border-violet-200 rounded-lg px-4 py-2.5 mb-4 text-sm text-violet-700 flex items-center justify-between">
+            <span><i class="fa-solid fa-link mr-1.5"></i>Detected <span class="font-bold">${d.matchedSets.length}</span> matched hedge set(s) · Total P/L</span>
+            <span class="font-mono font-bold">${d.totalProfit >= 0 ? '+' : ''}${d.totalProfit.toLocaleString()} ${d.currency}</span>
+          </div>
+          ${d.matchedSets.map((set, si) => `
+          <div class="mb-5">
+            <div class="flex items-center gap-2 mb-2.5">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold tracking-wide bg-violet-100 text-violet-700">SET #${si + 1}</span>
+              <span class="font-mono text-[11px] text-slate-400">${set.setId}</span>
+              <span class="text-[11px] text-slate-500">${set.relatedAccounts.join(' → ')}</span>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-sm">
+                <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                  <th class="px-3 py-2 text-left font-semibold">Account</th>
+                  <th class="px-3 py-2 text-left font-semibold">Order ID</th>
+                  <th class="px-3 py-2 text-left font-semibold">Symbol</th>
+                  <th class="px-3 py-2 text-left font-semibold">Side</th>
+                  <th class="px-3 py-2 text-right font-semibold">Volume</th>
+                  <th class="px-3 py-2 text-left font-semibold">Opened</th>
+                  <th class="px-3 py-2 text-left font-semibold">Closed</th>
+                  <th class="px-3 py-2 text-right font-semibold">P/L</th>
+                </tr></thead>
+                <tbody>
+                  ${set.orders.map(o => `
+                  <tr class="border-t border-slate-100">
+                    <td class="px-3 py-2 font-mono text-[12px] text-slate-600">${o.account}</td>
+                    <td class="px-3 py-2 font-mono text-[12px] text-primary">${o.orderId}</td>
+                    <td class="px-3 py-2 font-mono text-[12.5px]">${o.symbol}</td>
+                    <td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${o.side === 'Buy' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${o.side}</span></td>
+                    <td class="px-3 py-2 text-right font-mono text-[12.5px]">${o.volume}</td>
+                    <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.openedAt}</td>
+                    <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.closedAt}</td>
+                    <td class="px-3 py-2 text-right font-mono text-[12.5px] font-bold ${o.pl >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${o.pl >= 0 ? '+' : ''}${o.pl}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`).join('')}
+          <div class="text-[11px] text-slate-400">Correlation: ${d.correlation} · Detection window: ${d.window}</div>`;
+
+      case 'negative_balance_protection':
+        const compStatus = d.compensationStatus === 'compensated'
+          ? { label: 'Compensated', cls: 'bg-emerald-100 text-emerald-700', icon: 'fa-check-circle' }
+          : { label: 'Uncompensated', cls: 'bg-slate-100 text-slate-600', icon: 'fa-clock' };
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-rose-500"></i>Negative Balance Protection Detail</h4>
+          <div class="bg-rose-50/60 border border-rose-200 rounded-lg p-6 mb-4 text-center">
+            <div class="text-[11px] text-rose-500 mb-2 font-semibold tracking-wide">SHORTFALL AMOUNT</div>
+            <div class="text-3xl font-bold font-mono text-rose-600">${d.triggerAmount.toLocaleString()} ${d.currency}</div>
+            <div class="text-[11px] text-rose-400 mt-2">Account ${d.account}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Trigger Time</div>
+              <div class="text-sm font-mono text-slate-700">${r.triggerTime}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Compensation Status</div>
+              <div><span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${compStatus.cls}"><i class="fa-solid ${compStatus.icon} mr-1"></i>${compStatus.label}</span></div>
+            </div>
+          </div>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
+            <i class="fa-solid fa-circle-info mr-1.5"></i>Compensation settled after risk review; amount not shown here.
+          </div>`;
+
+      default:
+        return '<div class="text-sm text-slate-400">No scenario detail available</div>';
+    }
+  }
+
+  function openCloseLabel(scenario) {
+    _currentCloseScenario = scenario;
+    document.getElementById('cl-reason').value = '';
+    document.querySelector('input[name="cl-duration"][value="none"]').checked = true;
+    document.getElementById('cl-note').value = '';
+    document.getElementById('cl-note-count').textContent = '0';
+    updateClNoteRequired();
+    document.getElementById('close-label-modal').classList.remove('hidden');
+  }
+  function closeLabelCancel() {
+    _currentCloseScenario = null;
+    document.getElementById('close-label-modal').classList.add('hidden');
+  }
+  function closeLabelConfirm() {
+    const reason = document.getElementById('cl-reason').value;
+    if (!reason) { alert('Please select a close reason'); return; }
+    const duration = document.querySelector('input[name="cl-duration"]:checked').value;
+    const note = document.getElementById('cl-note').value;
+    if (reason === 'other' && !note.trim()) { alert('Please enter a handling note'); return; }
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const key = `${uid}_${_currentCloseScenario}`;
+    let expireAt = null;
+    if (duration !== 'none') {
+      const hours = parseInt(duration);
+      expireAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+    }
+    closedRiskLabels[key] = { reason, duration, note, expireAt, closedAt: new Date().toISOString() };
+    closeLabelCancel();
+    renderRiskLabels();
+    alert('Label closed');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const note = document.getElementById('cl-note');
+    if (note) {
+      note.addEventListener('input', function() {
+        document.getElementById('cl-note-count').textContent = this.value.length;
+      });
+    }
+    const reasonSel = document.getElementById('cl-reason');
+    if (reasonSel) {
+      reasonSel.addEventListener('change', updateClNoteRequired);
+    }
+  });
+  function updateClNoteRequired() {
+    const v = document.getElementById('cl-reason').value;
+    const req = document.getElementById('cl-note-required');
+    if (req) req.classList.toggle('hidden', v !== 'other');
+  }
+
+  /* Duplicate English risk-label block retained in the damaged mirror was disabled to keep one authoritative module. */
+  /*
+  // ========================================
+  // Risk Labels + Alert Records Module
+  // ========================================
+  const RISK_TYPE_MAP = {
+    negative_balance: { label: 'Negative Balance Protection', color: 'rose' },
+    deposit:          { label: 'Deposit',                        color: 'amber' },
+    trading:          { label: 'Trading',                        color: 'sky' },
+  };
+  const RISK_SCENARIO_MAP = {
+    negative_balance_protection: { type: 'negative_balance', label: 'Negative Balance Protection',  icon: 'fa-shield-halved' },
+    large_deposit:               { type: 'deposit',          label: 'Large Deposit',                icon: 'fa-money-bill-trend-up' },
+    cumulative_deposit:          { type: 'deposit',          label: 'Cumulative Deposit',           icon: 'fa-chart-line' },
+    frequent_profitable:         { type: 'trading',          label: 'Frequent Profitable Orders',   icon: 'fa-bolt' },
+    high_net_profit:             { type: 'trading',          label: 'High Net Profit',              icon: 'fa-arrow-trend-up' },
+    scalping:                    { type: 'trading',          label: 'Scalping',                     icon: 'fa-gauge-high' },
+    hedge_arbitrage:             { type: 'trading',          label: 'Hedge Arbitrage',              icon: 'fa-scale-balanced' },
+  };
+
+  const mockRiskLabels = {
+    "10938472": [
+      { scenario: 'high_net_profit', count: 2, lastTime: '2026-07-22 14:32:05' },
+      { scenario: 'scalping',        count: 2, lastTime: '2026-07-21 09:15:42' },
+      { scenario: 'large_deposit',   count: 1, lastTime: '2026-07-20 16:48:11' },
+      { scenario: 'cumulative_deposit', count: 2, lastTime: '2026-07-19 22:10:33' },
+      { scenario: 'frequent_profitable', count: 2, lastTime: '2026-07-18 11:25:08' },
+      { scenario: 'hedge_arbitrage', count: 1, lastTime: '2026-07-17 08:52:19' },
+      { scenario: 'negative_balance_protection', count: 1, lastTime: '2026-07-15 19:40:27' },
+    ],
+    "10867543": [
+      { scenario: 'large_deposit',  count: 1, lastTime: '2026-07-20 10:20:00' },
+    ],
+    "10672348": [],
+    "10723456": [
+      { scenario: 'scalping',       count: 3, lastTime: '2026-07-21 15:30:00' },
+    ],
+    "10589123": [
+      { scenario: 'high_net_profit', count: 1, lastTime: '2026-07-22 09:00:00' },
+    ],
+  };
+
+  const mockRiskAlerts = {
+    "10938472": [
+      { alertId: 'ALT_20260722_000001', type: 'trading', scenario: 'high_net_profit', subject: ['8802917','8802941'], triggerTime: '2026-07-22 14:32:05', ruleId: 'RULE_TRA_003', condition: '72H; Net Period P&L ≥ 4,000 USD', detail: { window: '72H', windowStart: '2026-07-19 14:32:05', windowEnd: '2026-07-22 14:32:05', baseThreshold: 4000, currentTier: '200%', closedPL: 3200, startFloatingPL: -800, endFloatingPL: 1850, netPL: 5850, currency: 'USD' } },
+      { alertId: 'ALT_20260721_000002', type: 'trading', scenario: 'scalping', subject: ['8802917'], triggerTime: '2026-07-21 09:15:42', ruleId: 'RULE_TRA_005', condition: '24H; holding < 2min & profitable ≥ 20', detail: { orders: [ { orderId: 'ORD_20260721_00876', symbol: 'XAUUSD', volume: 0.5, openedAt: '2026-07-21 09:12:33', closedAt: '2026-07-21 09:13:45', holdingMin: 1.2, pl: 120 }, { orderId: 'ORD_20260721_00877', symbol: 'EURUSD', volume: 1.0, openedAt: '2026-07-21 09:13:01', closedAt: '2026-07-21 09:14:08', holdingMin: 1.1, pl: 85 } ] } },
+      { alertId: 'ALT_20260720_000003', type: 'deposit', scenario: 'large_deposit', subject: ['Acct.No 8802917'], triggerTime: '2026-07-20 16:48:11', ruleId: 'RULE_DEP_001', condition: 'Single deposit ≥ 10,000 USD', detail: { depositOrderId: 'DEP_20260720_88742', account: 'Acct.No 8802917', depositAmount: 15000, depositCurrency: 'USD', convertedAmount: 15000, convertedCurrency: 'USD', channel: 'Bank Transfer' } },
+      { alertId: 'ALT_20260719_000004', type: 'deposit', scenario: 'cumulative_deposit', subject: ['UID 10938472'], triggerTime: '2026-07-19 22:10:33', ruleId: 'RULE_DEP_002', condition: '24H cumulative deposit ≥ 15,000 USD (150% tier)', detail: { window: '24H', tier: '150%', cumulativeAmount: 18500, currency: 'USD', deposits: [ { orderId: 'DEP_20260719_88701', time: '2026-07-19 08:12:00', amount: 6000 }, { orderId: 'DEP_20260719_88715', time: '2026-07-19 14:35:00', amount: 7500 } ] } },
+      { alertId: 'ALT_20260718_000005', type: 'trading', scenario: 'frequent_profitable', subject: ['8802917','8802941'], triggerTime: '2026-07-18 11:25:08', ruleId: 'RULE_TRA_004', condition: '24H; profitable closed orders ≥ 75 (150% tier)', detail: { window: '24H', tier: '150%', hitCount: 82, accounts: ['8802917 (56 orders)', '8802941 (26 orders)'] } },
+      { alertId: 'ALT_20260717_000006', type: 'trading', scenario: 'hedge_arbitrage', subject: ['8802917','8802941'], triggerTime: '2026-07-17 08:52:19', ruleId: 'RULE_TRA_006', condition: 'Cross-account hedge arbitrage, match ≥ 95%', detail: { matchedSetId: 'MATCH_20260717_001', relatedAccounts: ['8802917','8802941'], orders: [ { orderId: 'ORD_20260717_00123', account: '8802917', symbol: 'EURUSD', side: 'Buy', volume: 5.0, openedAt: '2026-07-17 08:45:12', closedAt: '2026-07-17 08:50:33', pl: 250 }, { orderId: 'ORD_20260717_00456', account: '8802941', symbol: 'EURUSD', side: 'Sell', volume: 5.0, openedAt: '2026-07-17 08:45:18', closedAt: '2026-07-17 08:50:29', pl: -240 } ] } },
+      { alertId: 'ALT_20260715_000007', type: 'negative_balance', scenario: 'negative_balance_protection', subject: ['8802917'], triggerTime: '2026-07-15 19:40:27', ruleId: 'RULE_NBP_001', condition: 'Account shortfall, NBP executed', detail: { account: '8802917', triggerAmount: -3520.80, currency: 'USD', compensationStatus: 'uncompensated' } },
+      { alertId: 'ALT_20260714_000008', type: 'trading', scenario: 'high_net_profit', subject: ['8802917'], triggerTime: '2026-07-14 21:08:44', ruleId: 'RULE_TRA_003', condition: '72H; Net Period P&L ≥ 2,000 USD', detail: { window: '72H', windowStart: '2026-07-11 21:08:44', windowEnd: '2026-07-14 21:08:44', baseThreshold: 2000, currentTier: '150%', closedPL: 1800, startFloatingPL: -300, endFloatingPL: 900, netPL: 3000, currency: 'USD' } },
+      { alertId: 'ALT_20260713_000009', type: 'trading', scenario: 'scalping', subject: ['8802941'], triggerTime: '2026-07-13 16:22:10', ruleId: 'RULE_TRA_005', condition: '24H; holding < 2min & profitable ≥ 20', detail: { orders: [ { orderId: 'ORD_20260713_01522', symbol: 'GBPUSD', volume: 0.3, openedAt: '2026-07-13 16:18:05', closedAt: '2026-07-13 16:19:10', holdingMin: 1.1, pl: 45 } ] } },
+      { alertId: 'ALT_20260712_000010', type: 'deposit', scenario: 'large_deposit', subject: ['Acct.No 8802917'], triggerTime: '2026-07-12 11:30:00', ruleId: 'RULE_DEP_001', condition: 'Single deposit ≥ 10,000 USD', detail: { depositOrderId: 'DEP_20260712_88620', account: 'Acct.No 8802917', depositAmount: 12000, depositCurrency: 'USD', convertedAmount: 12000, convertedCurrency: 'USD', channel: 'Crypto' } },
+      { alertId: 'ALT_20260711_000011', type: 'deposit', scenario: 'cumulative_deposit', subject: ['UID 10938472'], triggerTime: '2026-07-11 18:42:15', ruleId: 'RULE_DEP_002', condition: '24H cumulative deposit ≥ 10,000 USD (100% tier)', detail: { window: '24H', tier: '100%', cumulativeAmount: 11200, currency: 'USD', deposits: [ { orderId: 'DEP_20260711_88580', time: '2026-07-11 10:15:00', amount: 5000 } ] } },
+      { alertId: 'ALT_20260710_000012', type: 'trading', scenario: 'frequent_profitable', subject: ['8802917'], triggerTime: '2026-07-10 14:55:30', ruleId: 'RULE_TRA_004', condition: '24H; profitable closed orders ≥ 50', detail: { window: '24H', tier: '100%', hitCount: 53, accounts: ['8802917 (53 orders)'] } },
+    ],
+  };
+
+  const closedRiskLabels = {};
+  let _currentCloseScenario = null;
+
+  function renderRiskLabels() {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const list = (mockRiskLabels[uid] || []).filter(l => !isLabelSuppressed(uid, l.scenario));
+    const container = document.getElementById('rl-list');
+    const countEl = document.getElementById('rl-count');
+    countEl.textContent = list.length;
+    if (list.length === 0) {
+      container.innerHTML = '<div class="w-full py-6 text-center text-sm text-slate-400"><i class="fa-solid fa-circle-check text-emerald-500 mr-1.5"></i>No Active Risk Labels</div>';
+      return;
+    }
+    list.sort((a, b) => b.lastTime.localeCompare(a.lastTime));
+    const sc = RISK_SCENARIO_MAP;
+    container.innerHTML = list.map(l => {
+      const m = sc[l.scenario];
+      if (!m) return '';
+      return `
+        <div onclick="jumpToRiskTab('${l.scenario}')" class="group relative inline-flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg cursor-pointer hover:bg-rose-100/80 transition-colors">
+          <i class="fa-solid ${m.icon} text-rose-500 text-[12px]"></i>
+          <span class="text-sm font-semibold text-rose-700">${m.label}</span>
+          ${l.count > 1 ? `<span class="text-[11px] font-bold text-rose-500 bg-rose-100 px-1.5 py-0.5 rounded">${l.count}</span>` : ''}
+          <button onclick="event.stopPropagation(); openCloseLabel('${l.scenario}')" class="opacity-0 group-hover:opacity-100 absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center hover:bg-rose-600 transition-all" title="Close label">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  function isLabelSuppressed(uid, scenario) {
+    const key = `${uid}_${scenario}`;
+    const rec = closedRiskLabels[key];
+    if (!rec) return false;
+    if (rec.duration === 'none') return true;
+    const now = new Date();
+    return now < new Date(rec.expireAt);
+  }
+
+  function jumpToRiskTab(scenario) {
+    switchTab('risk');
+    document.getElementById('rl-filter-scenario').value = scenario;
+    const sc = RISK_SCENARIO_MAP[scenario];
+    if (sc) {
+      document.getElementById('rl-filter-type').value = sc.type;
+      onRiskTypeChange();
+      document.getElementById('rl-filter-scenario').value = scenario;
+      renderRiskAlerts();
+    }
+  }
+
+  function onRiskTypeChange() {
+    const type = document.getElementById('rl-filter-type').value;
+    const sel = document.getElementById('rl-filter-scenario');
+    const allScenarios = Object.entries(RISK_SCENARIO_MAP);
+    sel.innerHTML = '<option value="">All Scenarios</option>' + allScenarios
+      .filter(([k, v]) => !type || v.type === type)
+      .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  }
+
+  function renderRiskAlerts() {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const all = mockRiskAlerts[uid] || [];
+    const type = document.getElementById('rl-filter-type').value;
+    const scenario = document.getElementById('rl-filter-scenario').value;
+    const s = document.getElementById('rl-date-start').value;
+    const rows = all.filter(r => {
+      if (type && r.type !== type) return false;
+      if (scenario && r.scenario !== scenario) return false;
+      const d = r.triggerTime.slice(0, 10);
+      if (s && d < s) return false;
+      return true;
+    });
+    const tbody = document.getElementById('rl-tbody');
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">No risk alert records</td></tr>';
+    } else {
+      const sc = RISK_SCENARIO_MAP;
+      const tm = RISK_TYPE_MAP;
+      tbody.innerHTML = rows.map(r => {
+        const sMeta = sc[r.scenario] || {};
+        const tMeta = tm[r.type] || {};
+        const subjectText = r.subject.join(', ');
+        const typeCls = `bg-${tMeta.color || 'slate'}-50 text-${tMeta.color || 'slate'}-600 border-${tMeta.color || 'slate'}-100`;
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors">
+            <td class="px-5 py-3.5 font-mono text-primary text-[12.5px] font-semibold">${r.alertId}</td>
+            <td class="px-4 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${typeCls}">${tMeta.label || r.type}</span></td>
+            <td class="px-4 py-3.5 text-sm text-slate-700">${sMeta.label || r.scenario}</td>
+            <td class="px-4 py-3.5 font-mono text-[12.5px] text-slate-600">${subjectText}</td>
+            <td class="px-4 py-3.5 font-mono text-[12px] text-slate-500">${r.triggerTime}</td>
+            <td class="px-4 py-3.5"><button onclick="openRiskAlert('${r.alertId}')" class="text-primary text-sm hover:underline font-medium">View</button></td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('rl-page-info').innerHTML = `<span class="font-mono text-slate-800 font-semibold">${rows.length}</span> records · Demo data`;
+  }
+
+  function resetRiskFilter() {
+    ['rl-filter-type','rl-filter-scenario','rl-date-start'].forEach(id => document.getElementById(id).value = '');
+    onRiskTypeChange();
+    renderRiskAlerts();
+  }
+
+  function openRiskAlert(alertId) {
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const all = mockRiskAlerts[uid] || [];
+    const r = all.find(x => x.alertId === alertId);
+    if (!r) return;
+    const sc = RISK_SCENARIO_MAP[r.scenario] || {};
+    const tm = RISK_TYPE_MAP[r.type] || {};
+    document.getElementById('ra-alert-id').textContent = r.alertId;
+    document.getElementById('ra-scenario-badge').textContent = sc.label || r.scenario;
+    document.getElementById('ra-risk-type').textContent = tm.label || r.type;
+    document.getElementById('ra-risk-scenario').textContent = sc.label || r.scenario;
+    document.getElementById('ra-risk-condition').textContent = r.condition;
+    document.getElementById('ra-subject').textContent = r.subject.join(', ');
+    document.getElementById('ra-uid').textContent = uid;
+    document.getElementById('ra-rule-id').textContent = r.ruleId;
+    document.getElementById('ra-scenario-detail').innerHTML = renderScenarioDetail(r);
+    document.getElementById('risk-alert-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeRiskAlert() {
+    document.getElementById('risk-alert-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function renderScenarioDetail(r) {
+    const d = r.detail;
+    switch (r.scenario) {
+      case 'high_net_profit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-primary"></i>Net Period P&L Detail</h4>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Window</div><div class="text-sm font-semibold text-slate-700">${d.window}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Base Threshold</div><div class="text-sm font-mono font-semibold text-slate-700">${d.baseThreshold.toLocaleString()} ${d.currency}</div></div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Current Tier</div><div class="text-sm font-bold text-amber-600"><i class="fa-solid fa-layer-group mr-1 text-[10px]"></i>${d.currentTier}</div></div>
+            <div class="bg-emerald-50 rounded-lg p-3 border border-emerald-100"><div class="text-[11px] text-emerald-500 mb-1">Net Period P&L</div><div class="text-lg font-bold font-mono text-emerald-600">+${d.netPL.toLocaleString()} ${d.currency}</div></div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 font-mono text-sm space-y-2">
+            <div class="flex justify-between"><span class="text-slate-500">Closed P/L</span><span class="text-emerald-600">+${d.closedPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Start Floating P/L</span><span class="${d.startFloatingPL >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${d.startFloatingPL >= 0 ? '+' : ''}${d.startFloatingPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">End Floating P/L</span><span class="${d.endFloatingPL >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${d.endFloatingPL >= 0 ? '+' : ''}${d.endFloatingPL.toLocaleString()} ${d.currency}</span></div>
+            <div class="border-t border-slate-200 my-1"></div>
+            <div class="flex justify-between font-bold"><span class="text-slate-700">= Net Period P&L</span><span class="text-emerald-600">+${d.netPL.toLocaleString()} ${d.currency}</span></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span><i class="fa-regular fa-clock mr-1"></i>Trigger Time: ${r.triggerTime}</span>
+            <span>Formula: Closed P/L + (End Floating P/L - Start Floating P/L) · Base threshold = 100%, +50% per tier</span>
+          </div>`;
+
+      case 'scalping':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-amber-500"></i>Scalping Order Detail</h4>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 text-sm text-amber-700">
+            <i class="fa-solid fa-clock mr-1.5"></i><span class="font-bold">${d.orders.length}</span> profitable orders with holding time < 2 min
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Symbol</th>
+                <th class="px-3 py-2 text-right font-semibold">Volume</th>
+                <th class="px-3 py-2 text-left font-semibold">Opened At</th>
+                <th class="px-3 py-2 text-left font-semibold">Closed At</th>
+                <th class="px-3 py-2 text-right font-semibold">Holding</th>
+                <th class="px-3 py-2 text-right font-semibold">P/L</th>
+              </tr></thead>
+              <tbody>
+                ${d.orders.map(o => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${o.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[12.5px]">${o.symbol}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px]">${o.volume}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${o.openedAt}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${o.closedAt}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12px] text-rose-500 font-semibold">${o.holdingMin} min</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px] text-emerald-600 font-bold">+${o.pl}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+      case 'large_deposit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i>Large Deposit Detail</h4>
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Deposit Order ID</div>
+              <div class="text-sm font-mono font-semibold text-primary">${d.depositOrderId}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Received Account</div>
+              <div class="text-sm font-mono text-slate-700">${d.account}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Deposit Amount (Original)</div>
+              <div class="text-lg font-bold font-mono text-slate-800">${d.depositAmount.toLocaleString()} ${d.depositCurrency}</div>
+            </div>
+            <div class="bg-emerald-50 rounded-lg p-4 border border-emerald-100">
+              <div class="text-[11px] text-emerald-500 mb-1">Converted (USD)</div>
+              <div class="text-lg font-bold font-mono text-emerald-600">$${d.convertedAmount.toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 grid grid-cols-2 gap-4 text-sm">
+            <div><span class="text-slate-400 text-[11px]">Channel: </span>${d.channel}</div>
+            <div><span class="text-slate-400 text-[11px]">Triggered At: </span><span class="font-mono">${r.triggerTime}</span></div>
+          </div>`;
+
+      case 'cumulative_deposit':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-line text-amber-500"></i>Cumulative Deposit Detail</h4>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between text-sm">
+            <span class="text-amber-700"><i class="fa-solid fa-layer-group mr-1.5"></i>Current Tier: <span class="font-bold">${d.tier}</span> · Window: ${d.window}</span>
+            <span class="font-bold font-mono text-amber-700">Cumulative: ${d.cumulativeAmount.toLocaleString()} ${d.currency}</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Deposit Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Deposited At</th>
+                <th class="px-3 py-2 text-right font-semibold">Amount (${d.currency})</th>
+              </tr></thead>
+              <tbody>
+                ${d.deposits.map((dp, i) => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${dp.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[11.5px] text-slate-500">${dp.time}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px] font-semibold text-slate-700">${dp.amount.toLocaleString()}</td>
+                </tr>`).join('')}
+                <tr class="border-t-2 border-slate-200 bg-slate-50/50">
+                  <td colspan="2" class="px-3 py-2 text-sm font-semibold text-slate-600">Cumulative</td>
+                  <td class="px-3 py-2 text-right font-mono font-bold text-emerald-600">${d.cumulativeAmount.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+
+      case 'frequent_profitable':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-bolt text-sky-500"></i>Frequent Profitable Orders Detail</h4>
+          <div class="grid grid-cols-3 gap-4 mb-5">
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Window</div><div class="text-sm font-semibold text-slate-700">${d.window}</div></div>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-[11px] text-slate-400 mb-1">Current Tier</div><div class="text-sm font-bold text-amber-600">${d.tier}</div></div>
+            <div class="bg-sky-50 rounded-lg p-4 border border-sky-100"><div class="text-[11px] text-sky-500 mb-1">Hit Count</div><div class="text-lg font-bold font-mono text-sky-600">${d.hitCount}</div></div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+            <div class="text-[11px] text-slate-400 mb-2">Involved Accounts</div>
+            <div class="space-y-1.5">
+              ${d.accounts.map(a => `<div class="flex items-center gap-2 text-sm"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span><span class="font-mono text-slate-700">${a}</span></div>`).join('')}
+            </div>
+          </div>`;
+
+      case 'hedge_arbitrage':
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-scale-balanced text-violet-500"></i>Hedge Arbitrage Detail</h4>
+          <div class="bg-violet-50/60 border border-violet-200 rounded-lg px-4 py-2.5 mb-4 text-sm text-violet-700">
+            <i class="fa-solid fa-link mr-1.5"></i>Matched Set ID: <span class="font-mono font-semibold">${d.matchedSetId}</span>
+            · Related: ${d.relatedAccounts.join(' / ')}
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead><tr class="bg-slate-50 text-[11px] text-slate-500">
+                <th class="px-3 py-2 text-left font-semibold">Account</th>
+                <th class="px-3 py-2 text-left font-semibold">Order ID</th>
+                <th class="px-3 py-2 text-left font-semibold">Symbol</th>
+                <th class="px-3 py-2 text-left font-semibold">Side</th>
+                <th class="px-3 py-2 text-right font-semibold">Volume</th>
+                <th class="px-3 py-2 text-left font-semibold">Opened</th>
+                <th class="px-3 py-2 text-left font-semibold">Closed</th>
+                <th class="px-3 py-2 text-right font-semibold">P/L</th>
+              </tr></thead>
+              <tbody>
+                ${d.orders.map(o => `
+                <tr class="border-t border-slate-100">
+                  <td class="px-3 py-2 font-mono text-[12px] text-slate-600">${o.account}</td>
+                  <td class="px-3 py-2 font-mono text-[12px] text-primary">${o.orderId}</td>
+                  <td class="px-3 py-2 font-mono text-[12.5px]">${o.symbol}</td>
+                  <td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${o.side === 'Buy' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${o.side}</span></td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px]">${o.volume}</td>
+                  <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.openedAt}</td>
+                  <td class="px-3 py-2 font-mono text-[11px] text-slate-500">${o.closedAt}</td>
+                  <td class="px-3 py-2 text-right font-mono text-[12.5px] font-bold ${o.pl >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${o.pl >= 0 ? '+' : ''}${o.pl}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+      case 'negative_balance_protection':
+        const compStatus = d.compensationStatus === 'compensated'
+          ? { label: 'Compensated', cls: 'bg-emerald-100 text-emerald-700', icon: 'fa-check-circle' }
+          : { label: 'Uncompensated', cls: 'bg-slate-100 text-slate-600', icon: 'fa-clock' };
+        return `
+          <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-rose-500"></i>Negative Balance Protection Detail</h4>
+          <div class="bg-rose-50/60 border border-rose-200 rounded-lg p-6 mb-4 text-center">
+            <div class="text-[11px] text-rose-500 mb-2 font-semibold tracking-wide">SHORTFALL AMOUNT</div>
+            <div class="text-3xl font-bold font-mono text-rose-600">${d.triggerAmount.toLocaleString()} ${d.currency}</div>
+            <div class="text-[11px] text-rose-400 mt-2">Account ${d.account}</div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Trigger Time</div>
+              <div class="text-sm font-mono text-slate-700">${r.triggerTime}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <div class="text-[11px] text-slate-400 mb-1">Compensation Status</div>
+              <div><span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${compStatus.cls}"><i class="fa-solid ${compStatus.icon} mr-1"></i>${compStatus.label}</span></div>
+            </div>
+          </div>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
+            <i class="fa-solid fa-circle-info mr-1.5"></i>Compensation settled after risk review; amount not shown here.
+          </div>`;
+
+      default:
+        return '<div class="text-sm text-slate-400">No scenario detail available</div>';
+    }
+  }
+
+  function openCloseLabel(scenario) {
+    _currentCloseScenario = scenario;
+    document.getElementById('cl-reason').value = '';
+    document.querySelector('input[name="cl-duration"][value="none"]').checked = true;
+    document.getElementById('cl-note').value = '';
+    document.getElementById('cl-note-count').textContent = '0';
+    updateClNoteRequired();
+    document.getElementById('close-label-modal').classList.remove('hidden');
+  }
+  function closeLabelCancel() {
+    _currentCloseScenario = null;
+    document.getElementById('close-label-modal').classList.add('hidden');
+  }
+  function closeLabelConfirm() {
+    const reason = document.getElementById('cl-reason').value;
+    if (!reason) { alert('Please select a close reason'); return; }
+    const duration = document.querySelector('input[name="cl-duration"]:checked').value;
+    const note = document.getElementById('cl-note').value;
+    if (reason === 'other' && !note.trim()) { alert('Please enter a handling note'); return; }
+    const uid = document.getElementById('client-modal-uid').textContent;
+    const key = `${uid}_${_currentCloseScenario}`;
+    let expireAt = null;
+    if (duration !== 'none') {
+      const hours = parseInt(duration);
+      expireAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+    }
+    closedRiskLabels[key] = { reason, duration, note, expireAt, closedAt: new Date().toISOString() };
+    closeLabelCancel();
+    renderRiskLabels();
+    alert('Label closed');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const note = document.getElementById('cl-note');
+    if (note) {
+      note.addEventListener('input', function() {
+        document.getElementById('cl-note-count').textContent = this.value.length;
+      });
+    }
+    const reasonSel = document.getElementById('cl-reason');
+    if (reasonSel) {
+      reasonSel.addEventListener('change', updateClNoteRequired);
+    }
+  });
+  function updateClNoteRequired() {
+    const v = document.getElementById('cl-reason').value;
+    const req = document.getElementById('cl-note-required');
+    if (req) req.classList.toggle('hidden', v !== 'other');
+  }
+  */
+  function renderClientLedger() {
+    const acct = document.getElementById("cl-account").value;
+    const type = document.getElementById("cl-type").value;
+    const s = document.getElementById("cl-date-start").value;
+    const e = document.getElementById("cl-date-end").value;
+    const rows = mockClientLedger.filter(r => {
+      if (acct && r.account !== acct) return false;
+      if (type && r.type !== type) return false;
+      const d = r.time.slice(0, 10);
+      if (s && d < s) return false;
+      if (e && d > e) return false;
+      return true;
+    });
+    const tbody = document.getElementById("cl-ledger-tbody");
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="px-5 py-12 text-center text-slate-400 text-sm">No matching ledger records</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(r => {
+        const tc = TYPE_COLOR[r.type] || "slate";
+        const typeCls = `bg-${tc}-50 text-${tc}-600 border-${tc}-100`;
+        const rowExtra = r.fx ? "bg-sky-50/20" : "";
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${rowExtra}">
+            <td class="px-4 py-3.5 font-mono text-primary text-[12.5px] font-semibold align-top">${r.txId}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-700 text-[12.5px] align-top">${r.account}</td>
+            <td class="px-4 py-3.5 align-top"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${typeCls}">${r.type}</span></td>
+            <td class="px-4 py-3.5 text-right font-mono text-slate-600 text-[13px] align-top">${fmtMoney(r.before, r.currency)}</td>
+            <td class="px-4 py-3.5 text-right whitespace-nowrap align-top">${fmtDeltaCell(r)}</td>
+            <td class="px-4 py-3.5 text-right font-mono font-bold text-slate-800 bg-slate-50/40 text-[13px] align-top">${fmtMoney(r.after, r.currency)}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-600 text-[12.5px] align-top">${r.currency}</td>
+            <td class="px-4 py-3.5 font-mono text-slate-500 text-[12px] align-top">${r.time}</td>
+          </tr>`;
+      }).join("");
+    }
+    document.getElementById("cl-ledger-count").innerHTML = `Total <span class="font-mono text-slate-800 font-semibold">${rows.length}</span> ledger records · Demo data`;
+  }
+</script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copytrading 系统日志 - CFD 业务管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { sidebar: '#0B1120', sidebarHover: '#1E293B', primary: '#3B82F6' } } } }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .submenu-container { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; } .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 1rem; } .menu-level-2 { padding-left: 2.75rem; } .menu-level-3 { padding-left: 4.5rem; } .menu-level-4 { padding-left: 6.25rem; }
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; } .toast.show { transform: translateY(0); opacity: 1; }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { color: #3B82F6; border-bottom: 2px solid #3B82F6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #manualReinviteModal[hidden] { display: none !important; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+<div id="sidebar-root"></div>
+<main class="flex-1 flex flex-col overflow-hidden">
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+        <div class="flex items-center text-sm text-slate-500">
+            <i class="fa-solid fa-house mr-2"></i><span>Copytrading</span><i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i><span class="text-slate-700 font-medium" data-i18n="breadcrumb_page">系统日志</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="lang-switch"></div>
+            <button class="text-slate-500 hover:text-primary transition-colors relative"><i class="fa-solid fa-bell"></i><span class="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span></button>
+            <button class="text-slate-500 hover:text-primary text-sm transition-colors"><i class="fa-solid fa-right-from-bracket mr-1"></i><span data-i18n="logout">退出</span></button>
+        </div>
+    </header>
+    <div class="flex-1 overflow-auto p-8 bg-slate-50">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-slate-800" data-i18n="page_title">系统日志</h1>
+            <p class="text-sm text-slate-500 mt-2" data-i18n="page_desc">Copytrading 系统运营日志，涵盖跟单执行、邀请流转、风险跑批及等级跑批（一期不做）。</p>
+        </div>
+
+        <!-- Tab 导航 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+            <div class="flex border-b border-slate-200">
+                <button class="tab-btn active px-6 py-4 text-sm font-medium text-slate-600 hover:text-primary" data-tab="copy" onclick="switchTab('copy')">
+                    <i class="fa-solid fa-copy mr-2"></i><span data-i18n="tab_copy">跟单执行日志</span>
+                </button>
+                <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-600 hover:text-primary" data-tab="invite" onclick="switchTab('invite')">
+                    <i class="fa-solid fa-envelope-open-text mr-2"></i><span data-i18n="tab_invite">邀请流转记录</span>
+                </button>
+                <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-600 hover:text-primary" data-tab="risk" onclick="switchTab('risk')">
+                    <i class="fa-solid fa-shield-halved mr-2"></i><span data-i18n="tab_risk">风险跑批</span>
+                </button>
+                <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-600 hover:text-primary" data-tab="batch" onclick="switchTab('batch')">
+                    <i class="fa-solid fa-clock-rotate-left mr-2"></i><span data-i18n="tab_batch">等级跑批（一期不做）</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: 跟单执行日志 -->
+            <div id="tab-copy" class="tab-content active p-6">
+                <!-- 统计 -->
+                <div class="grid grid-cols-5 gap-4 mb-6" id="statCards"></div>
+
+                <!-- 筛选 -->
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 mb-4 flex items-center gap-3 flex-wrap">
+                    <select id="filterResult" onchange="renderCopyTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="filter_all">全部结果</option>
+                        <option value="success" data-i18n-opt="result_success">成功跟单</option>
+                        <option value="skip_delay" data-i18n-opt="result_skip_delay">跳过（延迟）</option>
+                        <option value="skip_price" data-i18n-opt="result_skip_price">跳过（价差）</option>
+                        <option value="fail_balance" data-i18n-opt="result_fail_balance">失败（余额不足）</option>
+                        <option value="fail_margin_level" data-i18n-opt="result_fail_margin_level">失败（保证金水平过低）</option>
+                        <option value="fail_liquidity" data-i18n-opt="result_fail_liquidity">失败（流动性不足）</option>
+                        <option value="partial" data-i18n-opt="result_partial">部分平仓</option>
+                    </select>
+                    <div class="relative flex-1 min-w-[160px]">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input id="filterSearchFollower" type="text" oninput="renderCopyTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_follower">
+                    </div>
+                    <div class="relative flex-1 min-w-[160px]">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input id="filterSearchOrder" type="text" oninput="renderCopyTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_order">
+                    </div>
+                </div>
+
+                <!-- 表格 -->
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50/80 border-b border-slate-200">
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_time">时间</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_master_order">高手交易订单号</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_action">交易动作</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_lifecycle">生命周期 ID</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_acct">跟单账号</th>
+                                    <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_master_lots">高手手数</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_follower">跟随者</th>
+                                    <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_calc_lots">计算手数</th>
+                                    <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_exec_lots">实际执行</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_symbol">Symbol</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_side">方向</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_result">结果</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_reason">原因</th>
+                                </tr>
+                            </thead>
+                            <tbody id="copyTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: 等级跑批（一期不做） -->
+            <div id="tab-batch" class="tab-content p-6">
+                <!-- 统计 -->
+                <div class="grid grid-cols-4 gap-4 mb-6" id="batchStatCards"></div>
+
+                <!-- 筛选 -->
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 mb-4 flex items-center gap-3 flex-wrap">
+                    <select id="filterBatchType" onchange="renderBatchTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="batch_filter_all">全部类型</option>
+                        <option value="monthly" data-i18n-opt="batch_type_monthly">月度考核</option>
+                        <option value="hourly" data-i18n-opt="batch_type_hourly">L1 准入</option>
+                    </select>
+                    <select id="filterBatchResult" onchange="renderBatchTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="batch_result_all">全部结果</option>
+                        <option value="upgrade" data-i18n-opt="batch_result_upgrade">升级</option>
+                        <option value="downgrade" data-i18n-opt="batch_result_downgrade">降级</option>
+                        <option value="pass" data-i18n-opt="batch_result_pass">通过</option>
+                        <option value="fail" data-i18n-opt="batch_result_fail">未通过</option>
+                    </select>
+                </div>
+
+                <!-- 表格 -->
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50/80 border-b border-slate-200">
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_time">跑批时间</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_type">类型</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_user">用户</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_from">原等级</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_to">新等级</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_batch_result">结果</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: 邀请流转记录 -->
+            <div id="tab-invite" class="tab-content p-6">
+                <!-- 统计 -->
+                <div class="grid grid-cols-5 gap-4 mb-6" id="inviteStatCards"></div>
+
+                <!-- 筛选 -->
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 mb-4 flex items-center gap-3 flex-wrap">
+                    <select id="filterInviteStatus" onchange="renderInviteTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="invite_filter_all">全部状态</option>
+                        <option value="pending" data-i18n-opt="invite_pending">待响应</option>
+                        <option value="accepted" data-i18n-opt="invite_accepted">已同意</option>
+                        <option value="rejected" data-i18n-opt="invite_rejected">已拒绝</option>
+                        <option value="expired" data-i18n-opt="invite_expired">已过期</option>
+                        <option value="recheck_failed" data-i18n-opt="invite_recheck_failed">二次校验失败</option>
+                        <option value="superseded" data-i18n-opt="invite_superseded">人工开通已覆盖</option>
+                    </select>
+                    <select id="filterInviteSource" onchange="renderInviteTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="invite_source_all">全部来源</option>
+                        <option value="system" data-i18n-opt="invite_source_system">系统邀请</option>
+                        <option value="relisting" data-i18n-opt="invite_source_relisting">重新入驻</option>
+                        <option value="manual" data-i18n-opt="invite_source_manual">手工再次邀请</option>
+                    </select>
+                    <div class="relative flex-1 min-w-[200px]">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input id="filterInviteSearch" type="text" oninput="renderInviteTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_invite">
+                    </div>
+                </div>
+
+                <!-- 表格 -->
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50/80 border-b border-slate-200">
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_id">Invite ID</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_candidate">候选人</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_acct">候选账号</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_trigger">触发来源 / Job ID</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_time">发起时间</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_expire">有效期至</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_status">状态</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_recheck">二次校验</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_master">Master 开通结果</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_action_time">操作时间</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_invite_actions">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inviteTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="manualReinviteModal" hidden class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+                    <div class="w-full max-w-lg rounded-xl bg-white shadow-xl">
+                        <div class="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+                            <div><h3 class="font-semibold text-slate-800" data-i18n="manual_reinvite_title">手工再次邀请</h3><p class="mt-1 text-xs text-slate-500" data-i18n="manual_reinvite_subtitle">仅限已拒绝或已过期邀请；可豁免冷却期。</p></div>
+                            <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closeManualReinvite()"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="space-y-4 px-6 py-5">
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><p class="text-xs text-slate-500" data-i18n="manual_reinvite_candidate">候选人</p><p id="manualReinviteCandidate" class="mt-1 font-mono font-semibold text-slate-700">—</p></div>
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><i class="fa-solid fa-shield-halved mr-2"></i><span data-i18n="manual_reinvite_rule">再次邀请前必须实时复验 L1 准入；通过后才会创建一条新的 Pending 邀请记录。</span></div>
+                            <div class="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800"><p class="font-medium" data-i18n="manual_reinvite_system_recheck">系统实时 L1 准入复验</p><p class="mt-1 text-xs text-sky-700" data-i18n="manual_reinvite_system_recheck_desc">确认后由系统校验当前准入条件；仅通过时才会创建新的邀请。</p></div>
+                            <p id="manualReinviteResult" hidden class="rounded-lg border px-4 py-3 text-sm"></p>
+                        </div>
+                        <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4"><button type="button" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50" onclick="closeManualReinvite()" data-i18n="cancel">取消</button><button type="button" id="manualReinviteConfirm" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-600" onclick="confirmManualReinvite()" data-i18n="manual_reinvite_confirm">发起复验并再次邀请</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: 风险跑批（只读审计） -->
+            <div id="tab-risk" class="tab-content p-6">
+                <div class="grid grid-cols-5 gap-4 mb-6" id="riskStatCards"></div>
+
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 mb-4 flex items-center gap-3 flex-wrap">
+                    <select id="filterRiskAction" onchange="renderRiskTable()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="" data-i18n-opt="risk_filter_all">全部动作</option>
+                        <option value="hidden" data-i18n-opt="risk_action_hidden">自动隐藏</option>
+                        <option value="restored" data-i18n-opt="risk_action_restored">恢复上榜</option>
+                        <option value="delisted" data-i18n-opt="risk_action_delisted">自动下榜</option>
+                    </select>
+                    <div class="relative flex-1 min-w-[220px]">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input id="filterRiskSearch" type="text" oninput="renderRiskTable()" class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm" data-i18n-ph="ph_search_master">
+                    </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50/80 border-b border-slate-200">
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_time">跑批时间</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_job">Job ID</th>
+                                    <th class="text-left px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_master">高手</th>
+                                    <th class="text-right px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_roi">30D ROI</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_change">状态变化</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_days">连续隐藏天数</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_action">处理动作</th>
+                                    <th class="text-center px-4 py-3 font-semibold text-slate-600" data-i18n="th_risk_affected">受影响跟随关系</th>
+                                </tr>
+                            </thead>
+                            <tbody id="riskTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div id="toast" class="toast fixed bottom-6 right-6 z-[60] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg"></div>
+
+<script src="sidebar.js?v=202607231000"></script>
+<script src="lang-switch.js?v=202607241800"></script>
+<script>
+const LANG = () => localStorage.getItem('cfd-lang') || 'zh';
+const isZh = () => LANG() === 'zh';
+const I18N = {
+    breadcrumb_page: { zh: '系统日志', en: 'System Logs' },
+    logout: { zh: '退出', en: 'Logout' },
+    page_title: { zh: '系统日志', en: 'System Logs' },
+    page_desc: { zh: 'Copytrading 系统运营日志，涵盖跟单执行、邀请流转、风险跑批及等级跑批（一期不做）。', en: 'Copytrading system operation logs, covering copy execution, invite flow, risk batches, and level batches (Phase I disabled).' },
+    tab_copy: { zh: '跟单执行日志', en: 'Copy Execution Log' },
+    tab_invite: { zh: '邀请流转记录', en: 'Invite Flow Records' },
+    tab_risk: { zh: '风险跑批', en: 'Risk Batch' },
+    tab_batch: { zh: '等级跑批（一期不做）', en: 'Level Batch (Phase I Disabled)' },
+    // Copy tab
+    filter_all: { zh: '全部结果', en: 'All Results' },
+    result_success: { zh: '成功跟单', en: 'Success' },
+    result_skip_delay: { zh: '跳过（延迟）', en: 'Skipped (Delay)' },
+    result_skip_price: { zh: '跳过（价差）', en: 'Skipped (Price)' },
+    result_fail_balance: { zh: '失败（余额不足）', en: 'Failed (Balance)' },
+    result_fail_margin_level: { zh: '失败（保证金水平过低）', en: 'Failed (Margin Level)' },
+    result_fail_liquidity: { zh: '失败（流动性不足）', en: 'Failed (Liquidity)' },
+    result_partial: { zh: '部分平仓', en: 'Partial Close' },
+    ph_search_follower: { zh: '搜索跟随者 UID', en: 'Search follower UID' },
+    ph_search_order: { zh: '搜索交易订单号', en: 'Search trade order ID' },
+    th_time: { zh: '时间', en: 'Time' },
+    th_master_order: { zh: '高手交易订单号', en: 'Master Trade Order ID' },
+    th_action: { zh: '交易动作', en: 'Trade Action' },
+    th_master_lots: { zh: '高手手数', en: 'Master Lots' },
+    th_follower: { zh: '跟随者', en: 'Follower' },
+    th_calc_lots: { zh: '计算手数', en: 'Calc Lots' },
+    th_exec_lots: { zh: '实际执行', en: 'Exec Lots' },
+    th_symbol: { zh: 'Symbol', en: 'Symbol' },
+    th_side: { zh: '方向', en: 'Side' },
+    th_result: { zh: '结果', en: 'Result' },
+    th_reason: { zh: '原因', en: 'Reason' },
+    stat_success: { zh: '成功跟单', en: 'Success' },
+    stat_skip: { zh: '跳过', en: 'Skipped' },
+    stat_fail: { zh: '失败', en: 'Failed' },
+    stat_partial: { zh: '部分平仓', en: 'Partial Close' },
+    stat_total: { zh: '总记录', en: 'Total' },
+    reason_delay: { zh: '延迟 ≥ 20s', en: 'Delay ≥ 20s' },
+    reason_price: { zh: '价差 > 3%', en: 'Price deviation > 3%' },
+    reason_balance: { zh: '可用保证金不足', en: 'Insufficient margin' },
+    reason_margin_level: { zh: '保证金水平低于 100%', en: 'Margin level below 100%' },
+    reason_liquidity: { zh: 'LP 拒绝成交', en: 'Rejected by LP' },
+    reason_partial: { zh: '高手部分平仓', en: 'Master partial close' },
+    th_lifecycle: { zh: '生命周期 ID', en: 'Lifecycle ID' },
+    th_acct: { zh: '跟单账号', en: 'Copy Acct.No' },
+    side_buy: { zh: 'BUY', en: 'BUY' },
+    side_sell: { zh: 'SELL', en: 'SELL' },
+    action_open: { zh: '开仓', en: 'Open' },
+    action_close: { zh: '平仓', en: 'Close' },
+    // Batch tab
+    batch_filter_all: { zh: '全部类型', en: 'All Types' },
+    batch_type_monthly: { zh: '月度考核', en: 'Monthly Review' },
+    batch_type_hourly: { zh: 'L1 准入', en: 'L1 Admission' },
+    batch_result_all: { zh: '全部结果', en: 'All Results' },
+    batch_result_upgrade: { zh: '升级', en: 'Upgrade' },
+    batch_result_downgrade: { zh: '降级', en: 'Downgrade' },
+    batch_result_pass: { zh: '通过', en: 'Pass' },
+    batch_result_fail: { zh: '未通过', en: 'Fail' },
+    th_batch_time: { zh: '跑批时间', en: 'Batch Time' },
+    th_batch_type: { zh: '类型', en: 'Type' },
+    th_batch_user: { zh: '用户', en: 'User' },
+    th_batch_from: { zh: '原等级', en: 'From' },
+    th_batch_to: { zh: '新等级', en: 'To' },
+    th_batch_result: { zh: '结果', en: 'Result' },
+    batch_stat_upgrade: { zh: '升级', en: 'Upgraded' },
+    batch_stat_downgrade: { zh: '降级', en: 'Downgraded' },
+    batch_stat_pass: { zh: '准入通过', en: 'Admitted' },
+    batch_stat_fail: { zh: '准入未通过', en: 'Rejected' },
+    // Risk batch tab
+    risk_filter_all: { zh: '全部动作', en: 'All Actions' },
+    ph_search_master: { zh: '搜索高手 UID 或昵称', en: 'Search master UID or nickname' },
+    risk_action_hidden: { zh: '自动隐藏', en: 'Auto hidden' },
+    risk_action_restored: { zh: '恢复上榜', en: 'Restored' },
+    risk_action_delisted: { zh: '自动下榜', en: 'Auto delisted' },
+    risk_action_none: { zh: '无状态变化', en: 'No change' },
+    risk_stat_checked: { zh: '检查高手', en: 'Checked' },
+    risk_stat_hidden: { zh: '已隐藏', en: 'Hidden' },
+    risk_stat_restored: { zh: '已恢复', en: 'Restored' },
+    risk_stat_delisted: { zh: '自动下榜', en: 'Auto delisted' },
+    risk_stat_affected: { zh: '受影响跟随关系', en: 'Affected copies' },
+    th_risk_time: { zh: '跑批时间', en: 'Run time' },
+    th_risk_job: { zh: 'Job ID', en: 'Job ID' },
+    th_risk_master: { zh: '高手', en: 'Master' },
+    th_risk_roi: { zh: '30D ROI', en: '30D ROI' },
+    th_risk_change: { zh: '状态变化', en: 'Status change' },
+    th_risk_days: { zh: '连续隐藏天数', en: 'Consecutive hidden days' },
+    th_risk_action: { zh: '处理动作', en: 'Action' },
+    th_risk_affected: { zh: '受影响跟随关系', en: 'Affected copy relationships' },
+    risk_status_listed: { zh: '上榜', en: 'Listed' },
+    risk_status_hidden: { zh: '已隐藏', en: 'Hidden' },
+    risk_status_delisted: { zh: '已下榜', en: 'Delisted' },
+    risk_ending: { zh: '结束中', en: 'Ending' },
+    // Invite tab
+    invite_filter_all: { zh: '全部状态', en: 'All Status' },
+    invite_pending: { zh: '待响应', en: 'Pending' },
+    invite_accepted: { zh: '已同意', en: 'Accepted' },
+    invite_rejected: { zh: '已拒绝', en: 'Rejected' },
+    invite_expired: { zh: '已过期', en: 'Expired' },
+    invite_recheck_failed: { zh: '二次校验失败', en: 'Recheck failed' },
+    invite_superseded: { zh: '人工开通已覆盖', en: 'Superseded by manual setup' },
+    invite_cooldown: { zh: '冷却中', en: 'Cooldown' },
+    invite_source_all: { zh: '全部来源', en: 'All sources' },
+    invite_source_system: { zh: '系统邀请', en: 'System invite' },
+    invite_source_relisting: { zh: '重新入驻', en: 'Re-listing' },
+    invite_source_manual: { zh: '手工再次邀请', en: 'Manual re-invite' },
+    ph_search_invite: { zh: '搜索 Invite ID、UID 或账号', en: 'Search Invite ID, UID or Acct.No' },
+    th_invite_id: { zh: 'Invite ID', en: 'Invite ID' },
+    th_invite_candidate: { zh: '候选人', en: 'Candidate' },
+    th_invite_acct: { zh: '候选账号', en: 'Candidate Acct.No' },
+    th_invite_trigger: { zh: '触发来源 / Job ID', en: 'Source / Job ID' },
+    th_invite_time: { zh: '发起时间', en: 'Sent At' },
+    th_invite_expire: { zh: '有效期至', en: 'Expires At' },
+    th_invite_status: { zh: '状态', en: 'Status' },
+    th_invite_recheck: { zh: '二次校验', en: 'Real-time recheck' },
+    th_invite_master: { zh: 'Master 开通结果', en: 'Master setup result' },
+    th_invite_action_time: { zh: '操作时间', en: 'Action Time' },
+    th_invite_actions: { zh: '操作', en: 'Actions' },
+    invite_recheck_pending: { zh: '待触发', en: 'Not triggered' },
+    invite_recheck_passed: { zh: '通过', en: 'Passed' },
+    invite_recheck_failed_label: { zh: '未通过', en: 'Failed' },
+    invite_master_created: { zh: '已开通', en: 'Created' },
+    invite_master_none: { zh: '未开通', en: 'Not created' },
+    invite_master_idempotent: { zh: '幂等命中（已开通）', en: 'Idempotent hit (already created)' },
+    invite_stat_pending: { zh: '待响应', en: 'Pending' },
+    invite_stat_accepted: { zh: '已同意并开通', en: 'Accepted & set up' },
+    invite_stat_failed: { zh: '未完成', en: 'Not completed' },
+    invite_stat_superseded: { zh: '人工开通覆盖', en: 'Manual setup override' },
+    invite_stat_total: { zh: '总邀请', en: 'Total' },
+    manual_reinvite_title: { zh: '手工再次邀请', en: 'Manual re-invite' },
+    manual_reinvite_subtitle: { zh: '仅限已拒绝或已过期邀请；可豁免冷却期。', en: 'Available for rejected or expired invitations; cooldown may be waived.' },
+    manual_reinvite_candidate: { zh: '候选人', en: 'Candidate' },
+    manual_reinvite_rule: { zh: '再次邀请前必须实时复验 L1 准入；通过后才会创建一条新的 Pending 邀请记录。', en: 'A real-time L1 eligibility recheck is required before re-inviting. A new Pending invite is created only after it passes.' },
+    manual_reinvite_system_recheck: { zh: '系统实时 L1 准入复验', en: 'System real-time L1 eligibility recheck' },
+    manual_reinvite_system_recheck_desc: { zh: '确认后由系统校验当前准入条件；仅通过时才会创建新的邀请。', en: 'The system validates current eligibility after confirmation. A new invite is created only if it passes.' },
+    manual_reinvite_confirm: { zh: '发起复验并再次邀请', en: 'Run recheck & re-invite' },
+    manual_reinvite_action: { zh: '再次邀请', en: 'Re-invite' },
+    manual_reinvite_done: { zh: '已再次邀请', en: 'Re-invited' },
+    manual_reinvite_created: { zh: '手工再次邀请已创建', en: 'Manual re-invite created' },
+    manual_reinvite_failed: { zh: '系统 L1 准入复验未通过，未创建新的邀请。', en: 'The system L1 eligibility recheck failed. No new invitation was created.' },
+    cancel: { zh: '取消', en: 'Cancel' },
+};
+function t(key) { const e = I18N[key]; return e ? e[LANG()] || e.zh : key; }
+function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.getAttribute('data-i18n')); if (v) el.innerHTML = v; });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => { const v = t(el.getAttribute('data-i18n-ph')); if (v) el.placeholder = v; });
+    document.querySelectorAll('[data-i18n-opt]').forEach(el => { const v = t(el.getAttribute('data-i18n-opt')); if (v) el.textContent = v; });
+}
+
+// ── Tab 切换 ──
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+// ── Mock Data: 跟单执行日志 ──
+const mockCopyData = [
+    { time: '2026-07-24 14:32:10', lifecycleId: 'CT_20260701_001', acct: '90012345', masterOrder: '#48291037', action: 'open', masterLots: 0.50, follower: 'UID_10001', calcLots: 0.15, execLots: 0.15, symbol: 'XAUUSD', side: 'buy', result: 'success', reason: '' },
+    { time: '2026-07-24 14:32:10', lifecycleId: 'CT_20260615_002', acct: '90012346', masterOrder: '#48291037', action: 'open', masterLots: 0.50, follower: 'UID_10002', calcLots: 0.32, execLots: 0.32, symbol: 'XAUUSD', side: 'buy', result: 'success', reason: '' },
+    { time: '2026-07-24 11:20:05', lifecycleId: 'CT_20260601_003', acct: '90012347', masterOrder: '#48290856', action: 'open', masterLots: 1.00, follower: 'UID_10003', calcLots: 0.25, execLots: 0, symbol: 'EURUSD', side: 'sell', result: 'skip_delay', reason: 'delay_23s' },
+    { time: '2026-07-24 09:45:30', lifecycleId: 'CT_20260501_004', acct: '90012348', masterOrder: '#48290412', action: 'open', masterLots: 0.80, follower: 'UID_10004', calcLots: 0.20, execLots: 0, symbol: 'XAUUSD', side: 'buy', result: 'skip_price', reason: 'deviation_4.2%' },
+    { time: '2026-07-23 16:10:20', lifecycleId: 'CT_20260710_005', acct: '90012349', masterOrder: '#48289988', action: 'open', masterLots: 0.30, follower: 'UID_10005', calcLots: 0.005, execLots: 0.01, symbol: 'GBPUSD', side: 'buy', result: 'success', reason: 'min_lot_0.01' },
+    { time: '2026-07-23 10:05:40', lifecycleId: 'CT_20260520_006', acct: '90012350', masterOrder: '#48289654', action: 'open', masterLots: 2.00, follower: 'UID_10001', calcLots: 1.50, execLots: 0, symbol: 'XAUUSD', side: 'sell', result: 'fail_balance', reason: 'margin_insufficient' },
+    { time: '2026-07-23 09:58:12', lifecycleId: 'CT_20260520_006', acct: '90012350', masterOrder: '#48289621', action: 'open', masterLots: 0.50, follower: 'UID_10001', calcLots: 0.38, execLots: 0, symbol: 'XAUUSD', side: 'buy', result: 'fail_margin_level', reason: 'margin_level_low' },
+    { time: '2026-07-22 15:22:15', lifecycleId: 'CT_20260710_007', acct: '90012351', masterOrder: '#48288750', action: 'close', masterLots: 5.00, follower: 'UID_10006', calcLots: 3.80, execLots: 0, symbol: 'BTCUSD', side: 'buy', result: 'fail_liquidity', reason: 'lp_rejected' },
+    { time: '2026-07-22 08:30:00', lifecycleId: 'CT_20260615_002', acct: '90012346', masterOrder: '#48288300', action: 'close', masterLots: 1.00, follower: 'UID_10002', calcLots: 0.50, execLots: 0.25, symbol: 'XAUUSD', side: 'sell', result: 'partial', reason: 'master_partial_0.50' },
+    { time: '2026-07-21 13:15:50', lifecycleId: 'CT_20260601_003', acct: '90012347', masterOrder: '#48287900', action: 'open', masterLots: 0.10, follower: 'UID_10003', calcLots: 0.03, execLots: 0.03, symbol: 'EURUSD', side: 'buy', result: 'success', reason: '' },
+    { time: '2026-07-21 09:00:00', lifecycleId: 'CT_20260501_004', acct: '90012348', masterOrder: '#48287500', action: 'close', masterLots: 3.00, follower: 'UID_10004', calcLots: 2.50, execLots: 2.50, symbol: 'XAUUSD', side: 'buy', result: 'success', reason: '' },
+];
+
+// ── Mock Data: 等级评估跑批 ──
+const mockBatchData = [
+    { time: '2026-07-01 00:00:00', type: 'monthly', user: 'UID_88021', from: 'L1', to: 'L2', result: 'upgrade' },
+    { time: '2026-07-01 00:00:00', type: 'monthly', user: 'UID_77432', from: 'L2', to: 'L1', result: 'downgrade' },
+    { time: '2026-07-01 00:00:00', type: 'monthly', user: 'UID_65890', from: 'L2', to: 'L3', result: 'upgrade' },
+    { time: '2026-07-01 00:00:00', type: 'monthly', user: 'UID_55678', from: 'L3', to: 'L2', result: 'downgrade' },
+    { time: '2026-07-15 14:00:00', type: 'hourly', user: 'UID_91234', from: '—', to: 'L1', result: 'pass' },
+    { time: '2026-07-15 13:00:00', type: 'hourly', user: 'UID_44567', from: '—', to: 'L1', result: 'fail' },
+    { time: '2026-07-15 12:00:00', type: 'hourly', user: 'UID_33210', from: '—', to: 'L1', result: 'pass' },
+    { time: '2026-07-15 11:00:00', type: 'hourly', user: 'UID_22345', from: '—', to: 'L1', result: 'pass' },
+];
+
+// ── Mock Data: 风险跑批（每日检查自动隐藏 / 连续 14 天自动下榜） ──
+const mockRiskData = [
+    { time: '2026-08-19 00:05:12', jobId: 'RISK_D_20260819_001', uid: 'UID_65890', nick: 'GoldNavigator', roi: -2.10, from: 'listed', to: 'hidden', days: 1, action: 'hidden', affected: 0 },
+    { time: '2026-08-19 00:05:12', jobId: 'RISK_D_20260819_001', uid: 'UID_91234', nick: 'SteadyPips', roi: -0.84, from: 'hidden', to: 'hidden', days: 8, action: 'none', affected: 0 },
+    { time: '2026-08-19 00:05:12', jobId: 'RISK_D_20260819_001', uid: 'UID_77432', nick: 'Sam Morgan', roi: 1.20, from: 'hidden', to: 'listed', days: 0, action: 'restored', affected: 0 },
+    { time: '2026-08-19 00:05:12', jobId: 'RISK_D_20260819_001', uid: 'UID_44567', nick: 'PipScalper', roi: -4.80, from: 'hidden', to: 'delisted', days: 14, action: 'delisted', affected: 12 },
+    { time: '2026-08-19 00:05:12', jobId: 'RISK_D_20260819_001', uid: 'UID_88021', nick: 'FX Atlas', roi: 3.56, from: 'listed', to: 'listed', days: 0, action: 'none', affected: 0 },
+];
+
+// ── Mock Data: 邀请流转记录 ──
+const mockInviteData = [
+    { inviteId: 'INV_20260819_00016', time: '2026-08-19 10:00:00', expiresAt: '2026-08-20 10:00:00', uid: 'UID_55678', nick: 'NewTrader', nickZh: '新交易员', acct: '88015678', source: 'system', jobId: 'MST_H_20260819_10', status: 'pending', recheck: 'pending', master: 'none', actionTime: '—', transition: 'Eligible → Invited', transitionZh: '符合准入 → 已邀请' },
+    { inviteId: 'INV_20260819_00015', time: '2026-08-19 09:00:00', expiresAt: '2026-08-20 09:00:00', uid: 'UID_11234', nick: 'BullRunner', nickZh: '牛市奔跑', acct: '88011234', source: 'system', jobId: 'MST_H_20260819_09', status: 'accepted', recheck: 'passed', master: 'created', masterId: 'MST_20260819_001', actionTime: '2026-08-19 09:15:22', transition: 'Invited → Accepted → Master created', transitionZh: '已邀请 → 已同意 → 已开通高手' },
+    { inviteId: 'INV_20260818_00011', time: '2026-08-18 14:00:00', expiresAt: '2026-08-19 14:00:00', uid: 'UID_22345', nick: 'BearSlayer', nickZh: '空头杀手', acct: '88022345', source: 'system', jobId: 'MST_H_20260818_14', status: 'rejected', recheck: 'pending', master: 'none', actionTime: '2026-08-18 18:00:00', manualRecheckOutcome: 'passed', transition: 'Invited → Rejected · Cooldown until 2026-08-21', transitionZh: '已邀请 → 已拒绝 · 冷却至 2026-08-21' },
+    { inviteId: 'INV_20260817_00008', time: '2026-08-17 10:00:00', expiresAt: '2026-08-18 10:00:00', uid: 'UID_33456', nick: 'LotusTrade', nickZh: '莲花交易', acct: '88033456', source: 'system', jobId: 'MST_H_20260817_10', status: 'expired', recheck: 'pending', master: 'none', actionTime: '2026-08-18 10:00:00', manualRecheckOutcome: 'failed', transition: 'Invited → Expired · No response in 24h', transitionZh: '已邀请 → 已过期 · 24 小时未响应' },
+    { inviteId: 'INV_20260816_00005', time: '2026-08-16 16:00:00', expiresAt: '2026-08-17 16:00:00', uid: 'UID_44567', nick: 'PipScalper', nickZh: '点数猎人', acct: '88044567', source: 'relisting', jobId: 'MST_H_20260816_16', status: 'recheck_failed', recheck: 'failed', master: 'none', actionTime: '2026-08-16 16:05:18', transition: 'Accepted → Recheck failed · 30D ROI changed', transitionZh: '已同意 → 二次校验失败 · 30D ROI 已变化' },
+    { inviteId: 'INV_20260815_00003', time: '2026-08-15 10:00:00', expiresAt: '2026-08-16 10:00:00', uid: 'UID_66789', nick: 'GoldMaster', nickZh: '黄金大师', acct: '88066789', source: 'system', jobId: 'MST_H_20260815_10', status: 'superseded', recheck: 'passed', master: 'idempotent', masterId: 'MST_20260815_002', actionTime: '2026-08-15 10:30:00', transition: 'Invited → Superseded by manual setup', transitionZh: '已邀请 → 已由人工开通覆盖' },
+    { inviteId: 'INV_20260814_00001', time: '2026-08-14 14:00:00', expiresAt: '2026-08-15 14:00:00', uid: 'UID_77890', nick: 'ForexKing', nickZh: '外汇之王', acct: '88077890', source: 'relisting', jobId: 'MST_H_20260814_14', status: 'accepted', recheck: 'passed', master: 'created', masterId: 'MST_20260814_003', actionTime: '2026-08-14 14:08:30', transition: 'Eligible again → Invited → Master created', transitionZh: '再次符合准入 → 已邀请 → 已开通高手' },
+];
+
+let manualReinviteTargetId = null;
+
+function openManualReinvite(inviteId) {
+    const invite = mockInviteData.find(d => d.inviteId === inviteId);
+    if (!invite || !['rejected', 'expired'].includes(invite.status)) return;
+    manualReinviteTargetId = inviteId;
+    document.getElementById('manualReinviteCandidate').textContent = `${invite.uid} · ${isZh() ? invite.nickZh : invite.nick} · Acct.No ${invite.acct}`;
+    document.getElementById('manualReinviteResult').hidden = true;
+    document.getElementById('manualReinviteConfirm').hidden = false;
+    document.getElementById('manualReinviteModal').hidden = false;
+}
+
+function closeManualReinvite() {
+    document.getElementById('manualReinviteModal').hidden = true;
+    manualReinviteTargetId = null;
+}
+
+function confirmManualReinvite() {
+    const original = mockInviteData.find(d => d.inviteId === manualReinviteTargetId);
+    if (!original) return;
+    if (original.manualRecheckOutcome === 'failed') {
+        const result = document.getElementById('manualReinviteResult');
+        result.textContent = t('manual_reinvite_failed');
+        result.className = 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700';
+        result.hidden = false;
+        document.getElementById('manualReinviteConfirm').hidden = true;
+        return;
+    }
+    const sequence = String(mockInviteData.length + 17).padStart(5, '0');
+    const now = '2026-08-20 11:30:00';
+    mockInviteData.unshift({
+        inviteId: `INV_20260820_${sequence}`,
+        time: now,
+        expiresAt: '2026-08-21 11:30:00',
+        uid: original.uid,
+        nick: original.nick,
+        nickZh: original.nickZh,
+        acct: original.acct,
+        source: 'manual',
+        jobId: 'OPS_MANUAL_20260820_01',
+        status: 'pending',
+        recheck: 'passed',
+        master: 'none',
+        actionTime: now,
+        transition: `${original.status === 'rejected' ? 'Rejected' : 'Expired'} → L1 recheck passed → Manually re-invited`,
+        transitionZh: `${original.status === 'rejected' ? '已拒绝' : '已过期'} → L1 复验通过 → 已手工再次邀请`,
+    });
+    original.manualReinvited = true;
+    closeManualReinvite();
+    renderInviteStatCards();
+    renderInviteTable();
+}
+
+// ── Render: 跟单执行日志 ──
+function renderCopyStatCards() {
+    const success = mockCopyData.filter(d => d.result === 'success').length;
+    const skip = mockCopyData.filter(d => d.result.startsWith('skip')).length;
+    const fail = mockCopyData.filter(d => d.result.startsWith('fail')).length;
+    const partial = mockCopyData.filter(d => d.result === 'partial').length;
+    const cards = [
+        { label: t('stat_success'), value: success, icon: 'fa-circle-check', color: 'emerald' },
+        { label: t('stat_skip'), value: skip, icon: 'fa-forward', color: 'amber' },
+        { label: t('stat_fail'), value: fail, icon: 'fa-circle-xmark', color: 'rose' },
+        { label: t('stat_partial'), value: partial, icon: 'fa-scissors', color: 'violet' },
+        { label: t('stat_total'), value: mockCopyData.length, icon: 'fa-list', color: 'slate' },
+    ];
+    document.getElementById('statCards').innerHTML = cards.map(c => `
+        <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-${c.color}-50 flex items-center justify-center"><i class="fa-solid ${c.icon} text-${c.color}-500"></i></div>
+            <div><p class="text-2xl font-bold text-slate-800 font-mono">${c.value}</p><p class="text-xs text-slate-500">${c.label}</p></div>
+        </div>`).join('');
+}
+
+function renderCopyTable() {
+    const rf = document.getElementById('filterResult').value;
+    const searchFollower = document.getElementById('filterSearchFollower').value.toLowerCase();
+    const searchOrder = document.getElementById('filterSearchOrder').value.toLowerCase();
+    let data = mockCopyData.filter(d => {
+        if (rf && d.result !== rf) return false;
+        if (searchFollower && !d.follower.toLowerCase().includes(searchFollower)) return false;
+        if (searchOrder && !d.masterOrder.toLowerCase().includes(searchOrder)) return false;
+        return true;
+    });
+    const resultMeta = {
+        success:         { label: t('result_success'),         cls: 'bg-emerald-50 text-emerald-700' },
+        skip_delay:      { label: t('result_skip_delay'),      cls: 'bg-amber-50 text-amber-700' },
+        skip_price:      { label: t('result_skip_price'),      cls: 'bg-amber-50 text-amber-700' },
+        fail_balance:    { label: t('result_fail_balance'),    cls: 'bg-rose-50 text-rose-600' },
+        fail_margin_level: { label: t('result_fail_margin_level'), cls: 'bg-rose-50 text-rose-600' },
+        fail_liquidity:  { label: t('result_fail_liquidity'),  cls: 'bg-rose-50 text-rose-600' },
+        partial:         { label: t('result_partial'),         cls: 'bg-violet-50 text-violet-700' },
+    };
+    const reasonMap = {
+        '': '—',
+        'delay_23s': t('reason_delay') + ' (23s)',
+        'deviation_4.2%': t('reason_price') + ' (4.2%)',
+        'margin_insufficient': t('reason_balance'),
+        'margin_level_low': t('reason_margin_level') + ' (86.4%)',
+        'lp_rejected': t('reason_liquidity'),
+        'master_partial_0.50': t('reason_partial') + ' (0.50 lots)',
+        'min_lot_0.01': isZh() ? '极小额兜底 → 0.01' : 'Min lot floor → 0.01',
+    };
+    document.getElementById('copyTableBody').innerHTML = data.map(d => {
+        const rm = resultMeta[d.result];
+        const sideLabel = d.side === 'buy' ? t('side_buy') : t('side_sell');
+        const sideCls = d.side === 'buy' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600';
+        const actionLabel = d.action === 'close' ? t('action_close') : t('action_open');
+        const actionCls = d.action === 'close' ? 'bg-sky-50 text-sky-700' : 'bg-violet-50 text-violet-700';
+        return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">${d.time}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600">${d.masterOrder}</td>
+            <td class="px-4 py-3 text-center"><span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${actionCls}">${actionLabel}</span></td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">${d.lifecycleId}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">Acct.No ${d.acct}</td>
+            <td class="px-4 py-3 text-right font-mono">${d.masterLots.toFixed(2)}</td>
+            <td class="px-4 py-3 font-mono text-xs"><span class="text-primary hover:underline cursor-pointer font-semibold" onclick="showUidToast('${d.follower}')">${d.follower}</span></td>
+            <td class="px-4 py-3 text-right font-mono text-slate-500">${d.calcLots.toFixed(3)}</td>
+            <td class="px-4 py-3 text-right font-mono font-semibold ${d.execLots > 0 ? 'text-slate-800' : 'text-slate-300'}">${d.execLots.toFixed(2)}</td>
+            <td class="px-4 py-3 font-semibold text-xs text-slate-700">${d.symbol}</td>
+            <td class="px-4 py-3 text-center"><span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${sideCls}">${sideLabel}</span></td>
+            <td class="px-4 py-3 text-center"><span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold ${rm.cls}">${rm.label}</span></td>
+            <td class="px-4 py-3 text-xs text-slate-500">${reasonMap[d.reason] || d.reason}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Render: 等级评估跑批 ──
+function renderBatchStatCards() {
+    const upgrade = mockBatchData.filter(d => d.result === 'upgrade').length;
+    const downgrade = mockBatchData.filter(d => d.result === 'downgrade').length;
+    const pass = mockBatchData.filter(d => d.result === 'pass').length;
+    const fail = mockBatchData.filter(d => d.result === 'fail').length;
+    const cards = [
+        { label: t('batch_stat_upgrade'), value: upgrade, icon: 'fa-arrow-up', color: 'emerald' },
+        { label: t('batch_stat_downgrade'), value: downgrade, icon: 'fa-arrow-down', color: 'rose' },
+        { label: t('batch_stat_pass'), value: pass, icon: 'fa-circle-check', color: 'sky' },
+        { label: t('batch_stat_fail'), value: fail, icon: 'fa-circle-xmark', color: 'slate' },
+    ];
+    document.getElementById('batchStatCards').innerHTML = cards.map(c => `
+        <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-${c.color}-50 flex items-center justify-center"><i class="fa-solid ${c.icon} text-${c.color}-500"></i></div>
+            <div><p class="text-2xl font-bold text-slate-800 font-mono">${c.value}</p><p class="text-xs text-slate-500">${c.label}</p></div>
+        </div>`).join('');
+}
+
+function renderBatchTable() {
+    const typeFilter = document.getElementById('filterBatchType').value;
+    const resultFilter = document.getElementById('filterBatchResult').value;
+    let data = mockBatchData.filter(d => {
+        if (typeFilter && d.type !== typeFilter) return false;
+        if (resultFilter && d.result !== resultFilter) return false;
+        return true;
+    });
+    const typeLabel = { monthly: t('batch_type_monthly'), hourly: t('batch_type_hourly') };
+    const resultMeta = {
+        upgrade:   { label: t('batch_result_upgrade'), cls: 'bg-emerald-50 text-emerald-700' },
+        downgrade: { label: t('batch_result_downgrade'), cls: 'bg-rose-50 text-rose-600' },
+        pass:      { label: t('batch_result_pass'), cls: 'bg-sky-50 text-sky-700' },
+        fail:      { label: t('batch_result_fail'), cls: 'bg-slate-100 text-slate-500' },
+    };
+    document.getElementById('batchTableBody').innerHTML = data.map(r => {
+        const rm = resultMeta[r.result] || resultMeta.fail;
+        return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">${r.time}</td>
+            <td class="px-4 py-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${r.type === 'monthly' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700'}">${typeLabel[r.type]}</span>
+            </td>
+            <td class="px-4 py-3 font-mono text-xs"><span class="text-primary hover:underline cursor-pointer font-semibold" onclick="showUidToast('${r.user}')">${r.user}</span></td>
+            <td class="px-4 py-3 text-center font-mono text-xs text-slate-500">${r.from}</td>
+            <td class="px-4 py-3 text-center font-mono text-xs font-semibold text-slate-700">${r.to}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${rm.cls}">${rm.label}</span>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Render: 风险跑批 ──
+function renderRiskStatCards() {
+    const hidden = mockRiskData.filter(d => d.action === 'hidden').length;
+    const restored = mockRiskData.filter(d => d.action === 'restored').length;
+    const delisted = mockRiskData.filter(d => d.action === 'delisted').length;
+    const affected = mockRiskData.reduce((sum, d) => sum + d.affected, 0);
+    const cards = [
+        { label: t('risk_stat_checked'), value: mockRiskData.length, icon: 'fa-magnifying-glass', color: 'sky' },
+        { label: t('risk_stat_hidden'), value: hidden, icon: 'fa-eye-slash', color: 'amber' },
+        { label: t('risk_stat_restored'), value: restored, icon: 'fa-eye', color: 'emerald' },
+        { label: t('risk_stat_delisted'), value: delisted, icon: 'fa-ban', color: 'rose' },
+        { label: t('risk_stat_affected'), value: affected, icon: 'fa-users', color: 'violet' },
+    ];
+    document.getElementById('riskStatCards').innerHTML = cards.map(c => `
+        <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-${c.color}-50 flex items-center justify-center"><i class="fa-solid ${c.icon} text-${c.color}-500"></i></div>
+            <div><p class="text-2xl font-bold text-slate-800 font-mono">${c.value}</p><p class="text-xs text-slate-500">${c.label}</p></div>
+        </div>`).join('');
+}
+
+function renderRiskTable() {
+    const actionFilter = document.getElementById('filterRiskAction').value;
+    const search = document.getElementById('filterRiskSearch').value.trim().toLowerCase();
+    const actionMeta = {
+        hidden: { label: t('risk_action_hidden'), cls: 'bg-amber-50 text-amber-700' },
+        restored: { label: t('risk_action_restored'), cls: 'bg-emerald-50 text-emerald-700' },
+        delisted: { label: t('risk_action_delisted'), cls: 'bg-rose-50 text-rose-600' },
+        none: { label: t('risk_action_none'), cls: 'bg-slate-100 text-slate-500' },
+    };
+    const statusMeta = {
+        listed: t('risk_status_listed'),
+        hidden: t('risk_status_hidden'),
+        delisted: t('risk_status_delisted'),
+    };
+    const data = mockRiskData.filter(d => {
+        if (actionFilter && d.action !== actionFilter) return false;
+        if (search && !`${d.uid} ${d.nick}`.toLowerCase().includes(search)) return false;
+        return true;
+    });
+    document.getElementById('riskTableBody').innerHTML = data.map(d => {
+        const action = actionMeta[d.action];
+        const roiCls = d.roi > 0 ? 'text-emerald-600' : d.roi < 0 ? 'text-rose-600' : 'text-slate-600';
+        const affected = d.affected ? `${d.affected} · ${t('risk_ending')}` : '—';
+        return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">${d.time}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">${d.jobId}</td>
+            <td class="px-4 py-3"><p class="font-mono text-xs font-semibold text-primary hover:underline cursor-pointer" onclick="showUidToast('${d.uid}')">${d.uid}</p><p class="text-xs text-slate-500 mt-0.5">${d.nick}</p></td>
+            <td class="px-4 py-3 text-right font-mono font-semibold ${roiCls}">${d.roi > 0 ? '+' : ''}${d.roi.toFixed(2)}%</td>
+            <td class="px-4 py-3 text-center text-xs text-slate-600 whitespace-nowrap">${statusMeta[d.from]} <i class="fa-solid fa-arrow-right text-[10px] mx-1 text-slate-400"></i> ${statusMeta[d.to]}</td>
+            <td class="px-4 py-3 text-center font-mono text-sm ${d.days === 14 ? 'font-bold text-rose-600' : 'text-slate-600'}">${d.days} / 14</td>
+            <td class="px-4 py-3 text-center"><span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold ${action.cls}">${action.label}</span></td>
+            <td class="px-4 py-3 text-center font-mono text-xs ${d.affected ? 'font-semibold text-rose-600' : 'text-slate-400'}">${affected}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Render: 邀请流转记录 ──
+function renderInviteStatCards() {
+    const pending = mockInviteData.filter(d => d.status === 'pending').length;
+    const accepted = mockInviteData.filter(d => d.status === 'accepted').length;
+    const failed = mockInviteData.filter(d => ['rejected', 'expired', 'recheck_failed'].includes(d.status)).length;
+    const superseded = mockInviteData.filter(d => d.status === 'superseded').length;
+    const cards = [
+        { label: t('invite_stat_pending'), value: pending, icon: 'fa-clock', color: 'amber' },
+        { label: t('invite_stat_accepted'), value: accepted, icon: 'fa-circle-check', color: 'emerald' },
+        { label: t('invite_stat_failed'), value: failed, icon: 'fa-circle-xmark', color: 'rose' },
+        { label: t('invite_stat_superseded'), value: superseded, icon: 'fa-user-shield', color: 'violet' },
+        { label: t('invite_stat_total'), value: mockInviteData.length, icon: 'fa-envelope', color: 'sky' },
+    ];
+    document.getElementById('inviteStatCards').innerHTML = cards.map(c => `
+        <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-${c.color}-50 flex items-center justify-center"><i class="fa-solid ${c.icon} text-${c.color}-500"></i></div>
+            <div><p class="text-2xl font-bold text-slate-800 font-mono">${c.value}</p><p class="text-xs text-slate-500">${c.label}</p></div>
+        </div>`).join('');
+}
+
+function renderInviteTable() {
+    const statusFilter = document.getElementById('filterInviteStatus').value;
+    const sourceFilter = document.getElementById('filterInviteSource').value;
+    const search = document.getElementById('filterInviteSearch').value.trim().toLowerCase();
+    const data = mockInviteData.filter(d => {
+        if (statusFilter && d.status !== statusFilter) return false;
+        if (sourceFilter && d.source !== sourceFilter) return false;
+        if (search && !`${d.inviteId} ${d.uid} ${d.acct}`.toLowerCase().includes(search)) return false;
+        return true;
+    });
+    const statusMeta = {
+        pending:   { label: t('invite_pending'),   cls: 'bg-amber-50 text-amber-700' },
+        accepted:  { label: t('invite_accepted'),  cls: 'bg-emerald-50 text-emerald-700' },
+        rejected:  { label: t('invite_rejected'),  cls: 'bg-rose-50 text-rose-600' },
+        expired:   { label: t('invite_expired'),   cls: 'bg-slate-100 text-slate-500' },
+        recheck_failed: { label: t('invite_recheck_failed'), cls: 'bg-rose-50 text-rose-600' },
+        superseded: { label: t('invite_superseded'), cls: 'bg-violet-50 text-violet-700' },
+    };
+    const recheckMeta = {
+        pending: { label: t('invite_recheck_pending'), cls: 'text-slate-400' },
+        passed: { label: t('invite_recheck_passed'), cls: 'text-emerald-600' },
+        failed: { label: t('invite_recheck_failed_label'), cls: 'text-rose-600' },
+    };
+    document.getElementById('inviteTableBody').innerHTML = data.map(inv => {
+        const sm = statusMeta[inv.status] || statusMeta.pending;
+        const rm = recheckMeta[inv.recheck] || recheckMeta.pending;
+        const nick = isZh() ? inv.nickZh : inv.nick;
+        const source = inv.source === 'relisting' ? t('invite_source_relisting') : inv.source === 'manual' ? t('invite_source_manual') : t('invite_source_system');
+        const action = ['rejected', 'expired'].includes(inv.status)
+            ? inv.manualReinvited
+                ? `<span class="text-xs font-medium text-emerald-600">${t('manual_reinvite_done')}</span>`
+                : `<button type="button" onclick="openManualReinvite('${inv.inviteId}')" class="rounded-md border border-primary/30 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-blue-50">${t('manual_reinvite_action')}</button>`
+            : '<span class="text-slate-300">—</span>';
+        const masterText = inv.master === 'created'
+            ? `<span class="text-emerald-600 font-semibold">${t('invite_master_created')}</span><p class="font-mono text-[11px] text-slate-500 mt-0.5">${inv.masterId}</p>`
+            : inv.master === 'idempotent'
+                ? `<span class="text-violet-700 font-semibold">${t('invite_master_idempotent')}</span><p class="font-mono text-[11px] text-slate-500 mt-0.5">${inv.masterId}</p>`
+                : `<span class="text-slate-400">${t('invite_master_none')}</span>`;
+        return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">${inv.inviteId}</td>
+            <td class="px-4 py-3"><p class="font-mono text-xs font-semibold text-primary hover:underline cursor-pointer" onclick="showUidToast('${inv.uid}')">${inv.uid}</p><p class="text-xs text-slate-500 mt-0.5">${nick}</p></td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">Acct.No ${inv.acct}</td>
+            <td class="px-4 py-3"><p class="text-xs text-slate-700">${source}</p><p class="font-mono text-[11px] text-slate-500 mt-0.5">${inv.jobId}</p></td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">${inv.time}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">${inv.expiresAt}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold ${sm.cls}">${sm.label}</span>
+            </td>
+            <td class="px-4 py-3 text-center text-xs font-semibold ${rm.cls}">${rm.label}</td>
+            <td class="px-4 py-3 text-xs whitespace-nowrap">${masterText}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-500">${inv.actionTime}</td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">${action}</td>
+        </tr>`;
+    }).join('');
+}
+
+function showUidToast(uid) {
+    window.location.href = `${isZh() ? '客户管理.html' : 'clients.html'}?uid=${encodeURIComponent(uid)}`;
+}
+
+function init() {
+    const lang = LANG();
+    injectSidebar({ activePath: isZh() ? 'Copytrading / 系统日志' : 'Copytrading / System Logs', lang });
+    applyI18n();
+    renderCopyStatCards(); renderCopyTable();
+    renderBatchStatCards(); renderBatchTable();
+    renderInviteStatCards(); renderInviteTable();
+    renderRiskStatCards(); renderRiskTable();
+}
+init();
+</script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

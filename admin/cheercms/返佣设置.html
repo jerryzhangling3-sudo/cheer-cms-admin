@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>返佣设置 - CFD 业务管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0; opacity: 0; overflow: hidden;
+        }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+
+        .tab-btn { position: relative; }
+        .tab-btn.active { color: #3B82F6; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+            height: 2px; background: #3B82F6; border-radius: 2px;
+        }
+
+        /* 瀑布图条 */
+        .waterfall-bar { transition: width .4s ease; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 主内容区 -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <div class="flex items-center text-sm text-slate-500">
+                <i class="fa-solid fa-house mr-2"></i>
+                <span>资金管理</span>
+                <i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i>
+                <span>Partner</span>
+                <i class="fa-solid fa-chevron-right mx-2 text-[10px] text-slate-400"></i>
+                <span class="text-slate-700 font-medium">返佣设置</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="lang-switch"></div>
+                <button class="text-slate-500 hover:text-primary transition-colors relative">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+                </button>
+                <button class="text-slate-500 hover:text-primary text-sm transition-colors">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i>退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 业务内容 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <!-- 页面标题 -->
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">返佣设置</h1>
+                    <p class="text-sm text-slate-500 mt-2">按 Symbol 配置 Markup 点差与各等级分佣百分比。等级数量由「等级管理」配置，当前 L1 ~ L4 共 4 级。</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-calc" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors hidden">
+                        <i class="fa-solid fa-calculator mr-1.5"></i>预览计算器
+                    </button>
+                    <button id="btn-logs" class="relative px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                        <i class="fa-solid fa-clipboard-check mr-1.5"></i>审批日志
+                        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full items-center justify-center px-1 hidden" id="badge-pending">0</span>
+                    </button>
+                    <button id="btn-add" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/30">
+                        <i class="fa-solid fa-plus mr-1.5"></i>新增 Symbol
+                    </button>
+                </div>
+            </div>
+
+            <!-- 全局配置条（只读） -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-circle-info text-primary"></i>
+                    <span class="text-sm font-semibold text-slate-700">全局清算参数（只读 / 跟随交易引擎与清算中台）</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs">
+                    <div>
+                        <p class="text-slate-400 mb-1">截断精度</p>
+                        <p class="font-mono font-bold text-slate-800">2 位小数</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">实时跑批频率</p>
+                        <p class="font-mono font-bold text-slate-800">每 10 分钟</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">T+1 尾数归集</p>
+                        <p class="font-mono font-bold text-slate-800">GMT+0 10:00</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">RawSpread 上次跑批</p>
+                        <p class="font-mono font-bold text-slate-800">2026-06-29 (周一) 00:00 GMT+0</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 mb-1">RawSpread 下次跑批</p>
+                        <p class="font-mono font-bold text-emerald-600">2026-07-06 (周一) 00:00 GMT+0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选区 -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">Symbol 搜索</label>
+                        <input id="f-symbol" type="text" placeholder="如 XAUUSD / EURUSD"
+                            class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">资产类型</label>
+                        <select id="f-class" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                            <option value="all">全部</option>
+                            <option value="fx-major">外汇主流</option>
+                            <option value="fx-cross">外汇交叉</option>
+                            <option value="gold">黄金</option>
+                            <option value="silver">白银</option>
+                            <option value="energy">原油</option>
+                            <option value="crypto">数字货币</option>
+                            <option value="indices">股指</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1.5 block">状态</label>
+                        <select id="f-status" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                            <option value="all">全部</option>
+                            <option value="active">启用</option>
+                            <option value="paused">停用</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button id="btn-apply" class="flex-1 h-9 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                            <i class="fa-solid fa-magnifying-glass mr-1"></i>查询
+                        </button>
+                        <button id="btn-reset" class="flex-1 h-9 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表格 -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-semibold text-slate-700">Symbol 配置列表</span>
+                        <span id="cnt-total" class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-mono">0</span>
+                    </div>
+                    <span class="text-xs text-slate-400">点击行查看详情 / 编辑</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[13px]">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-5 py-3 text-left text-[11px] tracking-wider font-semibold text-slate-500">Symbol</th>
+                                <th class="px-5 py-3 text-left text-[11px] tracking-wider font-semibold text-slate-500">资产类型</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">合约量</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Digits</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">Markup<br><span class="text-slate-400 normal-case font-normal">(pts)</span></th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">RawSpread<br><span class="text-slate-400 normal-case font-normal">(pts, 7d)</span></th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">总点差<br><span class="text-slate-400 normal-case font-normal">(pts)</span></th>
+                                <th class="px-5 py-3 text-center text-[11px] tracking-wider font-semibold text-slate-500">状态</th>
+                                <th class="px-5 py-3 text-right text-[11px] tracking-wider font-semibold text-slate-500">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="hidden text-center py-16 text-slate-400">
+                    <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
+                    <p class="text-sm">没有符合条件的 Symbol</p>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mt-4">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                提示：非 USD 计价品种（如交叉货币 EURGBP/AUDCAD）在清算时自动按平仓瞬间汇率换算为 USD 入账。等级百分比设为 0% 视为禁用该等级在此 Symbol 的返佣。
+            </p>
+        </div>
+
+    </main>
+
+    <!-- ===== 编辑抽屉 ===== -->
+    <div id="edit-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800" id="ed-title">编辑 Symbol 返佣配置</h3>
+                    <p class="text-xs text-slate-400 mt-0.5" id="ed-subtitle">— —</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+                <!-- 基础信息 -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">基础信息</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">资产类型 *</label>
+                            <select id="ed-class" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none">
+                                <option value="fx-major">外汇主流</option>
+                                <option value="fx-cross">外汇交叉</option>
+                                <option value="gold">黄金</option>
+                                <option value="silver">白银</option>
+                                <option value="energy">原油</option>
+                                <option value="crypto">数字货币</option>
+                                <option value="indices">股指</option>
+                            </select>
+                            <div class="text-[11px] text-slate-400 mt-1">读取自 MT5 资产类型</div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Symbol *</label>
+                            <select id="ed-symbol" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono bg-white focus:border-primary focus:outline-none">
+                                <option value="">请选择 Symbol</option>
+                            </select>
+                            <div id="ed-symbol-hint" class="text-[11px] text-slate-400 mt-1">已配置的 Symbol 不会出现</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 合约规格（只读） -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">合约规格 <span class="ml-1 text-slate-400 normal-case">（来自交易引擎，只读）</span></h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">合约量 (Contract Size)</label>
+                            <input id="ed-contract" type="number" class="w-full h-9 px-3 border border-slate-200 bg-slate-50 rounded-lg text-sm font-mono text-slate-500" readonly>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Digits 精度</label>
+                            <input id="ed-digits" type="number" step="0.0001" class="w-full h-9 px-3 border border-slate-200 bg-slate-50 rounded-lg text-sm font-mono text-slate-500" readonly>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Group 级点差 + 分佣配置 -->
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">
+                        Group 点差与分佣配置
+                        <span class="ml-1 text-slate-400 normal-case">（点差来自 MT5 / 桥商，只读；分佣百分比按 Group 分别配置）</span>
+                    </h4>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-[12px]">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-500 text-[11px]">
+                                    <th class="text-left px-2 py-2 font-semibold">Group</th>
+                                    <th class="text-right px-2 py-2 font-semibold">Markup (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">RawSpread (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">Bridge (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">总点差 (pts)</th>
+                                    <th class="text-right px-2 py-2 font-semibold">1 Lot 毛利 (USD)</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L1%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L2%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L3%</th>
+                                    <th class="text-center px-1 py-2 font-semibold text-[10px]">L4%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ed-group-table" class="divide-y divide-slate-200">
+                                <!-- 由 JS 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5"><i class="fa-solid fa-circle-info mr-0.5"></i>总点差 = Markup + RawSpread + Bridge。分佣百分比按 Group 分别配置，系统按客户所属 Group 取对应点差和分佣比例计算。</p>
+                </section>
+
+                <!-- 实时预览 -->
+                <section class="bg-blue-50/40 border border-blue-100 rounded-lg p-4">
+                    <h4 class="text-[11px] tracking-wider font-semibold text-blue-700 mb-3"><i class="fa-solid fa-bolt mr-1"></i>实时预览 — 1 Lot 名义分佣</h4>
+                    <div class="flex items-center gap-3 mb-3">
+                        <label class="text-xs text-slate-500">参考 Group</label>
+                        <select id="ed-preview-group" class="h-8 px-2 border border-slate-200 rounded text-xs font-mono bg-white focus:border-primary focus:outline-none">
+                        </select>
+                        <span class="text-[10px] text-slate-400">切换 Group 查看不同 Markup 下的分佣差异</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-white rounded p-2 border border-slate-200">
+                            <p class="text-slate-400 mb-1">1 Lot 基础毛利</p>
+                            <p id="ed-preview-gross" class="font-mono font-bold text-emerald-600">$ 0.00</p>
+                        </div>
+                        <div class="bg-white rounded p-2 border border-slate-200">
+                            <p class="text-slate-400 mb-1">公式</p>
+                            <p id="ed-preview-formula" class="font-mono text-[10px] text-slate-500">1 × 总点差 × 合约量 × Digits</p>
+                        </div>
+                    </div>
+                    <div id="ed-preview-grid" class="grid grid-cols-4 gap-2 mt-3"></div>
+                </section>
+
+                <!-- 变更备注 -->
+                <section>
+                    <label class="text-xs text-slate-500 mb-1.5 block">变更原因 <span class="text-rose-500">*</span> <span class="text-slate-400 normal-case">（审批日志强制录入）</span></label>
+                    <textarea id="ed-reason" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none" placeholder="如：根据流动性池调整 Markup；新等级开通；商务策略调整..."></textarea>
+                </section>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
+                <p class="text-xs text-slate-400">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    PRD §4.8：发布仅对发布时间后的新单生效，历史订单按当时配置固化。
+                </p>
+                <div class="flex gap-2">
+                    <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors" data-close>取消</button>
+                    <button id="ed-publish" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/30">
+                        <i class="fa-solid fa-clipboard-check mr-1"></i>提交审核
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 预览计算器抽屉 ===== -->
+    <div id="calc-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800"><i class="fa-solid fa-calculator text-primary mr-1.5"></i>返佣预览计算器</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">PRD §5.4 级差返佣 + §5.5 截断 2 位精度</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">输入参数</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">Symbol</label>
+                            <select id="ca-symbol" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:border-primary focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1.5 block">客户交易手数 (Lots)</label>
+                            <input id="ca-lots" type="number" step="0.01" min="0.01" value="1" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="text-xs text-slate-500 mb-1.5 block">返佣计算链（最多 3 级，从最远受益上级到直推）</label>
+                        <div id="ca-chain" class="space-y-2"></div>
+                        <div class="flex gap-2 mt-2">
+                            <button id="ca-add" class="text-xs text-primary hover:underline"><i class="fa-solid fa-plus mr-1"></i>新增受益上级（最多 3 级）</button>
+                            <button id="ca-pop" class="text-xs text-slate-500 hover:underline"><i class="fa-solid fa-minus mr-1"></i>移除最底层</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">
+                        <i class="fa-solid fa-sliders mr-1 text-primary"></i>层级返佣比例（可手动调整预览）
+                    </h4>
+                    <div class="grid grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L1 返佣 %</label>
+                            <input id="ca-pct-l1" type="number" step="1" min="0" max="100" value="50" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L2 返佣 %</label>
+                            <input id="ca-pct-l2" type="number" step="1" min="0" max="100" value="60" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L3 返佣 %</label>
+                            <input id="ca-pct-l3" type="number" step="1" min="0" max="100" value="70" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 mb-1 block">L4 返佣 %</label>
+                            <input id="ca-pct-l4" type="number" step="1" min="0" max="100" value="80" class="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm font-mono focus:border-primary focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button id="ca-reset-pcts" class="text-xs text-primary hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i>恢复 Symbol 默认值</button>
+                        <span class="text-xs text-slate-400 ml-auto" id="ca-pct-hint">当前使用手动值</span>
+                    </div>
+                </section>
+
+                <section class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">基础毛利</h4>
+                    <div class="grid grid-cols-3 gap-3 text-xs">
+                        <div>
+                            <p class="text-slate-400 mb-1">总点差 (pts)</p>
+                            <p id="ca-totalspread" class="font-mono font-bold text-slate-800">0</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 mb-1">合约量 × Digits</p>
+                            <p id="ca-contract" class="font-mono font-bold text-slate-800">0</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 mb-1">毛利 ({{lots}} Lot)</p>
+                            <p id="ca-gross" class="font-mono font-bold text-emerald-600">$ 0.00</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">级差返佣推导（从下到上）</h4>
+                    <div id="ca-waterfall" class="space-y-2"></div>
+                </section>
+
+                <section class="bg-amber-50/40 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>
+                    <span class="font-semibold">熔断规则：</span>
+                    当某层名义分佣 − 下层已分得 ≤ 0 时，该层强制为 $0.00，平台绝不倒贴。
+                </section>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end shrink-0 bg-slate-50">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors" data-close>关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 审批日志抽屉 ===== -->
+    <div id="log-drawer" class="fixed inset-0 z-50 hidden">
+        <div class="drawer-backdrop absolute inset-0 bg-slate-900/40" data-close></div>
+        <div class="drawer-panel absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-200 shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800"><i class="fa-solid fa-clipboard-check text-primary mr-1.5"></i>返佣配置审批日志</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">所有配置变更不可篡改、可审计</p>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600" data-close>
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="log-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 二次确认模态 ===== -->
+    <div id="confirm-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/40">
+        <div class="bg-white rounded-xl shadow-2xl w-[440px] p-6">
+            <h3 class="text-base font-bold text-slate-800 mb-2"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>确认提交审核</h3>
+            <p class="text-sm text-slate-600 mb-4" id="cm-msg">即将对 <span class="font-mono font-bold text-slate-800">XAUUSD</span> 提交返佣配置变更审批。<br>提交后将由风控管理员审核通过后方可生效。</p>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
+                <p class="text-xs text-slate-500 mb-1">变更原因</p>
+                <p id="cm-reason" class="text-sm text-slate-800">— —</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100" data-cm-cancel>取消</button>
+                <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600" data-cm-ok>确认提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 停用/启用确认弹窗 -->
+    <div id="toggle-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/40">
+        <div class="bg-white rounded-xl shadow-2xl w-[440px] p-6">
+            <h3 class="text-base font-bold text-slate-800 mb-2" id="tm-title"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>确认变更状态</h3>
+            <p class="text-sm text-slate-600 mb-4" id="tm-msg">— —</p>
+            <div class="mb-4">
+                <label class="text-xs text-slate-500 mb-1.5 block">操作原因 <span class="text-rose-500">*</span> <span class="text-slate-400 normal-case">（审批日志强制录入）</span></label>
+                <textarea id="tm-reason" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none" placeholder="如：流动性不足暂停、商务策略调整..."></textarea>
+                <p class="text-[10px] text-slate-400 mt-1">最多 500 字</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100" data-tm-cancel>取消</button>
+                <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600" data-tm-ok>确认提交</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-wrap" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-2"></div>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script src="lang-switch.js?v=202607039700"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / 返佣设置", lang: 'zh' });
+    </script>
+    <!-- 业务 JS -->
+    <script>
+        // ========== Mock 数据 ==========
+        const CLASS_LABEL = {
+            'fx-major': '外汇主流',
+            'fx-cross': '外汇交叉',
+            'gold': '黄金',
+            'silver': '白银',
+            'energy': '原油',
+            'crypto': '数字货币',
+            'indices': '股指',
+        };
+        // MT5 资产类型 → 可选 Symbol 池（mock 从 MT5 拉取）
+        const MT5_SYMBOLS = {
+            'fx-major': ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF'],
+            'fx-cross': ['EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY', 'AUDCAD', 'NZDJPY', 'CADJPY'],
+            'gold':     ['XAUUSD', 'XAUEUR', 'XAUAUD', 'XAUGBP'],
+            'silver':   ['XAGUSD', 'XAGEUR', 'XAGAUD'],
+            'energy':   ['WTIUSD', 'BRENT', 'NGAS'],
+            'crypto':   ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'DOGEUSDT'],
+            'indices':  ['US30', 'NAS100', 'SPX500', 'DAX40', 'UK100', 'HK50', 'JP225', 'AUS200'],
+        };
+        const CLASS_BADGE = {
+            'fx-major': 'bg-sky-50 text-sky-700 border-sky-100',
+            'fx-cross': 'bg-indigo-50 text-indigo-700 border-indigo-100',
+            'gold':     'bg-amber-50 text-amber-700 border-amber-100',
+            'silver':   'bg-slate-50 text-slate-700 border-slate-200',
+            'energy':   'bg-orange-50 text-orange-700 border-orange-100',
+            'crypto':   'bg-violet-50 text-violet-700 border-violet-100',
+            'indices':  'bg-blue-50 text-blue-700 border-blue-100',
+        };
+
+        // ===== Group 级点差明细（来自 MT5 / 桥商，只读） =====
+        // 同一个 Symbol 可能分布在多个 MT5 Group，每个 Group 的 Markup 不同
+        const MOCK_GROUPS = {
+            'EURUSD': [
+                { name: 'Standard-ECN', markup: 8, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 6, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 12, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 4, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'GBPUSD': [
+                { name: 'Standard-ECN', markup: 10, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 8, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 14, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 6, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDJPY': [
+                { name: 'Standard-ECN', markup: 9, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 7, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 13, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 5, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'EURGBP': [
+                { name: 'Standard-ECN', markup: 12, raw: 6, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 10, raw: 6, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 16, raw: 6, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 8, raw: 6, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'AUDCAD': [
+                { name: 'Standard-ECN', markup: 14, raw: 7, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 11, raw: 7, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 18, raw: 7, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 9, raw: 7, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'XAUUSD': [
+                { name: 'Standard-ECN', markup: 40, raw: 20, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 35, raw: 20, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 50, raw: 20, bridge: 12, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 30, raw: 20, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAUEUR': [
+                { name: 'Standard-ECN', markup: 45, raw: 22, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 40, raw: 22, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 55, raw: 22, bridge: 12, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 35, raw: 22, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAGUSD': [
+                { name: 'Standard-ECN', markup: 25, raw: 12, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 22, raw: 12, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'Islamic-ECN',  markup: 30, raw: 12, bridge: 6, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 18, raw: 12, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            'WTIUSD': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 5, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 15, bridge: 4, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 38, raw: 15, bridge: 6, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 20, raw: 15, bridge: 3, pcts: [40,50,60,70] },
+            ],
+            'BRENT': [
+                { name: 'Standard-ECN', markup: 30, raw: 14, bridge: 5, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 14, bridge: 4, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 38, raw: 14, bridge: 6, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 20, raw: 14, bridge: 3, pcts: [40,50,60,70] },
+            ],
+            'BTCUSDT': [
+                { name: 'Standard-ECN', markup: 600, raw: 350, bridge: 80, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 500, raw: 350, bridge: 60, pcts: [50,60,70,80] },
+                { name: 'Islamic-ECN',  markup: 750, raw: 350, bridge: 100, pcts: [60,70,80,90] },
+                { name: 'VIP-ECN',      markup: 400, raw: 350, bridge: 50, pcts: [45,55,65,75] },
+            ],
+            'ETHUSDT': [
+                { name: 'Standard-ECN', markup: 80, raw: 45, bridge: 15, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 65, raw: 45, bridge: 12, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 50, raw: 45, bridge: 10, pcts: [45,55,65,75] },
+            ],
+            'US30': [
+                { name: 'Standard-ECN', markup: 25, raw: 12, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 20, raw: 12, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 15, raw: 12, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'NAS100': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 22, raw: 14, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 18, raw: 14, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'SPX500': [
+                { name: 'Standard-ECN', markup: 22, raw: 11, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 18, raw: 11, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 14, raw: 11, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            // FX Majors (未在 SYMBOLS 中的)
+            'AUDUSD': [
+                { name: 'Standard-ECN', markup: 7, raw: 4, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 5, raw: 4, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 11, raw: 4, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 3, raw: 4, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDCAD': [
+                { name: 'Standard-ECN', markup: 9, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 7, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 13, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 5, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'NZDUSD': [
+                { name: 'Standard-ECN', markup: 11, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 9, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 15, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 7, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'USDCHF': [
+                { name: 'Standard-ECN', markup: 10, raw: 5, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 8, raw: 5, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 14, raw: 5, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 6, raw: 5, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            // FX Crosses
+            'EURJPY': [
+                { name: 'Standard-ECN', markup: 12, raw: 6, bridge: 2, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 10, raw: 6, bridge: 1.5, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 16, raw: 6, bridge: 3, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 8, raw: 6, bridge: 1, pcts: [40,50,60,70] },
+            ],
+            'GBPJPY': [
+                { name: 'Standard-ECN', markup: 15, raw: 7, bridge: 3, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 12, raw: 7, bridge: 2, pcts: [45,55,65,75] },
+                { name: 'Islamic-ECN',  markup: 18, raw: 7, bridge: 4, pcts: [55,65,75,85] },
+                { name: 'VIP-ECN',      markup: 10, raw: 7, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            // Gold additional
+            'XAUAUD': [
+                { name: 'Standard-ECN', markup: 50, raw: 25, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 45, raw: 25, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 38, raw: 25, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            'XAUGBP': [
+                { name: 'Standard-ECN', markup: 48, raw: 24, bridge: 10, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 42, raw: 24, bridge: 8, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 36, raw: 24, bridge: 6, pcts: [40,50,60,70] },
+            ],
+            // Silver additional
+            'XAGEUR': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 24, raw: 14, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'VIP-ECN',      markup: 20, raw: 14, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            'XAGAUD': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 5, pcts: [45,55,65,75] },
+                { name: 'Premium-ECN',  markup: 26, raw: 15, bridge: 4, pcts: [40,50,60,70] },
+                { name: 'VIP-ECN',      markup: 22, raw: 15, bridge: 3, pcts: [35,45,55,65] },
+            ],
+            // Energy additional
+            'NGAS': [
+                { name: 'Standard-ECN', markup: 40, raw: 20, bridge: 8, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 35, raw: 20, bridge: 6, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 28, raw: 20, bridge: 5, pcts: [40,50,60,70] },
+            ],
+            // Crypto additional
+            'SOLUSDT': [
+                { name: 'Standard-ECN', markup: 120, raw: 70, bridge: 20, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 100, raw: 70, bridge: 15, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 80, raw: 70, bridge: 12, pcts: [45,55,65,75] },
+            ],
+            'XRPUSDT': [
+                { name: 'Standard-ECN', markup: 60, raw: 35, bridge: 10, pcts: [55,65,75,85] },
+                { name: 'Premium-ECN',  markup: 50, raw: 35, bridge: 8, pcts: [50,60,70,80] },
+                { name: 'VIP-ECN',      markup: 40, raw: 35, bridge: 6, pcts: [45,55,65,75] },
+            ],
+            // Indices additional
+            'DAX40': [
+                { name: 'Standard-ECN', markup: 30, raw: 15, bridge: 4, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 25, raw: 15, bridge: 3, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 20, raw: 15, bridge: 2, pcts: [40,50,60,70] },
+            ],
+            'UK100': [
+                { name: 'Standard-ECN', markup: 28, raw: 14, bridge: 4, pcts: [50,60,70,80] },
+                { name: 'Premium-ECN',  markup: 23, raw: 14, bridge: 3, pcts: [45,55,65,75] },
+                { name: 'VIP-ECN',      markup: 18, raw: 14, bridge: 2, pcts: [40,50,60,70] },
+            ],
+        };
+
+        // 获取 Symbol 的 Group 列表（默认取 Standard-ECN 作为主值）
+        function getGroups(symbol) { return MOCK_GROUPS[symbol] || []; }
+        function getDefaultGroup(symbol) {
+            const g = getGroups(symbol);
+            return g.length ? g[0] : { markup: 0, raw: 0, bridge: 0 };
+        }
+        function getMarkupRange(symbol) {
+            const gs = getGroups(symbol);
+            if (!gs.length) return { min: 0, max: 0 };
+            const vals = gs.map(g => g.markup);
+            return { min: Math.min(...vals), max: Math.max(...vals) };
+        }
+
+        // Symbol 数据：基于 PRD §5.3.2 实例
+        function getDefaultPcts(symbol) {
+            const g = getDefaultGroup(symbol);
+            return g ? g.pcts : [50, 60, 70, 80];
+        }
+
+        let SYMBOLS = [
+            // FX Majors
+            { symbol: 'EURUSD', cls: 'fx-major', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'GBPUSD', cls: 'fx-major', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'USDJPY', cls: 'fx-major', contract: 100000, digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            // FX Crosses
+            { symbol: 'EURGBP', cls: 'fx-cross', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'AUDCAD', cls: 'fx-cross', contract: 100000, digits: 0.0001, pcts: [50,60,70,80], status: 'active' },
+            // Gold (PRD 实例)
+            { symbol: 'XAUUSD', cls: 'gold',   contract: 100,    digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'XAUEUR', cls: 'gold',   contract: 100,    digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            // Silver
+            { symbol: 'XAGUSD', cls: 'silver', contract: 5000,   digits: 0.001,  pcts: [45,55,65,75], status: 'active' },
+            // Energy
+            { symbol: 'WTIUSD', cls: 'energy', contract: 1000,   digits: 0.01,   pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'BRENT',  cls: 'energy', contract: 1000,   digits: 0.01,   pcts: [50,60,70,80], status: 'paused' },
+            // Crypto
+            { symbol: 'BTCUSDT', cls: 'crypto', contract: 1,     digits: 0.01,   pcts: [55,65,75,85], status: 'active' },
+            { symbol: 'ETHUSDT', cls: 'crypto', contract: 1,     digits: 0.01,   pcts: [55,65,75,85], status: 'active' },
+            // Indices
+            { symbol: 'US30',    cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'NAS100',  cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+            { symbol: 'SPX500',  cls: 'indices', contract: 1,    digits: 0.1,    pcts: [50,60,70,80], status: 'active' },
+        ];
+
+        // 审批日志 mock（status: pending/approved/rejected）
+        // 审批历史（已通过/已驳回）
+        const APPROVAL_HISTORY = [
+            { id: 'PH_1', symbol: 'XAUUSD', action: '发布', diff: 'Standard-ECN: L1~L4 50/60/70/80% → 45/55/65/75%', reason: '黄金流动性池本周点差收紧，调整 Standard-ECN 分佣比例。', status: 'approved', createTime: '2026-06-28 14:32', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-28 14:35', rejectNote: null },
+            { id: 'PH_2', symbol: 'BTCUSDT', action: '发布', diff: 'VIP-ECN: L4: 75% → 80%', reason: 'Q3 商务策略，加大头部代理 Crypto 激励。', status: 'approved', createTime: '2026-06-25 09:11', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-25 09:15', rejectNote: null },
+            { id: 'PH_3', symbol: 'BRENT', action: '停用', diff: 'status: active → paused', reason: '原油代理推广暂停，等待 Q3 商务方案。', status: 'approved', createTime: '2026-06-22 16:48', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-22 16:50', rejectNote: null },
+            { id: 'PH_4', symbol: 'SPX500', action: '新增', diff: '新建 Symbol 返佣配置（SPX500）', reason: '新上线股指 SPX500 品种。', status: 'approved', createTime: '2026-06-20 11:05', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-20 11:10', rejectNote: null },
+            { id: 'PH_5', symbol: 'EURUSD', action: '发布', diff: 'Standard-ECN: L1~L4 50/60/70/80% → 48/58/68/78%', reason: '外汇主流竞品调降，对齐市场。', status: 'approved', createTime: '2026-06-15 18:22', actor: 'Admin Super', approver: 'Admin Super', approveTime: '2026-06-15 18:25', rejectNote: null },
+        ];
+
+        // 待审批条目
+        const PENDING_LOGS = [
+            {
+                id: 'PL_demo1', symbol: 'XAUUSD', action: '修改', cls: 'gold',
+                diff: 'Standard-ECN: L1~L4 50/60/70/80% → 45/55/65/75%',
+                reason: '配合市场成本调整，提升头部代理激励',
+                oldData: { cls: 'gold', groupPcts: { 'Standard-ECN': [50, 60, 70, 80] } },
+                newData: { cls: 'gold', groupPcts: { 'Standard-ECN': [45, 55, 65, 75] } },
+                status: 'pending', createTime: '2026-07-03 14:20', actor: '风控管理员',
+                approver: null, approveTime: null, rejectNote: null,
+            },
+            {
+                id: 'PL_demo2', symbol: 'EURUSD', action: '修改', cls: 'fx-major',
+                diff: 'Standard-ECN: L1~L4 50/60/70/80% → 48/58/68/78%',
+                reason: '欧元区波动率上升，适当调整分佣比例',
+                oldData: { cls: 'fx-major', groupPcts: { 'Standard-ECN': [50, 60, 70, 80] } },
+                newData: { cls: 'fx-major', groupPcts: { 'Standard-ECN': [48, 58, 68, 78] } },
+                status: 'pending', createTime: '2026-07-03 15:00', actor: '风控管理员',
+                approver: null, approveTime: null, rejectNote: null,
+            },
+        ];
+
+        // ========== 工具函数 ==========
+        const LEVEL_COUNT = 4; // Q2: 固定 L1-L4
+
+        function calcGrossPerLot(s, groupName) {
+            // PRD §5.3.1: 1 Lot 毛利 = 1 × 总点差 × 合约量 × Digits
+            let g;
+            if (groupName) {
+                g = getGroups(s.symbol || s).find(g => g.name === groupName);
+            }
+            if (!g) g = getDefaultGroup(s.symbol || s);
+            const total = (Number(g.markup) || 0) + (Number(g.raw) || 0) + (Number(g.bridge) || 0);
+            return total * s.contract * s.digits;
+        }
+        function fmtMoney(v) {
+            const n = Number(v);
+            if (!isFinite(n)) return '$ 0.00';
+            return '$ ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function trunc2(v) {
+            // PRD §5.5: 截断小数点后 2 位（不四舍五入）
+            return Math.trunc(v * 100) / 100;
+        }
+        function toast(msg, type='success') {
+            const div = document.createElement('div');
+            const colorClass = type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : type === 'error'
+                ? 'bg-rose-50 border-rose-200 text-rose-700'
+                : 'bg-slate-50 border-slate-200 text-slate-700';
+            div.className = `toast border ${colorClass} px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2`;
+            div.innerHTML = `<i class="fa-solid ${type==='success'?'fa-check-circle':'fa-circle-exclamation'}"></i><span>${msg}</span>`;
+            document.getElementById('toast-wrap').appendChild(div);
+            requestAnimationFrame(() => div.classList.add('show'));
+            setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 300); }, 2400);
+        }
+
+        // ========== 表格渲染 ==========
+        function statusBadge(s) {
+            if (s === 'active') return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100"><i class="fa-solid fa-check mr-1 text-[10px]"></i>启用</span>`;
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-slate-50 text-slate-500 border border-slate-200"><i class="fa-solid fa-pause mr-1 text-[10px]"></i>停用</span>`;
+        }
+        function classBadge(cls) {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${CLASS_BADGE[cls]}">${CLASS_LABEL[cls]}</span>`;
+        }
+        function pctCell(v) {
+            const n = Number(v) || 0;
+            if (n === 0) return `<span class="font-mono text-slate-300">0%</span>`;
+            return `<span class="font-mono font-semibold text-slate-700">${n}%</span>`;
+        }
+
+        function renderTable() {
+            const fSym    = (document.getElementById('f-symbol').value || '').trim().toUpperCase();
+            const fCls    = document.getElementById('f-class').value;
+            const fStatus = document.getElementById('f-status').value;
+
+            const rows = SYMBOLS.filter(r => {
+                if (fSym && !r.symbol.includes(fSym)) return false;
+                if (fCls !== 'all' && r.cls !== fCls) return false;
+                if (fStatus !== 'all' && r.status !== fStatus) return false;
+                return true;
+            });
+
+            document.getElementById('cnt-total').textContent = rows.length;
+
+            const tbody = document.getElementById('tbody');
+            const empty = document.getElementById('empty-state');
+            if (rows.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = rows.map(r => {
+                const range = getMarkupRange(r.symbol);
+                const rangeStr = range.min === range.max ? `${range.min}` : `${range.min} ~ ${range.max}`;
+                const def = getDefaultGroup(r.symbol);
+                const total = def.markup + def.raw + def.bridge;
+                const gross = calcGrossPerLot(r);
+                const paused = r.status === 'paused';
+                return `
+                <tr class="hover:bg-slate-50/70 transition-colors ${paused ? 'opacity-60' : ''}">
+                    <td class="px-5 py-4 font-mono font-bold text-slate-800">${r.symbol}</td>
+                    <td class="px-5 py-4">${classBadge(r.cls)}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-600">${r.contract.toLocaleString()}</td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-600">${r.digits}</td>
+                    <td class="px-5 py-4 text-right">
+                        <span class="font-mono font-semibold text-slate-800 cursor-pointer group-markup" data-symbol="${r.symbol}">${rangeStr}
+                            <i class="fa-solid fa-chevron-down text-[9px] ml-1 text-slate-400 group-hover:text-primary"></i>
+                        </span>
+                    </td>
+                    <td class="px-5 py-4 text-right font-mono text-slate-500"><i class="fa-solid fa-lock text-[9px] mr-1 text-slate-300"></i>${def.raw}</td>
+                    <td class="px-5 py-4 text-right font-mono font-bold text-slate-800">${total}</td>
+                    <td class="px-5 py-4 text-center">${statusBadge(r.status)}</td>
+                    <td class="px-5 py-4 text-right whitespace-nowrap">
+                        <button class="text-primary hover:underline text-xs font-medium" data-edit="${r.symbol}"><i class="fa-solid fa-pen mr-0.5"></i>编辑</button>
+                        <span class="text-slate-200 mx-1">|</span>
+                        <button class="text-${paused?'emerald':'amber'}-600 hover:underline text-xs font-medium" data-toggle="${r.symbol}">${paused ? '启用' : '停用'}</button>
+                    </td>
+                </tr>
+                <tr class="group-detail-row hidden" data-detail="${r.symbol}">
+                    <td colspan="10" class="px-5 py-3 bg-slate-50/80 border-b border-slate-200">
+                        <div class="text-xs text-slate-500 mb-2 font-semibold"><i class="fa-solid fa-layer-group mr-1"></i>MT5 Group 点差明细 — ${r.symbol}</div>
+                        <table class="w-full text-[11px]">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-200">
+                                    <th class="text-left py-1.5 pr-4">Group</th>
+                                    <th class="text-right pr-4">Markup (pts)</th>
+                                    <th class="text-right pr-4">RawSpread (pts)</th>
+                                    <th class="text-right pr-4">Bridge (pts)</th>
+                                    <th class="text-right pr-4">总点差 (pts)</th>
+                                    <th class="text-right pr-4">1 Lot 毛利 (USD)</th>
+                                    <th class="text-center pr-2">L1%</th>
+                                    <th class="text-center pr-2">L2%</th>
+                                    <th class="text-center pr-2">L3%</th>
+                                    <th class="text-center">L4%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${getGroups(r.symbol).map(g => {
+                                    const gt = g.markup + g.raw + g.bridge;
+                                    const gg = gt * r.contract * r.digits;
+                                    return `<tr class="border-b border-slate-100 hover:bg-slate-100/50">
+                                        <td class="py-1.5 pr-4 font-mono text-slate-700">${g.name}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-600">${g.markup}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-500">${g.raw}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono text-slate-500">${g.bridge}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono font-bold text-slate-700">${gt}</td>
+                                        <td class="py-1.5 pr-4 text-right font-mono font-bold text-emerald-600">${fmtMoney(gg)}</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[0]}%</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[1]}%</td>
+                                        <td class="py-1.5 pr-2 text-center font-mono text-slate-700">${g.pcts[2]}%</td>
+                                        <td class="py-1.5 text-center font-mono text-slate-700">${g.pcts[3]}%</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', e => {
+                e.stopPropagation(); openEdit(b.dataset.edit);
+            }));
+            tbody.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', e => {
+                e.stopPropagation(); toggleStatus(b.dataset.toggle);
+            }));
+            // 点击 Markup 范围展开/收起 Group 明细行
+            tbody.querySelectorAll('.group-markup').forEach(el => {
+                el.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const sym = el.dataset.symbol;
+                    const detailRow = document.querySelector(`.group-detail-row[data-detail="${sym}"]`);
+                    if (detailRow) {
+                        const isHidden = detailRow.classList.contains('hidden');
+                        detailRow.classList.toggle('hidden');
+                        el.querySelector('i').classList.toggle('rotate-180', !isHidden);
+                    }
+                });
+            });
+            // 点击整行（排除 detail 行）也打开编辑
+            tbody.querySelectorAll('tr:not(.group-detail-row)').forEach((tr, idx) => {
+                tr.addEventListener('click', () => {
+                    const r = rows.find(r => r.symbol === tr.querySelector('[data-edit]')?.dataset.edit);
+                    if (r) openEdit(r.symbol);
+                });
+            });
+        }
+
+        function toggleStatus(sym) {
+            const r = SYMBOLS.find(s => s.symbol === sym);
+            if (!r) return;
+            const newStatus = r.status === 'active' ? 'paused' : 'active';
+            const actName = newStatus === 'active' ? '启用' : '停用';
+
+            document.getElementById('tm-title').innerHTML = `<i class="fa-solid fa-circle-exclamation text-amber-500 mr-1.5"></i>确认${actName} Symbol`;
+            document.getElementById('tm-msg').innerHTML = `即将对 <span class="font-mono font-bold text-slate-800">${sym}</span> 提交<span class="font-semibold ${newStatus === 'active' ? 'text-emerald-600' : 'text-amber-600'}">${actName}</span>审批。<br>提交后将由风控管理员审核通过后方可生效。`;
+            document.getElementById('tm-reason').value = '';
+
+            const modal = document.getElementById('toggle-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            const ok = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+                const reason = document.getElementById('tm-reason').value.trim();
+                if (!reason) return toast('请录入操作原因（审批日志强制）', 'error');
+
+                PENDING_LOGS.unshift({
+                    id: 'PL_' + Date.now(),
+                    symbol: sym,
+                    cls: r.cls,
+                    action: actName,
+                    diff: `status: ${r.status === 'active' ? 'active' : 'paused'} → ${newStatus}`,
+                    reason,
+                    oldData: { ...r },
+                    newData: { ...r, status: newStatus },
+                    status: 'pending',
+                    createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                    actor: 'Admin Super',
+                    approver: null,
+                    approveTime: null,
+                    rejectNote: null,
+                });
+                updatePendingBadge();
+                renderTable();
+                toast(`${sym} ${actName}已提交审批，请等待审核`);
+            };
+            const cancel = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+            };
+            function cleanup() {
+                modal.querySelector('[data-tm-ok]').removeEventListener('click', ok);
+                modal.querySelector('[data-tm-cancel]').removeEventListener('click', cancel);
+            }
+            modal.querySelector('[data-tm-ok]').addEventListener('click', ok);
+            modal.querySelector('[data-tm-cancel]').addEventListener('click', cancel);
+        }
+
+        // ========== 编辑抽屉 ==========
+        let currentEdit = null; // 当前编辑的 symbol；null = 新增
+
+        // 已被配置过的 symbols（去重池）
+        function getUsedSymbols(excludeSymbol) {
+            return new Set(SYMBOLS.filter(s => s.symbol !== excludeSymbol).map(s => s.symbol));
+        }
+        // 渲染 Symbol 下拉（按当前资产类型 + 排除已配置）
+        function refreshSymbolOptions(currentSym) {
+            const cls = document.getElementById('ed-class').value;
+            const selectEl = document.getElementById('ed-symbol');
+            const pool = MT5_SYMBOLS[cls] || [];
+            const used = getUsedSymbols(currentSym);
+            const available = pool.filter(s => !used.has(s));
+
+            selectEl.innerHTML = '';
+            if (currentSym && !available.includes(currentSym)) {
+                // 编辑场景：当前 symbol 始终在列表里
+                const o = document.createElement('option');
+                o.value = currentSym;
+                o.textContent = currentSym;
+                selectEl.appendChild(o);
+            }
+            if (available.length === 0 && !currentSym) {
+                const o = document.createElement('option');
+                o.value = '';
+                o.textContent = '该资产类型下所有 Symbol 已配置';
+                o.disabled = true;
+                selectEl.appendChild(o);
+            } else {
+                available.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s;
+                    o.textContent = s;
+                    selectEl.appendChild(o);
+                });
+            }
+            if (currentSym) selectEl.value = currentSym;
+        }
+
+        // MT5 配置库（实际部署时由 MT5 + 桥商按 symbol 同步）
+        const MT5_DEFAULTS = {
+            // FX Majors (contract=100000)
+            EURUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            GBPUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDJPY: {cls:'fx-major',contract:100000,digits:0.01},
+            AUDUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDCAD: {cls:'fx-major',contract:100000,digits:0.0001},
+            NZDUSD: {cls:'fx-major',contract:100000,digits:0.0001},
+            USDCHF: {cls:'fx-major',contract:100000,digits:0.0001},
+            // FX Crosses
+            EURGBP: {cls:'fx-cross',contract:100000,digits:0.0001},
+            EURJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            GBPJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            AUDJPY: {cls:'fx-cross',contract:100000,digits:0.01},
+            AUDCAD: {cls:'fx-cross',contract:100000,digits:0.0001},
+            // Gold
+            XAUUSD: {cls:'gold',contract:100,digits:0.01},
+            XAUEUR: {cls:'gold',contract:100,digits:0.01},
+            XAUAUD: {cls:'gold',contract:100,digits:0.01},
+            // Silver
+            XAGUSD: {cls:'silver',contract:5000,digits:0.001},
+            XAGEUR: {cls:'silver',contract:5000,digits:0.001},
+            // Energy
+            WTIUSD: {cls:'energy',contract:1000,digits:0.01},
+            BRENT:  {cls:'energy',contract:1000,digits:0.01},
+            NGAS:   {cls:'energy',contract:1000,digits:0.001},
+            // Crypto
+            BTCUSDT:{cls:'crypto',contract:1,digits:0.01},
+            ETHUSDT:{cls:'crypto',contract:1,digits:0.01},
+            SOLUSDT:{cls:'crypto',contract:1,digits:0.01},
+            XRPUSDT:{cls:'crypto',contract:1,digits:0.0001},
+            // Indices
+            US30:   {cls:'index',contract:1,digits:1},
+            NAS100: {cls:'index',contract:1,digits:1},
+            SPX500: {cls:'index',contract:1,digits:1},
+            DAX40:  {cls:'index',contract:1,digits:1},
+            UK100:  {cls:'index',contract:1,digits:1},
+            HK50:   {cls:'index',contract:1,digits:1},
+        };
+
+        // 渲染 Group 点差明细表到抽屉
+        function renderGroupTable(symbol) {
+            const tbody = document.getElementById('ed-group-table');
+            const groups = getGroups(symbol);
+            const def = MT5_DEFAULTS[symbol];
+            const contract = def?.contract || 100000;
+            const digits = def?.digits || 0.0001;
+            if (!groups.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-slate-400 text-xs">无 Group 数据</td></tr>';
+                return;
+            }
+            const levelLabels = ['L1', 'L2', 'L3', 'L4'];
+            tbody.innerHTML = groups.map(g => {
+                const total = g.markup + g.raw + g.bridge;
+                const gross = total * contract * digits;
+                const pcts = g.pcts || [50,60,70,80];
+                const id = g.name.replace(/[^a-zA-Z0-9]/g, '_');
+                return `<tr class="hover:bg-slate-100/50">
+                    <td class="px-2 py-2 font-mono text-slate-700 text-[11px]">${g.name}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-700 text-[11px]">${g.markup}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-500 text-[11px]">${g.raw}</td>
+                    <td class="px-2 py-2 text-right font-mono text-slate-500 text-[11px]">${g.bridge}</td>
+                    <td class="px-2 py-2 text-right font-mono font-bold text-slate-700 text-[11px]">${total}</td>
+                    <td class="px-2 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">${fmtMoney(gross)}</td>
+                    ${levelLabels.map((lv, i) =>
+                        `<td class="px-1 py-2 text-center"><input type="number" min="0" max="100" value="${pcts[i] || 0}" id="g-pct-${id}-${i}" class="w-10 h-7 text-center border border-slate-200 rounded text-[11px] font-mono bg-white focus:border-primary focus:outline-none"></td>`
+                    ).join('')}
+                </tr>`;
+            }).join('');
+        }
+
+        // 填充预览 Group 下拉选择
+        function populatePreviewGroupSelect(symbol, selected) {
+            const sel = document.getElementById('ed-preview-group');
+            const groups = getGroups(symbol);
+            sel.innerHTML = groups.map(g =>
+                `<option value="${g.name}" ${g.name === selected ? 'selected' : ''}>${g.name}</option>`
+            ).join('');
+            if (!groups.length) sel.innerHTML = '<option value="">—</option>';
+        }
+
+        // 从 MT5 / 桥商配置加载到抽屉只读字段
+        function fillSymbolDefaults(symbol) {
+            const def = MT5_DEFAULTS[symbol];
+            if (!def) return;
+            document.getElementById('ed-contract').value = def.contract;
+            document.getElementById('ed-digits').value = def.digits;
+            renderGroupTable(symbol);
+            populatePreviewGroupSelect(symbol, getGroups(symbol)[0]?.name);
+            updateEditPreview();
+        }
+
+        function openEdit(sym) {
+            const r = sym ? SYMBOLS.find(s => s.symbol === sym) : null;
+            currentEdit = r ? sym : null;
+
+            document.getElementById('ed-title').textContent = r ? `编辑 ${sym} 返佣配置` : '新增 Symbol 返佣配置';
+            document.getElementById('ed-subtitle').textContent = r ? `资产类型：${CLASS_LABEL[r.cls]}` : '先选资产类型，再从 MT5 可选 Symbol 中挑选，所有点差自动从 MT5 / 桥商读取';
+
+            document.getElementById('ed-class').value = r ? r.cls : 'fx-major';
+            document.getElementById('ed-class').disabled = !!r;       // 编辑时不允许改资产类型
+            refreshSymbolOptions(r ? r.symbol : null);
+            document.getElementById('ed-symbol').disabled = !!r;      // 编辑时不允许改 Symbol
+
+            const targetSym = r ? r.symbol : document.getElementById('ed-symbol').value;
+            if (targetSym) {
+                const def = MT5_DEFAULTS[targetSym];
+                if (def) {
+                    document.getElementById('ed-contract').value = def.contract;
+                    document.getElementById('ed-digits').value = def.digits;
+                }
+                renderGroupTable(targetSym);
+                const firstGroup = getGroups(targetSym)[0]?.name;
+                populatePreviewGroupSelect(targetSym, firstGroup);
+            } else {
+                document.getElementById('ed-contract').value = '';
+                document.getElementById('ed-digits').value = '';
+                document.getElementById('ed-group-table').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400 text-xs">请先选择 Symbol</td></tr>';
+                document.getElementById('ed-preview-group').innerHTML = '<option value="">—</option>';
+            }
+            document.getElementById('ed-reason').value = '';
+
+            // 默认选中第一个 Group 的预览
+            updateEditPreview();
+            showDrawer('edit-drawer');
+        }
+
+
+        function readEditForm() {
+            const targetSym = document.getElementById('ed-symbol').value.trim().toUpperCase();
+            const selGroup = document.getElementById('ed-preview-group').value;
+            const groups = getGroups(targetSym);
+            const g = groups.find(g => g.name === selGroup) || getDefaultGroup(targetSym);
+            // 从 Group 表格中读取当前选中 Group 的 L1~L4 输入值
+            const pcts = [];
+            const gid = selGroup.replace(/[^a-zA-Z0-9]/g, '_');
+            for (let i = 0; i < 4; i++) {
+                const inp = document.getElementById(`g-pct-${gid}-${i}`);
+                pcts.push(Number(inp?.value) || 0);
+            }
+            return {
+                symbol: targetSym,
+                cls: document.getElementById('ed-class').value,
+                contract: Number(document.getElementById('ed-contract').value),
+                digits: Number(document.getElementById('ed-digits').value),
+                markup: g.markup,
+                raw: g.raw,
+                bridge: g.bridge,
+                pcts,
+                status: 'active',
+            };
+        }
+
+        function updateEditPreview() {
+            const data = readEditForm();
+            const total = data.markup + data.raw + data.bridge;
+            const gross = total * data.contract * data.digits;
+            document.getElementById('ed-preview-gross').textContent = fmtMoney(gross);
+            document.getElementById('ed-preview-formula').textContent =
+                `1 × (${data.markup}+${data.raw}+${data.bridge}=${total}) × ${data.contract.toLocaleString()} × ${data.digits}`;
+            const grid = document.getElementById('ed-preview-grid');
+            grid.innerHTML = data.pcts.map((p, i) => {
+                const v = gross * (p / 100);
+                const disabled = p === 0;
+                return `
+                <div class="bg-white rounded p-2 border ${disabled ? 'border-slate-200 opacity-50' : 'border-blue-200'} text-center">
+                    <p class="text-[10px] text-slate-400">L${i+1} ${p}%</p>
+                    <p class="font-mono font-bold ${disabled ? 'text-slate-400' : 'text-blue-600'} text-xs mt-1">${fmtMoney(v)}</p>
+                </div>`;
+            }).join('');
+        }
+
+        // Markup/Raw/Bridge 现在都是只读，由 MT5/桥商同步，不再监听 input
+        // 资产类型切换时联动刷新 Symbol 下拉
+        document.getElementById('ed-class').addEventListener('change', () => {
+            if (!currentEdit) {
+                refreshSymbolOptions(null);
+                const firstSym = document.getElementById('ed-symbol').value;
+                if (firstSym) fillSymbolDefaults(firstSym);
+            }
+        });
+        // Symbol 切换时自动加载该 Symbol 的 MT5/桥商默认配置
+        document.getElementById('ed-symbol').addEventListener('change', () => {
+            if (!currentEdit) {
+                const sym = document.getElementById('ed-symbol').value;
+                if (sym) fillSymbolDefaults(sym);
+            }
+        });
+        // Group 切换时刷新预览
+        document.getElementById('ed-preview-group').addEventListener('change', updateEditPreview);
+
+        // ========== 发布流程 ==========
+        document.getElementById('ed-publish').addEventListener('click', () => {
+            const data = readEditForm();
+            const reason = document.getElementById('ed-reason').value.trim();
+            if (!data.symbol) return toast('请选择 Symbol', 'error');
+            if (data.markup < 0) return toast('Markup 不能为负', 'error');
+            if (data.pcts.some(p => p < 0 || p > 100)) return toast('百分比必须在 0-100 之间', 'error');
+            if (!reason) return toast('请录入变更原因（审批日志强制）', 'error');
+
+            // 二次确认
+            document.getElementById('cm-msg').innerHTML = `即将对 <span class="font-mono font-bold text-slate-800">${data.symbol}</span> 提交返佣配置变更审批。<br>提交后将由风控管理员审核通过后方可生效。`;
+            document.getElementById('cm-reason').textContent = reason;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            const ok = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+
+                // 提交修改 / 新增 — 不再直接写入 SYMBOLS，改为创建待审批条目
+                const idx = SYMBOLS.findIndex(s => s.symbol === currentEdit);
+                const old = idx >= 0 ? SYMBOLS[idx] : null;
+                let diffText;
+                if (old) {
+                    const changes = [];
+                    if (old.cls !== data.cls) changes.push(`品种等级: ${CLASS_LABEL[old.cls]} → ${CLASS_LABEL[data.cls]}`);
+                    // 收集所有 Group 的分佣变动
+                    const groups = getGroups(data.symbol);
+                    groups.forEach(g => {
+                        const gid = g.name.replace(/[^a-zA-Z0-9]/g, '_');
+                        const oldP = g.pcts || [50,60,70,80];
+                        const newP = [];
+                        for (let i = 0; i < 4; i++) {
+                            const inp = document.getElementById(`g-pct-${gid}-${i}`);
+                            newP.push(Number(inp?.value) || 0);
+                        }
+                        const changed = oldP.some((p, i) => p !== newP[i]);
+                        if (changed) {
+                            // 更新 MOCK_GROUPS 中的 pcts
+                            g.pcts = newP;
+                            changes.push(`${g.name}: L1~L4 ${oldP.join('/')}% → ${newP.join('/')}%`);
+                        }
+                    });
+                    diffText = changes.length ? changes.join('；') : '（无字段变更）';
+                } else {
+                    diffText = `新建 Symbol 返佣配置（${data.symbol}）`;
+                }
+
+                PENDING_LOGS.unshift({
+                    id: 'PL_' + Date.now(),
+                    symbol: data.symbol,
+                    cls: data.cls,
+                    action: idx >= 0 ? '修改' : '新增',
+                    diff: diffText,
+                    reason,
+                    oldData: old ? { ...old } : null,
+                    newData: { ...data },
+                    status: 'pending',
+                    createTime: new Date().toISOString().slice(0,19).replace('T',' '),
+                    actor: '风控管理员',
+                    approver: null,
+                    approveTime: null,
+                    rejectNote: null,
+                });
+
+                updatePendingBadge();
+                renderTable();
+                closeDrawer('edit-drawer');
+                toast(`${data.symbol} 变更已提交审批，请等待审核`);
+            };
+            const cancel = () => {
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                cleanup();
+            };
+            function cleanup() {
+                modal.querySelector('[data-cm-ok]').removeEventListener('click', ok);
+                modal.querySelector('[data-cm-cancel]').removeEventListener('click', cancel);
+            }
+            modal.querySelector('[data-cm-ok]').addEventListener('click', ok);
+            modal.querySelector('[data-cm-cancel]').addEventListener('click', cancel);
+        });
+
+        // ========== 预览计算器 ==========
+        let caChain = ['L3', 'L2', 'L1']; // 最多 3 个受益层：最远受益上级 → 直推
+
+        function openCalc() {
+            // 填充 symbol 下拉
+            const sel = document.getElementById('ca-symbol');
+            sel.innerHTML = SYMBOLS.filter(s => s.status === 'active')
+                .map(s => `<option value="${s.symbol}">${s.symbol} — ${CLASS_LABEL[s.cls]}</option>`).join('');
+            sel.value = 'XAUUSD';
+            document.getElementById('ca-lots').value = '1';
+            // 填充默认百分比
+            const defaultSym = SYMBOLS.find(s => s.symbol === 'XAUUSD');
+            if (defaultSym) {
+                document.getElementById('ca-pct-l1').value = defaultSym.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = defaultSym.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = defaultSym.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = defaultSym.pcts[3] || 0;
+            }
+            caChain = ['L3', 'L2', 'L1'];
+            renderChain();
+            updateCalc();
+            showDrawer('calc-drawer');
+        }
+
+        function renderChain() {
+            const wrap = document.getElementById('ca-chain');
+            wrap.innerHTML = caChain.map((lv, i) => `
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <span class="text-xs text-slate-500 w-16">第 ${caChain.length - i} 级受益层</span>
+                    <select data-chain="${i}" class="flex-1 h-8 px-2 border border-slate-200 rounded text-sm bg-white">
+                        ${[1,2,3,4].map(n => `<option value="L${n}" ${lv === `L${n}` ? 'selected' : ''}>L${n}</option>`).join('')}
+                    </select>
+                </div>
+            `).join('');
+            wrap.querySelectorAll('select').forEach(s => s.addEventListener('change', () => {
+                caChain[Number(s.dataset.chain)] = s.value;
+                updateCalc();
+            }));
+        }
+
+        document.getElementById('ca-add').addEventListener('click', () => {
+            if (caChain.length >= 3) return toast('返佣计算最多 3 级；更深层关系不参与返佣', 'error');
+            caChain.unshift('L4'); // 顶部加更高等级
+            renderChain(); updateCalc();
+        });
+        document.getElementById('ca-pop').addEventListener('click', () => {
+            if (caChain.length <= 1) return toast('至少保留 1 层', 'error');
+            caChain.pop();
+            renderChain(); updateCalc();
+        });
+        document.getElementById('ca-symbol').addEventListener('change', () => {
+            // Symbol 切换时，用新 Symbol 的默认值填充手动输入框
+            const s = SYMBOLS.find(x => x.symbol === document.getElementById('ca-symbol').value);
+            if (s) {
+                document.getElementById('ca-pct-l1').value = s.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = s.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = s.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = s.pcts[3] || 0;
+            }
+            updateCalc();
+        });
+        document.getElementById('ca-lots').addEventListener('input', updateCalc);
+        // 手动百分比输入变化时重新计算
+        ['ca-pct-l1', 'ca-pct-l2', 'ca-pct-l3', 'ca-pct-l4'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCalc);
+        });
+        // 恢复默认值按钮
+        document.getElementById('ca-reset-pcts').addEventListener('click', () => {
+            const s = SYMBOLS.find(x => x.symbol === document.getElementById('ca-symbol').value);
+            if (s) {
+                document.getElementById('ca-pct-l1').value = s.pcts[0] || 0;
+                document.getElementById('ca-pct-l2').value = s.pcts[1] || 0;
+                document.getElementById('ca-pct-l3').value = s.pcts[2] || 0;
+                document.getElementById('ca-pct-l4').value = s.pcts[3] || 0;
+                updateCalc();
+            }
+        });
+
+        function updateCalc() {
+            const sym = document.getElementById('ca-symbol').value;
+            const lots = Number(document.getElementById('ca-lots').value) || 0;
+            const s = SYMBOLS.find(x => x.symbol === sym);
+            if (!s) return;
+            const total = (Number(s.markup) || 0) + (Number(s.raw) || 0) + (Number(s.bridge) || 0);
+            const grossPerLot = total * s.contract * s.digits;
+            const gross = grossPerLot * lots;
+
+            document.getElementById('ca-totalspread').textContent = total;
+            document.getElementById('ca-contract').textContent = `${s.contract.toLocaleString()} × ${s.digits}`;
+            document.getElementById('ca-gross').textContent = fmtMoney(gross);
+
+            // 读取手动设置的层级百分比（如果为空则使用 Symbol 默认值）
+            const manualPcts = [
+                Number(document.getElementById('ca-pct-l1').value) || s.pcts[0] || 0,
+                Number(document.getElementById('ca-pct-l2').value) || s.pcts[1] || 0,
+                Number(document.getElementById('ca-pct-l3').value) || s.pcts[2] || 0,
+                Number(document.getElementById('ca-pct-l4').value) || s.pcts[3] || 0,
+            ];
+            // 更新提示文字
+            const hint = document.getElementById('ca-pct-hint');
+            if (hint) {
+                const isManual = manualPcts.some((v, i) => v !== (s.pcts[i] || 0));
+                hint.textContent = isManual ? '当前使用手动值' : '当前使用 Symbol 默认值';
+                hint.className = isManual ? 'text-xs text-amber-600 ml-auto' : 'text-xs text-slate-400 ml-auto';
+            }
+
+            // 级差推导：从直推（最底层）向上算
+            // chain = [顶, 中..., 直推]
+            const reversed = [...caChain].reverse(); // [直推, 中..., 顶]
+            const results = []; // 每一层：{ level, pct, nominal, distributed_below, actual }
+            let distributedBelow = 0;
+            reversed.forEach((lv, idx) => {
+                const lvIdx = Number(lv.slice(1)) - 1;
+                const pct = manualPcts[lvIdx] || 0;
+                const nominal = gross * (pct / 100);
+                let actual = nominal - distributedBelow;
+                let melt = false;
+                if (actual <= 0) { actual = 0; melt = true; }
+                actual = trunc2(actual); // PRD §5.5 截断 2 位
+                results.push({ position: idx === 0 ? '直推' : (idx === reversed.length - 1 ? '顶层' : `中层 ${reversed.length - 1 - idx}`), level: lv, pct, nominal, distributedBelow, actual, melt });
+                distributedBelow += actual;
+            });
+
+            // 渲染瀑布
+            const maxAbs = Math.max(...results.map(r => r.nominal), 0.01);
+            const wf = document.getElementById('ca-waterfall');
+            wf.innerHTML = results.slice().reverse().map(r => {
+                const w = Math.min(100, (r.nominal / maxAbs) * 100);
+                return `
+                <div class="bg-white border border-slate-200 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-slate-500">${r.position}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 font-mono">${r.level}</span>
+                            <span class="text-xs text-slate-500">${r.pct}%</span>
+                        </div>
+                        <span class="font-mono font-bold ${r.melt ? 'text-rose-600' : 'text-emerald-600'}">${fmtMoney(r.actual)}</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full waterfall-bar ${r.melt ? 'bg-rose-200' : 'bg-emerald-400'}" style="width: ${w}%"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1 font-mono">
+                        名义 ${fmtMoney(r.nominal)} − 下层已分 ${fmtMoney(r.distributedBelow)} = ${fmtMoney(r.nominal - r.distributedBelow)}${r.melt ? ' → 熔断为 $0.00' : ''}
+                    </p>
+                </div>`;
+            }).join('');
+        }
+
+        // ========== 审批日志抽屉 ==========
+        let currentRejectId = null;
+
+        function updatePendingBadge() {
+            const badge = document.getElementById('badge-pending');
+            const count = PENDING_LOGS.length;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function openApprovalLogs() {
+            const wrap = document.getElementById('log-list');
+            const allItems = [...PENDING_LOGS.map(p => ({ ...p, _type: 'pending' })), ...APPROVAL_HISTORY.map(h => ({ ...h, _type: 'history' }))];
+
+            if (allItems.length === 0) {
+                wrap.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-clipboard-check text-3xl mb-3 block opacity-40"></i><p class="text-sm">暂无审批记录</p></div>';
+                showDrawer('log-drawer');
+                return;
+            }
+
+            wrap.innerHTML = allItems.map(item => {
+                const isPending = item._type === 'pending';
+                const isApproved = item.status === 'approved';
+                const isRejected = item.status === 'rejected';
+
+                const statusBadge = isPending
+                    ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700"><i class="fa-solid fa-clock text-[9px]"></i>待审</span>'
+                    : isApproved
+                        ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700"><i class="fa-solid fa-check text-[9px]"></i>已通过</span>'
+                        : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700"><i class="fa-solid fa-xmark text-[9px]"></i>已驳回</span>';
+
+                const rightActions = isPending
+                    ? `<div class="flex items-center gap-1.5 flex-shrink-0 ml-3">
+                        <button onclick="approvePending('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors flex-shrink-0"><i class="fa-solid fa-check mr-1 text-[9px]"></i>通过</button>
+                        <button onclick="openReject('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 rounded-md hover:bg-rose-100 transition-colors flex-shrink-0"><i class="fa-solid fa-xmark mr-1 text-[9px]"></i>驳回</button>
+                    </div>`
+                    : `<span class="text-[10px] text-slate-400 flex-shrink-0 ml-3"><i class="fa-solid fa-user-shield mr-1"></i>${item.approver || '—'} · ${item.approveTime || '—'}</span>`;
+
+                const rejectBlock = isRejected && item.rejectNote
+                    ? `<div class="mt-1.5 text-xs text-rose-600 bg-rose-50/50 rounded px-2 py-1"><i class="fa-solid fa-ban mr-1"></i>驳回理由：${item.rejectNote}</div>`
+                    : '';
+
+                const rejectInputBlock = isPending
+                    ? `<div id="reject-box-${item.id}" class="hidden mt-2 border border-rose-200 rounded-md p-2 bg-rose-50/30">
+                        <textarea id="reject-note-${item.id}" class="w-full border border-rose-200 rounded-md px-2 py-1.5 text-[12px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-400 resize-none" rows="2" placeholder="请填写驳回理由（必填）"></textarea>
+                        <div class="flex items-center justify-end gap-1.5 mt-1.5">
+                            <button onclick="closeReject('${item.id}')" class="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded-md transition-colors">取消</button>
+                            <button onclick="submitReject('${item.id}')" class="px-2.5 py-1 text-[11px] font-bold bg-rose-500 text-white rounded-md hover:bg-rose-600 transition-colors">确认驳回</button>
+                        </div>
+                    </div>`
+                    : '';
+
+                return `
+                <div class="border border-slate-200 rounded-lg p-3 mb-2 ${isPending ? 'border-l-amber-400 border-l-2' : ''}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0 border-l-2 border-primary/40 pl-3">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="font-mono font-bold text-slate-800 text-sm">${item.symbol}</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    item.action === '修改' ? 'bg-blue-50 text-blue-700' :
+                                    item.action === '新增' ? 'bg-emerald-50 text-emerald-700' :
+                                    item.action === '启用' ? 'bg-emerald-50 text-emerald-700' :
+                                    item.action === '停用' ? 'bg-amber-50 text-amber-700' :
+                                    'bg-slate-50 text-slate-600'
+                                }">${item.action}</span>
+                                ${statusBadge}
+                            </div>
+                            <p class="text-[11px] text-slate-600 mb-1 font-mono">${item.diff}</p>
+                            <p class="text-[11px] text-slate-500">${item.reason}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${item.createTime} · <i class="fa-solid fa-user-pen mx-0.5"></i>${item.actor}</p>
+                            ${rejectBlock}
+                            ${rejectInputBlock}
+                        </div>
+                        ${rightActions}
+                    </div>
+                </div>`;
+            }).join('');
+            updatePendingBadge();
+            showDrawer('log-drawer');
+        }
+
+        function approvePending(id) {
+            const idx = PENDING_LOGS.findIndex(p => p.id === id);
+            if (idx === -1) return;
+            const p = PENDING_LOGS.splice(idx, 1)[0];
+            // 应用变更到 SYMBOLS
+            if (p.action === '修改') {
+                const symIdx = SYMBOLS.findIndex(s => s.symbol === p.symbol);
+                if (symIdx !== -1) {
+                    SYMBOLS[symIdx] = { ...SYMBOLS[symIdx], ...p.newData };
+                }
+            } else if (p.action === '新增') {
+                SYMBOLS.push(p.newData);
+            } else if (p.action === '停用' || p.action === '启用') {
+                const symIdx = SYMBOLS.findIndex(s => s.symbol === p.symbol);
+                if (symIdx !== -1) SYMBOLS[symIdx].status = p.newData.status;
+            }
+            // 移入历史
+            const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+            APPROVAL_HISTORY.unshift({ ...p, status: 'approved', approver: 'Admin Super', approveTime: now, rejectNote: null });
+            renderTable();
+            openApprovalLogs();
+            toast('已通过 ' + p.symbol + '，变更已生效');
+        }
+
+        function openReject(id) {
+            currentRejectId = id;
+            const box = document.getElementById('reject-box-' + id);
+            if (box) { box.classList.remove('hidden'); setTimeout(() => document.getElementById('reject-note-' + id).focus(), 100); }
+        }
+
+        function closeReject(id) {
+            currentRejectId = null;
+            const box = document.getElementById('reject-box-' + id);
+            if (box) box.classList.add('hidden');
+        }
+
+        function submitReject(id) {
+            const note = document.getElementById('reject-note-' + id).value.trim();
+            if (!note) { toast('驳回理由必填', 'error'); return; }
+            const idx = PENDING_LOGS.findIndex(p => p.id === id);
+            if (idx === -1) return;
+            const p = PENDING_LOGS.splice(idx, 1)[0];
+            const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+            APPROVAL_HISTORY.unshift({ ...p, status: 'rejected', approver: 'Admin Super', approveTime: now, rejectNote: note });
+            closeReject(id);
+            openApprovalLogs();
+            toast('已驳回 ' + p.symbol, 'success');
+            updatePendingBadge();
+        }
+
+        // ========== Drawer 通用 ==========
+        function showDrawer(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('hidden');
+            requestAnimationFrame(() => el.querySelector('.drawer-panel').classList.add('open'));
+        }
+        function closeDrawer(id) {
+            const el = document.getElementById(id);
+            el.querySelector('.drawer-panel').classList.remove('open');
+            setTimeout(() => el.classList.add('hidden'), 300);
+        }
+        document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+            const drawer = b.closest('[id$="-drawer"]');
+            if (drawer) closeDrawer(drawer.id);
+        }));
+
+        // ========== 顶部按钮 ==========
+        document.getElementById('btn-add').addEventListener('click', () => openEdit(null));
+        document.getElementById('btn-calc').addEventListener('click', openCalc);
+        document.getElementById('btn-logs').addEventListener('click', openApprovalLogs);
+        document.getElementById('btn-apply').addEventListener('click', renderTable);
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            document.getElementById('f-symbol').value = '';
+            document.getElementById('f-class').value = 'all';
+            document.getElementById('f-status').value = 'all';
+            renderTable();
+        });
+        document.getElementById('f-symbol').addEventListener('input', renderTable);
+        document.getElementById('f-class').addEventListener('change', renderTable);
+        document.getElementById('f-status').addEventListener('change', renderTable);
+
+        // ========== 初始化 ==========
+        renderTable();
+        updatePendingBadge();
+    </script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

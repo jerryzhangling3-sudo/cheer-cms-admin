@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <title>Ledger - CFD Admin Portal</title>
+ <script src="https://cdn.tailwindcss.com"></script>
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+ <link rel="stylesheet" href="https://fonts.googleapis.cn/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+ <script>
+ tailwind.config = {
+ theme: {
+ extend: {
+ fontFamily: { sans: ['Inter', 'system-ui'] },
+ colors: {
+ sidebar: '#0B1120',
+ sidebarHover: '#1E293B',
+ primary: '#3B82F6'
+ }
+ }
+ }
+ }
+ </script>
+ <style>
+ ::-webkit-scrollbar { width: 6px; height: 6px; }
+ ::-webkit-scrollbar-track { background: transparent; }
+ ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+ .submenu-container { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out; }
+ .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+ .chevron { transition: transform 0.2s ease-in-out; }
+ .chevron.rotated { transform: rotate(90deg); }
+ .menu-level-1 { padding-left: 16px; }
+ .menu-level-2 { padding-left: 36px; }
+ .menu-level-3 { padding-left: 56px; }
+ .menu-level-4 { padding-left: 76px; }
+ .remarks-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+ <!-- ============================ Left navigation (for sidebar.js render) ============================ -->
+<div id="sidebar-root"></div>
+
+<!-- ============================ Main content ============================ -->
+ <main class="flex-1 flex flex-col overflow-hidden">
+ <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0">
+ <div class="flex items-center text-sm text-slate-500">
+ <span>System</span>
+ <i class="fa-solid fa-angle-right text-[10px] mx-2 text-slate-300"></i>
+ <span>Funding</span>
+ <i class="fa-solid fa-angle-right text-[10px] mx-2 text-slate-300"></i>
+ <span>Balances</span>
+ <i class="fa-solid fa-angle-right text-[10px] mx-2 text-slate-300"></i>
+ <span class="text-slate-800 font-semibold">Ledger</span>
+ </div>
+ <div class="flex items-center gap-4 text-slate-500">
+ <div id="lang-switch"></div>
+ <button class="hover:text-primary transition-colors relative">
+ <i class="fa-regular fa-bell text-base"></i>
+ <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500"></span>
+ </button>
+ <button class="hover:text-primary transition-colors text-xs flex items-center gap-1.5"><i class="fa-solid fa-right-from-bracket text-[11px]"></i>Sign out</button>
+ </div>
+ </header>
+
+ <div class="flex-1 overflow-auto p-8 bg-slate-50">
+ <!-- Page title -->
+ <div class="mb-6 flex items-end justify-between">
+ <div>
+ <h1 class="text-2xl font-bold text-slate-800">Ledger</h1>
+ <p class="text-sm text-slate-500 mt-2">The core master ledger of platform Funding, Strictly in reverse chronological order, recording every fund movement; Increase shown in green +, Decrease shown in red -. </p>
+ </div>
+ <button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-sm text-slate-700 font-medium transition-colors shadow-sm">
+ <i class="fa-solid fa-file-arrow-down text-[12px]"></i>
+ <span>Export Ledger</span>
+ </button>
+ </div>
+
+ <!-- Filter card -->
+ <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+ <div class="grid grid-cols-3 gap-x-6 gap-y-4">
+ <div>
+ <label class="block text-xs font-medium text-slate-500 mb-1.5">TxID</label>
+ <input type="text" placeholder="e.g. LG_20260627_0089" class="w-full h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition font-mono">
+ </div>
+ <div>
+ <label class="block text-xs font-medium text-slate-500 mb-1.5">UID</label>
+ <input type="text" placeholder="e.g. UID_558012" class="w-full h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition font-mono">
+ </div>
+ <div>
+ <label class="block text-xs font-medium text-slate-500 mb-1.5">Transaction Type</label>
+ <select id="filter-type" class="w-full h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition">
+ <option value="">All</option>
+ <option>Deposit</option>
+ <option>Withdrawal</option>
+ <option>Withdrawal Fee</option>
+ <option>Transfer In</option>
+ <option>Transfer Out</option>
+ <option>IB Commission</option>
+ </select>
+ </div>
+ <div>
+ <label class="block text-xs font-medium text-slate-500 mb-1.5">Currency</label>
+ <select class="w-full h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition">
+ <option value="">All</option>
+ <option>USD</option>
+ <option>AED</option>
+ <option>CNY</option>
+ <option>USDT</option>
+ <option>USDC</option>
+ </select>
+ </div>
+ <div class="col-span-2">
+ <label class="block text-xs font-medium text-slate-500 mb-1.5">Time Range</label>
+ <div class="flex items-center gap-2">
+ <input type="date" class="flex-1 h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition">
+ <span class="text-slate-400 text-xs">to</span>
+ <input type="date" class="flex-1 h-9 px-3 text-sm bg-white rounded-md border border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition">
+ </div>
+ </div>
+ </div>
+ <div class="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
+ <button class="h-9 px-4 text-sm text-slate-600 hover:text-slate-800 transition-colors">Reset</button>
+ <button class="h-9 px-5 text-sm bg-primary hover:bg-blue-600 text-white rounded-md font-medium transition-colors shadow-sm shadow-blue-500/30">
+ <i class="fa-solid fa-magnifying-glass text-[11px] mr-1.5"></i>Search
+ </button>
+ </div>
+ </div>
+
+ <!-- Ledger table -->
+ <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+ <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+ <div class="flex items-center gap-2 text-slate-700">
+ <i class="fa-solid fa-book-open text-primary text-[13px]"></i>
+ <span class="font-semibold text-sm">Ledger entries · by time desc</span>
+ <span id="ledger-count" class="text-xs text-slate-400">Total 0 items</span>
+ </div>
+ <span class="text-[11px] text-slate-400">Immutable · fund reconciliation evidence</span>
+ </div>
+ <div class="overflow-x-auto">
+ <table class="w-full text-[13px]">
+ <thead class="bg-slate-50 text-[11px] tracking-wider font-semibold text-slate-500">
+ <tr>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">TxID</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Timestamp</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">UID</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Type</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Source</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Destination</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Currency</th>
+ <th class="px-5 py-3.5 text-right whitespace-nowrap">Amount</th>
+ <th class="px-5 py-3.5 text-right whitespace-nowrap">Balance After</th>
+ <th class="px-5 py-3.5 text-left whitespace-nowrap">Remarks</th>
+ </tr>
+ </thead>
+ <tbody id="ledger-tbody" class="divide-y divide-slate-100"></tbody>
+ </table>
+ </div>
+
+ <!-- Pagination -->
+ <div class="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 text-[12px] text-slate-500">
+ <span>Total <b class="text-slate-700">8</b> entries · Showing recent week</span>
+ <div class="flex items-center gap-1">
+ <button class="w-8 h-8 rounded-md hover:bg-slate-100 text-slate-400" disabled><i class="fa-solid fa-angle-left text-[11px]"></i></button>
+ <button class="w-8 h-8 rounded-md bg-primary text-white font-medium">1</button>
+ <button class="w-8 h-8 rounded-md hover:bg-slate-100">2</button>
+ <button class="w-8 h-8 rounded-md hover:bg-slate-100">3</button>
+ <span class="text-slate-300 px-1">...</span>
+ <button class="w-8 h-8 rounded-md hover:bg-slate-100">42</button>
+ <button class="w-8 h-8 rounded-md hover:bg-slate-100"><i class="fa-solid fa-angle-right text-[11px]"></i></button>
+ </div>
+ </div>
+ </div>
+ </div>
+ </main>
+
+ <!-- FX conversion detail modal -->
+ <div id="fx-modal" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeFxDetail()">
+ <div class="bg-white rounded-xl shadow-xl w-full max-w-md border border-slate-200">
+ <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+ <div class="flex items-center gap-2 text-slate-800">
+ <i class="fa-solid fa-right-left text-primary text-[13px]"></i>
+ <span class="font-semibold text-sm">FX conversion detail</span>
+ </div>
+ <button onclick="closeFxDetail()" class="w-8 h-8 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+ <i class="fa-solid fa-xmark"></i>
+ </button>
+ </div>
+ <div id="fx-modal-body" class="p-5"></div>
+ <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end">
+ <button onclick="closeFxDetail()" class="h-9 px-4 text-sm text-slate-600 hover:text-slate-800 transition-colors">Close</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Shared sidebar -->
+ <script src="sidebar.js?v=202607221300"></script>
+ <script>
+ injectSidebar({ activePath: "Funding / Balances / Ledger", lang: "en" });
+
+ // ============================ Mock Ledger data (Strictly in reverse chronological order) ============================
+ const mockLedger = [
+ {
+ txId: "LG_20260627_0089", ts: "2026-06-27 14:32:15", userId: "UID_558012",
+ type: "Deposit", typeEn: "Deposit", typeColor: "emerald",
+ source: "USDT-TRC20", destination: "Funding USD",
+ currency: "USD", amount: 4995.00, balance: 28420.00,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260627_0085", ts: "2026-06-27 13:45:02", userId: "UID_558012",
+ type: "IB Commission", typeEn: "IB Commission", typeColor: "indigo",
+ source: "IB_System", destination: "Funding USD",
+ currency: "USD", amount: 127.50, balance: 23425.00,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260627_0072", ts: "2026-06-27 11:20:48", userId: "UID_330221",
+ type: "Withdrawal", typeEn: "Withdrawal", typeColor: "rose",
+ source: "Funding AED", destination: "Bank Wire AED",
+ currency: "AED", amount: -7300.00, balance: 12840.00,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260627_0071", ts: "2026-06-27 11:20:46", userId: "UID_330221",
+ type: "Withdrawal Fee", typeEn: "Withdrawal Fee", typeColor: "rose",
+ source: "Funding AED", destination: "Channel Fee",
+ currency: "AED", amount: -45.00, balance: 20140.00,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260627_0058", ts: "2026-06-27 10:08:14", userId: "UID_558012",
+ type: "Transfer Out", typeEn: "Transfer Out", typeColor: "amber",
+ source: "Funding USD", destination: "Acct.No 8802917",
+ currency: "USD", amount: -3000.00, balance: 23297.50,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260627_0040", ts: "2026-06-27 09:15:33", userId: "UID_445118",
+ type: "Deposit", typeEn: "Deposit", typeColor: "emerald",
+ source: "VISA Card", destination: "Funding CNY",
+ currency: "CNY", amount: 35000.00, balance: 35000.00,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260626_0218", ts: "2026-06-26 22:11:08", userId: "UID_558012",
+ type: "Transfer In", typeEn: "Transfer In", typeColor: "indigo",
+ source: "Acct.No 8802917", destination: "Funding USD",
+ currency: "USD", amount: 2000.00, balance: 26297.50,
+ remarks: ""
+ },
+ {
+ txId: "LG_20260626_0198", ts: "2026-06-26 20:41:12", userId: "UID_330221",
+ type: "Transfer In", typeEn: "Transfer In", typeColor: "indigo",
+ source: "Acct.No 8802917", destination: "Funding USDT",
+ currency: "USDT", amount: 1987.36, balance: 6421.20,
+ remarks: "FX credit, AED → USDT",
+ fxPairId: "FX-6172", fxRole: "in",
+ fxRate: 0.2722, fxRateInverse: 3.6725,
+ fxCounterCurrency: "AED", fxCounterAmount: -7300.00,
+ fxSource: "Binance OTC mid-market",
+ fxRelatedWithdraw: "WD_20260627_0034"
+ }
+ ];
+
+ const typeBadgeClass = {
+ emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+ rose: "bg-rose-50 text-rose-600 border-rose-100",
+ amber: "bg-amber-50 text-amber-600 border-amber-100",
+ indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+ sky:    "bg-sky-50 text-sky-600 border-sky-100",
+ slate: "bg-slate-100 text-slate-600 border-slate-200"
+ };
+
+ function fmtAmount(n, currency) {
+ const sign = n > 0 ? "+" : (n < 0 ? "-" : "");
+ const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ const colorClass = n > 0 ? "text-emerald-600" : (n < 0 ? "text-rose-600" : "text-slate-500");
+ return `<span class="font-mono font-bold ${colorClass}">${sign}${abs}</span> <span class="text-[11px] text-slate-400">${currency}</span>`;
+ }
+
+ function renderAmountCell(row) {
+ const main = fmtAmount(row.amount, row.currency);
+ if (!row.fxPairId) return main;
+ const counterSign = row.fxCounterAmount > 0 ? "+" : (row.fxCounterAmount < 0 ? "-" : "");
+ const counterAbs = Math.abs(row.fxCounterAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ const counterColor = row.fxCounterAmount > 0 ? "text-emerald-600" : "text-rose-600";
+ const [fromCur, toCur] = row.amount > 0
+ ? [row.fxCounterCurrency, row.currency]
+ : [row.currency, row.fxCounterCurrency];
+ return `${main}
+ <div class="mt-1 leading-tight text-[11px] font-mono"><span class="text-slate-400">${fromCur}→${toCur}</span> <span class="text-slate-400">=</span> <span class="${counterColor}">${counterSign}${counterAbs}</span> <span class="text-slate-400">${row.fxCounterCurrency}</span></div>`;
+ }
+
+ function renderRemarkCell(row) {
+ const baseText = `<span class="text-slate-500 text-[12px]" title="${row.remarks}">${row.remarks}</span>`;
+ if (!row.fxPairId) return baseText;
+ const pairExists = row.fxPairTxId && mockLedger.some(r => r.txId === row.fxPairTxId);
+ if (!pairExists) return baseText;
+ return `<div class="flex flex-col gap-1.5">
+ ${baseText}
+ <button onclick="openFxDetail('${row.txId}')" class="self-start inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold tracking-wide border border-slate-200 transition-colors" title="View FX details">
+ <i class="fa-solid fa-right-left text-[9px]"></i>${row.fxPairId}
+ </button>
+ </div>`;
+ }
+
+ function renderLedger() {
+ const tbody = document.getElementById("ledger-tbody");
+ const fxOnly = false;
+ const list = mockLedger;
+ tbody.innerHTML = list.map(row => {
+ const badge = typeBadgeClass[row.typeColor] || typeBadgeClass.slate;
+ const rowExtra = row.fxPairId ? "bg-sky-50/20" : "";
+ return `<tr class="hover:bg-slate-50/70 transition-colors ${rowExtra}">
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap align-top">${row.txId}</td>
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-500 whitespace-nowrap align-top">${row.ts}</td>
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-700 whitespace-nowrap align-top">${row.userId}</td>
+ <td class="px-5 py-4 whitespace-nowrap align-top">
+ <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${badge}">${row.type}</span>
+ </td>
+ <td class="px-5 py-4 text-slate-700 whitespace-nowrap text-[12px] align-top">${row.source}</td>
+ <td class="px-5 py-4 text-slate-700 whitespace-nowrap text-[12px] align-top">${row.destination}</td>
+ <td class="px-5 py-4 font-mono text-[12px] text-slate-700 align-top">${row.currency}</td>
+ <td class="px-5 py-4 text-right whitespace-nowrap align-top">${renderAmountCell(row)}</td>
+ <td class="px-5 py-4 text-right font-mono text-[13px] text-slate-800 whitespace-nowrap align-top">${row.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+ <td class="px-5 py-4 align-top">${renderRemarkCell(row)}</td>
+ </tr>`;
+ }).join("");
+ document.getElementById("ledger-count").textContent = `Total ${list.length} items`;
+ }
+
+ function openFxDetail(txId) {
+ const row = mockLedger.find(r => r.txId === txId);
+ if (!row || !row.fxPairId) return;
+ const outRow = row.fxRole === "out" ? row : mockLedger.find(r => r.txId === row.fxPairTxId);
+ const inRow  = row.fxRole === "in"  ? row : mockLedger.find(r => r.txId === row.fxPairTxId);
+ const outAbs = Math.abs(outRow.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ const inAbs  = Math.abs(inRow.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ document.getElementById("fx-modal-body").innerHTML = `
+ <div class="flex items-center justify-between mb-4">
+ <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 text-slate-700 text-[11px] font-bold tracking-wide border border-slate-200">
+ <i class="fa-solid fa-right-left text-[10px]"></i>${outRow.fxPairId}
+ </span>
+ <span class="text-[11px] text-slate-400 font-mono">${outRow.ts}</span>
+ </div>
+ <dl class="space-y-2.5 text-[12px]">
+ <div class="flex justify-between border-b border-slate-100 pb-2">
+ <dt class="text-slate-500">Rate</dt>
+ <dd class="text-slate-800 font-mono">1 ${outRow.currency} = ${outRow.fxRate} ${outRow.fxCounterCurrency}
+ <span class="text-slate-400 ml-2">(inv. ${outRow.fxRateInverse})</span>
+ </dd>
+ </div>
+ <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+ <dt class="text-slate-500">Debit</dt>
+ <dd class="text-right">
+ <div class="font-mono font-bold text-rose-600">-${outAbs} <span class="text-[10px] text-slate-400">${outRow.currency}</span></div>
+ <div class="text-[10px] text-slate-400 font-mono mt-0.5">${outRow.txId}</div>
+ </dd>
+ </div>
+ <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+ <dt class="text-slate-500">Credit</dt>
+ <dd class="text-right">
+ <div class="font-mono font-bold text-emerald-600">+${inAbs} <span class="text-[10px] text-slate-400">${inRow.currency}</span></div>
+ <div class="text-[10px] text-slate-400 font-mono mt-0.5">${inRow.txId}</div>
+ </dd>
+ </div>
+ ${outRow.fxRelatedWithdraw ? `<div class="flex justify-between pt-1">
+ <dt class="text-slate-500">Related withdrawal</dt>
+ <dd class="text-primary font-mono hover:underline cursor-pointer">${outRow.fxRelatedWithdraw}</dd>
+ </div>` : ""}
+ </dl>
+ `;
+ document.getElementById("fx-modal").classList.remove("hidden");
+ }
+ function closeFxDetail() {
+ document.getElementById("fx-modal").classList.add("hidden");
+ }
+
+ document.getElementById("filter-type").addEventListener("change", renderLedger);
+ renderLedger();
+ </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

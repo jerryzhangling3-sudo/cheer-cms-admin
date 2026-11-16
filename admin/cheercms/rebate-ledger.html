@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rebate Ledger - CFD Admin Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.cn/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui'] },
+                    colors: { sidebar: '#0B1120', sidebarHover: '#1E293B', primary: '#3B82F6' }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .submenu-container { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out; }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.2s ease-in-out; }
+        .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 16px; }
+        .menu-level-2 { padding-left: 36px; }
+        .menu-level-3 { padding-left: 56px; }
+        .menu-level-4 { padding-left: 76px; }
+        .hidden-state { display: none; }
+        /* 同Order ID高亮 */
+        tr.order-hit { background-color: rgba(254, 240, 138, 0.35) !important; }
+        /* View抽屉 */
+        #drawer-detail { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        #drawer-detail.open { transform: translateX(0); }
+        #drawer-backdrop { transition: opacity 0.3s ease-in-out; }
+        /* Waterfall */
+        .waterfall-node { position: relative; }
+        .waterfall-node::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: #cbd5e1; }
+        .waterfall-node.is-current { background: rgba(59, 130, 246, 0.06); border-left: 3px solid #3B82F6; }
+        .timeline-dot { width: 8px; height: 8px; border-radius: 999px; background: #10b981; box-shadow: 0 0 0 3px #d1fae5; }
+        .timeline-dot.pending { background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0">
+            <div class="flex items-center text-sm text-slate-500">
+                <span>Partner</span>
+                <i class="fa-solid fa-angle-right text-[10px] mx-2 text-slate-300"></i>
+                <span class="text-slate-800 font-semibold">Rebate Ledger</span>
+            </div>
+            <div class="flex items-center gap-4 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-base"></i>
+                    <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500"></span>
+                </button>
+                <button class="hover:text-primary transition-colors text-xs flex items-center gap-1.5"><i class="fa-solid fa-right-from-bracket text-[11px]"></i>Sign out</button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">Rebate Ledger</h1>
+                <p class="text-sm text-slate-500 mt-2">Platform-wide IB rebate audit ledger · each row = one rebate line credited to one IB. Relationships may extend indefinitely, but only the nearest three upline levels are eligible for rebate calculation and ledger entries.</p>
+            </div>
+
+            <!-- 筛选栏 -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-5">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">IB UID</label>
+                        <input id="f-ib" type="text" placeholder="UID_445118" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 font-mono">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Trader UID</label>
+                        <input id="f-trader" type="text" placeholder="UID_558012" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 font-mono">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Deal ID</label>
+                        <input id="f-order" type="text" placeholder="MT5-8802917-33081029" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 font-mono">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Symbol</label>
+                        <select id="f-symbol" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary">
+                            <option value="">All</option>
+                            <option value="XAUUSD">XAUUSD</option>
+                            <option value="EURUSD">EURUSD</option>
+                            <option value="EURGBP">EURGBP</option>
+                            <option value="GBPJPY">GBPJPY</option>
+                            <option value="USOIL">USOIL</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-4 mt-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Status</label>
+                        <select id="f-status" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                            <option value="">All</option>
+                            <option value="settled">Settled</option>
+                            <option value="pending">Pending</option>
+                            <option value="frozen">Frozen</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5 col-span-2">
+                        <label class="text-[11px] tracking-wider font-semibold text-slate-500">Time Range
+                            <span class="ml-2 inline-flex text-[10px] font-normal tracking-normal">
+                                <label class="cursor-pointer inline-flex items-center gap-1 mr-3"><input type="radio" name="time-basis" value="settlement" checked class="accent-primary">By Settlement Time</label>
+                                <label class="cursor-pointer inline-flex items-center gap-1"><input type="radio" name="time-basis" value="close" class="accent-primary">By Close Time</label>
+                            </span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input id="f-start" type="date" class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary">
+                            <span class="text-slate-400 text-xs">to</span>
+                            <input id="f-end" type="date" class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 mt-4">
+                    <button onclick="resetFilters()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Reset</button>
+                    <button onclick="exportCsv()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5"><i class="fa-solid fa-download text-[11px]"></i>Export CSV</button>
+                    <button onclick="applyFilters()" class="px-5 py-2 text-sm text-white bg-primary rounded-lg hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/30 flex items-center gap-1.5"><i class="fa-solid fa-magnifying-glass text-[11px]"></i>Search</button>
+                </div>
+            </div>
+
+            <!-- 表格 -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Rebate ID</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Settlement Time</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Deal ID</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Symbol · Lots</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Trader</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Recipient IB</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Tier</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Rebate Depth (max 3)</th>
+                                <th class="px-5 py-3.5 text-right text-[11px] tracking-wider font-semibold text-slate-500">Rebate %</th>
+                                <th class="px-5 py-3.5 text-center text-[11px] tracking-wider font-semibold text-slate-500">Currency</th>
+                                <th class="px-5 py-3.5 text-right text-[11px] tracking-wider font-semibold text-slate-500">Net Rebate</th>
+                                <th class="px-5 py-3.5 text-left text-[11px] tracking-wider font-semibold text-slate-500">Status</th>
+                                <th class="px-5 py-3.5 text-center text-[11px] tracking-wider font-semibold text-slate-500">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="hidden-state py-16 text-center text-slate-400 text-sm">
+                    <i class="fa-solid fa-inbox text-3xl mb-3 block"></i>
+                    <div>No matching rebate records</div>
+                </div>
+                <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200 text-xs text-slate-500">
+                    <div>Total <span id="total-count" class="font-mono font-semibold text-slate-700">0</span> records</div>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-50">Previous</button>
+                        <span>1 / 1</span>
+                        <button class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-50">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================ View抽屉 ============================ -->
+    <div id="drawer-backdrop" class="fixed inset-0 bg-slate-900/30 z-40 hidden-state opacity-0" onclick="closeDetailDrawer()"></div>
+    <aside id="drawer-detail" class="fixed top-0 right-0 h-screen w-[540px] bg-white shadow-2xl z-50 flex flex-col">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-200 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <span id="d-rebate-id" class="text-base font-bold text-slate-800 font-mono">RB_XXXXXXXX_XXXXXX</span>
+                <span id="d-status-badge"></span>
+            </div>
+            <button onclick="closeDetailDrawer()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div id="drawer-body" class="flex-1 overflow-y-auto"></div>
+    </aside>
+
+    <!-- ============================ Toast ============================ -->
+    <div id="toast" class="fixed top-6 right-6 z-[60] hidden-state">
+        <div class="bg-white shadow-lg border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3 text-sm">
+            <i id="toast-icon" class="fa-solid fa-check-circle text-emerald-500"></i>
+            <span id="toast-msg" class="text-slate-700"></span>
+        </div>
+    </div>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script src="lang-switch.js?v=202607039500"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / Rebate Ledger", lang: 'en' });
+    </script>
+
+    <script>
+    // ============================ Mock 数据 ============================
+
+    // 客户 / IB 花名册
+    const PEOPLE = {
+        "UID_558012": { nick: "张伟",   name: "Zhang Wei",   role: "trader" },
+        "UID_607823": { nick: "李娜",   name: "Li Na",       role: "trader" },
+        "UID_330221": { nick: "王强",   name: "Wang Qiang",  role: "trader" },
+        "UID_445118": { nick: "Sarah Chen", name: "Sarah Chen", role: "ib" },
+        "UID_223311": { nick: "Marcus Liu", name: "Marcus Liu", role: "ib" },
+        "UID_113355": { nick: "Elena Wang", name: "Elena Wang", role: "ib" },
+        "UID_998877": { nick: "David Zhang", name: "David Zhang", role: "ib" },
+        "UID_776655": { nick: "Amir Hassan", name: "Amir Hassan", role: "ib" },
+    };
+
+    // Upline relationship may be unlimited; this ledger only uses the nearest 3 eligible levels
+    // orderId → { symbol, lots, closeTime, closePrice, spread, traderUid, uplineChain: [{ ibUid, level, pct }] }
+    // pct 是"绝对百分比"（该 IB Tier在该 Symbol 上的返佣率），Delta % = 本层 - 下层
+    const ORDER_META = {
+        "MT5-8802917-33081029": {
+            acctNo: "8802917", symbol: "XAUUSD", lots: 1.50, closeTime: "2026-06-28 22:47:12",
+            traderGroup: "STANDARD", groupPts: 4, bridgePts: 2, rawPts: 6, spread: 12,
+            contractSize: 100, priceUsd: null, traderUid: "UID_558012",
+            uplineChain: [
+                { ibUid: "UID_445118", level: "L4", pct: 5.00 },   // Tier 1
+                { ibUid: "UID_223311", level: "L3", pct: 8.00 },   // Tier 2
+                { ibUid: "UID_113355", level: "L2", pct: 10.00 }   // Tier 3
+            ]
+        },
+        "MT5-8907632-33082217": {
+            acctNo: "8907632", symbol: "EURUSD", lots: 2.00, closeTime: "2026-06-28 23:11:05",
+            traderGroup: "ECN", groupPts: 3, bridgePts: 1, rawPts: 4, spread: 8,
+            contractSize: 100000, priceUsd: null, traderUid: "UID_607823",
+            uplineChain: [
+                { ibUid: "UID_998877", level: "L3", pct: 8.00 },
+                { ibUid: "UID_113355", level: "L2", pct: 10.00 }
+            ]
+        },
+        "MT5-8903301-33083011": {
+            acctNo: "8903301", symbol: "EURGBP", lots: 1.00, closeTime: "2026-06-28 21:32:44",
+            traderGroup: "STANDARD", groupPts: 5, bridgePts: 3, rawPts: 7, spread: 15,
+            contractSize: 100000, priceUsd: 1.1732, traderUid: "UID_330221",
+            uplineChain: [
+                { ibUid: "UID_776655", level: "L2", pct: 10.00 }
+            ]
+        },
+        "MT5-8802917-33079821": {
+            acctNo: "8802917", symbol: "XAUUSD", lots: 0.80, closeTime: "2026-06-27 19:22:08",
+            traderGroup: "STANDARD", groupPts: 4, bridgePts: 2, rawPts: 6, spread: 12,
+            contractSize: 100, priceUsd: null, traderUid: "UID_558012",
+            uplineChain: [
+                { ibUid: "UID_445118", level: "L4", pct: 5.00 }
+            ]
+        },
+        "MT5-8907632-33080115": {
+            acctNo: "8907632", symbol: "USOIL", lots: 3.00, closeTime: "2026-06-28 20:04:16",
+            traderGroup: "PREMIUM", groupPts: 2, bridgePts: 1, rawPts: 3, spread: 6,
+            contractSize: 1000, priceUsd: null,
+            traderUid: "UID_607823",
+            uplineChain: [
+                { ibUid: "UID_998877", level: "L3", pct: 8.00 }
+            ]
+        }
+    };
+
+    // Rebate Ledger（每行 = 1 个 IB × 1 笔订单）
+    const mockRebates = [
+        // 订单 33081029 → XAUUSD → 3 层级差返佣（AllSettled）
+        { rebateId: "RB_20260629_000101", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8802917-33081029", ibUid: "UID_445118", currency: "AED", level: "L4", layer: 1,
+          absPct: 5.00, deltaPct: 5.00, nominalUsd: 75.00, truncLoss: 0.00, netUsd: 75.00,
+          status: "settled", relatedLedger: "LG_20260629_0201" },
+        { rebateId: "RB_20260629_000102", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8802917-33081029", ibUid: "UID_223311", currency: "AED", level: "L3", layer: 2,
+          absPct: 8.00, deltaPct: 3.00, nominalUsd: 45.30, truncLoss: 0.30, netUsd: 45.00,
+          status: "settled", relatedLedger: "LG_20260629_0202" },
+        { rebateId: "RB_20260629_000103", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8802917-33081029", ibUid: "UID_113355", currency: "USDT", level: "L2", layer: 3,
+          absPct: 10.00, deltaPct: 2.00, nominalUsd: 30.20, truncLoss: 0.20, netUsd: 30.00,
+          status: "settled", relatedLedger: "LG_20260629_0203" },
+
+        // 订单 33082217 → EURUSD → 2 层（1 Settled + 1 Pending）
+        { rebateId: "RB_20260629_000104", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8907632-33082217", ibUid: "UID_998877", currency: "USD", level: "L3", layer: 1,
+          absPct: 8.00, deltaPct: 8.00, nominalUsd: 128.00, truncLoss: 0.00, netUsd: 128.00,
+          status: "settled", relatedLedger: "LG_20260629_0207" },
+        { rebateId: "RB_20260629_000105", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8907632-33082217", ibUid: "UID_113355", currency: "USDT", level: "L2", layer: 2,
+          absPct: 10.00, deltaPct: 2.00, nominalUsd: 32.00, truncLoss: 0.00, netUsd: 32.00,
+          status: "pending", relatedLedger: null },
+
+        // 订单 33083011 → EURGBP 非 USD 品种 → 触发FX Conversion，冻结（IB 被 suspended）
+        { rebateId: "RB_20260629_000106", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:15",
+          orderId: "MT5-8903301-33083011", ibUid: "UID_776655", currency: "USD", level: "L2", layer: 1,
+          absPct: 10.00, deltaPct: 10.00, nominalUsdRaw: 128.10, fxPair: "GBP→USD", fxRate: 1.1732,
+          nominalUsd: 150.30, truncLoss: 0.30, netUsd: 150.00,
+          status: "frozen", frozenReason: "IB is currently Suspended · will auto-settle after reactivation", relatedLedger: null },
+
+        // 昨日 - Settled
+        { rebateId: "RB_20260628_000097", batchId: "BATCH_20260628_L", settleTime: "2026-06-28 00:00:12",
+          orderId: "MT5-8802917-33079821", ibUid: "UID_445118", currency: "AED", level: "L4", layer: 1,
+          absPct: 5.00, deltaPct: 5.00, nominalUsd: 48.10, truncLoss: 0.10, netUsd: 48.00,
+          status: "settled", relatedLedger: "LG_20260628_0189" },
+
+        // 昨日 - USOIL Settled
+        { rebateId: "RB_20260628_000098", batchId: "BATCH_20260628_L", settleTime: "2026-06-28 00:00:12",
+          orderId: "MT5-8907632-33080115", ibUid: "UID_998877", currency: "USD", level: "L3", layer: 1,
+          absPct: 8.00, deltaPct: 8.00, nominalUsd: 197.44, truncLoss: 0.44, netUsd: 197.00,
+          status: "settled", relatedLedger: "LG_20260628_0193" },
+
+        // 冻结单：UID_998877 当前被冻结，返佣暂挂
+        { rebateId: "RB_20260629_000107", batchId: "BATCH_20260629_L", settleTime: "2026-06-29 00:00:16",
+          orderId: "MT5-8907632-33080115", ibUid: "UID_998877", currency: "USD", level: "L3", layer: 1,
+          absPct: 8.00, deltaPct: 8.00, nominalUsd: -197.44, truncLoss: 0.00, netUsd: -197.00,
+          status: "frozen", frozenReason: "IB is currently Suspended · will auto-settle after reactivation", relatedLedger: null }
+    ];
+
+    // ============================ 常量 & 工具 ============================
+
+    const STATUS_META = {
+        settled:  { label: "Settled", cls: "bg-emerald-50 text-emerald-600 border-emerald-100", icon: "fa-check" },
+        pending:  { label: "Pending", cls: "bg-amber-50 text-amber-600 border-amber-100",       icon: "fa-circle-notch fa-spin" },
+        frozen:   { label: "Frozen", cls: "bg-slate-100 text-slate-600 border-slate-200",      icon: "fa-snowflake" },
+    };
+    const LEVEL_META = {
+        L1: "bg-slate-100 text-slate-600 border-slate-200",
+        L2: "bg-sky-50 text-sky-700 border-sky-100",
+        L3: "bg-indigo-50 text-indigo-700 border-indigo-100",
+        L4: "bg-violet-50 text-violet-700 border-violet-100"
+    };
+
+    function fmtNum(n, digits = 2) {
+        if (n === null || n === undefined) return "—";
+        return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+    function fmtSigned(n) {
+        if (n === null || n === undefined) return "—";
+        const s = n >= 0 ? "+" : "";
+        return s + fmtNum(n);
+    }
+    function personLabel(uid) {
+        const p = PEOPLE[uid];
+        if (!p) return `<span class="font-mono text-slate-800">${uid}</span>`;
+        return `<div><span class="font-mono text-slate-800">${uid}</span></div><div class="text-slate-500 text-xs mt-0.5">${p.nick}</div>`;
+    }
+    function statusBadge(status) {
+        const m = STATUS_META[status];
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${m.cls}"><i class="fa-solid ${m.icon} text-[10px]"></i>${m.label}</span>`;
+    }
+    function levelBadge(lv) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${LEVEL_META[lv] || LEVEL_META.L1}">${lv}</span>`;
+    }
+    function tierBadge(layer) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide bg-slate-100 text-slate-600">Tier ${layer}</span>`;
+    }
+
+    // ============================ 筛选 & 渲染 ============================
+
+    let currentFilters = {};
+
+    function resetFilters() {
+        document.getElementById('f-ib').value = "";
+        document.getElementById('f-trader').value = "";
+        document.getElementById('f-order').value = "";
+        document.getElementById('f-symbol').value = "";
+        document.getElementById('f-start').value = "";
+        document.getElementById('f-end').value = "";
+        document.getElementById('f-status').value = "";
+        currentFilters = {};
+        renderTable();
+    }
+    function applyFilters() {
+        currentFilters = {
+            ibUid:  document.getElementById('f-ib').value.trim(),
+            trader: document.getElementById('f-trader').value.trim(),
+            order:  document.getElementById('f-order').value.trim(),
+            symbol: document.getElementById('f-symbol').value,
+            status: document.getElementById('f-status').value,
+            start:  document.getElementById('f-start').value,
+            end:    document.getElementById('f-end').value
+        };
+        renderTable();
+    }
+
+    function passesFilter(r) {
+        const meta = ORDER_META[r.orderId];
+        if (currentFilters.ibUid && !r.ibUid.includes(currentFilters.ibUid)) return false;
+        if (currentFilters.trader && !meta.traderUid.includes(currentFilters.trader)) return false;
+        if (currentFilters.order && !r.orderId.includes(currentFilters.order)) return false;
+        if (currentFilters.symbol && meta.symbol !== currentFilters.symbol) return false;
+        if (currentFilters.status && r.status !== currentFilters.status) return false;
+        return true;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('table-body');
+        const empty = document.getElementById('empty-state');
+        const rows = mockRebates.filter(passesFilter);
+        document.getElementById('total-count').textContent = rows.length;
+
+        if (!rows.length) {
+            tbody.innerHTML = "";
+            empty.classList.remove("hidden-state");
+            return;
+        }
+        empty.classList.add("hidden-state");
+
+        tbody.innerHTML = rows.map(r => {
+            const meta = ORDER_META[r.orderId];
+            const amtCls = "text-emerald-600";
+            const amtStyle = "font-mono font-bold text-right " + amtCls;
+            const traderUid = meta.traderUid;
+
+            return `<tr class="hover:bg-slate-50/70 transition-colors" data-order-id="${r.orderId}">
+                <td class="px-5 py-4 font-mono text-xs text-slate-700 cursor-pointer hover:underline" onclick="openDetailDrawer('${r.rebateId}')">${r.rebateId}</td>
+                <td class="px-5 py-4 font-mono text-xs text-slate-500">${r.settleTime}</td>
+                <td class="px-5 py-4 font-mono text-xs text-slate-700 cursor-pointer hover:underline" onclick="highlightOrder('${r.orderId}', event)">${r.orderId}</td>
+                <td class="px-5 py-4 text-slate-700"><span class="font-mono">${meta.symbol}</span> · <span class="font-mono">${fmtNum(meta.lots, 2)}</span> lot</td>
+                <td class="px-5 py-4 text-slate-700">${personLabel(traderUid)}</td>
+                <td class="px-5 py-4 text-slate-700">${personLabel(r.ibUid)}</td>
+                <td class="px-5 py-4">${levelBadge(r.level)}</td>
+                <td class="px-5 py-4">${tierBadge(r.layer)}</td>
+                <td class="px-5 py-4 font-mono text-right text-slate-700">${fmtNum(r.deltaPct, 2)}%</td>
+                <td class="px-5 py-4 text-center font-mono text-[12px] font-bold text-slate-700">${r.currency}</td>
+                <td class="px-5 py-4 ${amtStyle}">"+${fmtNum(r.netUsd)}</td>
+                <td class="px-5 py-4">${statusBadge(r.status)}</td>
+                <td class="px-5 py-4 text-center">
+                    <button onclick="openDetailDrawer('${r.rebateId}')" class="text-primary hover:underline text-xs">View</button>
+                </td>
+            </tr>`;
+        }).join("");
+    }
+
+    function highlightOrder(orderId, ev) {
+        if (ev) ev.stopPropagation();
+        document.querySelectorAll('tr.order-hit').forEach(t => t.classList.remove('order-hit'));
+        document.querySelectorAll(`tr[data-order-id="${orderId}"]`).forEach(t => t.classList.add('order-hit'));
+        showToast(`Highlighted all rebate rows for order ${orderId}`, 'ok');
+    }
+
+    // ============================ View抽屉 & Waterfall ============================
+
+    function openDetailDrawer(rebateId) {
+        const r = mockRebates.find(x => x.rebateId === rebateId);
+        if (!r) return;
+        const meta = ORDER_META[r.orderId];
+        const trader = PEOPLE[meta.traderUid];
+
+        document.getElementById('d-rebate-id').textContent = r.rebateId;
+        document.getElementById('d-status-badge').innerHTML = statusBadge(r.status);
+
+        // Waterfall（上级链）
+        const chainHtml = meta.uplineChain.slice(0, 3).map((n, i) => {
+            const isCurrent = n.ibUid === r.ibUid;
+            const p = PEOPLE[n.ibUid];
+            const layerNo = i + 1;
+            const prevPct = i === 0 ? 0 : meta.uplineChain[i - 1].pct;
+            const delta = (n.pct - prevPct).toFixed(2);
+            const nominal = (meta.lots * meta.spread * (n.pct - prevPct) / 100 * (meta.symbol === "XAUUSD" ? 10 : (meta.symbol === "USOIL" ? 33.33 : 8))).toFixed(2);
+            return `<div class="waterfall-node ${isCurrent ? 'is-current' : ''} pl-4 pr-3 py-2.5 flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-slate-400">Tier ${layerNo}</span>
+                        ${levelBadge(n.level)}
+                        <span class="font-mono text-slate-700">${n.ibUid}</span>
+                        <span class="text-slate-500 truncate">${p ? p.nick : ''}</span>
+                        ${isCurrent ? '<span class="text-primary text-[10px] font-bold ml-1">★ This row</span>' : ''}
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-1 font-mono">
+                        ${n.pct.toFixed(2)}% ${i > 0 ? `- ${prevPct.toFixed(2)}%` : ''} = <span class="text-slate-700 font-semibold">${delta}%</span>
+                    </div>
+                </div>
+                <div class="text-right font-mono text-sm text-slate-700 font-semibold">$${nominal}</div>
+            </div>`;
+        }).join('');
+
+        // 金额推导
+        const fxLine = r.fxPair
+            ? `<div class="flex items-center justify-between text-xs py-1.5"><span class="text-slate-500">FX Conversion (${r.fxPair} @ ${r.fxRate})</span><span class="font-mono text-slate-700">${fmtNum(r.nominalUsdRaw)} → ${fmtNum(r.nominalUsd)}</span></div>`
+            : '';
+
+        // 关联流水
+        const ledgerLine = r.relatedLedger
+            ? `<a href="资金流水.html?tx=${r.relatedLedger}" class="text-primary hover:underline font-mono text-sm">${r.relatedLedger} <i class="fa-solid fa-arrow-right text-[10px]"></i></a>`
+            : `<span class="text-slate-400 text-xs italic">${'Awaiting credit'}</span>`;
+
+        // 冻结附加说明
+        let extraSection = '';
+        if (r.status === 'frozen' && r.frozenReason) {
+            extraSection = `<div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-2">Frozen Reason</div>
+                <div class="text-sm text-slate-700">${r.frozenReason}</div>
+            </div>`;
+        }
+
+        // 时间线
+        const timelineHtml = `
+            <div class="flex items-start gap-3">
+                <span class="timeline-dot mt-1.5"></span>
+                <div class="flex-1"><div class="text-sm text-slate-700">Order Closed</div><div class="text-xs text-slate-500 font-mono mt-0.5">${meta.closeTime}</div></div>
+            </div>
+            ${r.status === 'settled' ? `
+            <div class="flex items-start gap-3 mt-3">
+                <span class="timeline-dot mt-1.5"></span>
+                <div class="flex-1"><div class="text-sm text-slate-700">Ledger Credited</div><div class="text-xs text-slate-500 font-mono mt-0.5">${r.settleTime.replace(/:\d\d$/, ':16')}</div></div>
+            </div>` : `
+            <div class="flex items-start gap-3 mt-3">
+                <span class="timeline-dot pending mt-1.5"></span>
+                <td class="px-5 py-4 text-sm">${statusBadge(r.status)}</td>
+            </div>`}
+        `;
+
+        document.getElementById('drawer-body').innerHTML = `
+            <div class="px-6 py-4 border-b border-slate-100">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Source Trade Snapshot</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div class="text-slate-500">Order ID</div><div class="font-mono text-slate-800">${r.orderId}</div>
+                    <div class="text-slate-500">Trading Acct.</div><div class="font-mono text-slate-800">Acct.No ${meta.acctNo}</div>
+                    <div class="text-slate-500">Account Group</div><div class="font-mono text-slate-700">${meta.traderGroup}</div>
+                    <div class="text-slate-500">Symbol · Lots</div><div class="font-mono text-slate-800">${meta.symbol} · ${fmtNum(meta.lots, 2)}</div>
+                    <div class="text-slate-500">Group Spread</div><div class="font-mono text-slate-700">${meta.groupPts} pts</div>
+                    <div class="text-slate-500">Bridge Spread</div><div class="font-mono text-slate-700">${meta.bridgePts} pts</div>
+                    <div class="text-slate-500">Raw Spread</div><div class="font-mono text-slate-700">${meta.rawPts} pts</div>
+                    <div class="text-slate-500">Total Spread</div><div class="font-mono font-bold text-slate-900">${meta.spread} pts</div>
+                    <div class="text-slate-500">Close Time</div><div class="font-mono text-slate-500">${meta.closeTime}</div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-b border-slate-100">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Upline Waterfall</div>
+                <div class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 bg-white">
+                    <div class="px-4 py-2.5 bg-slate-50 flex items-center gap-2 text-xs">
+                        <span class="text-slate-400">Trader</span>
+                        <span class="font-mono text-slate-700">${meta.traderUid}</span>
+                        <span class="text-slate-500">${trader ? trader.nick : ''}</span>
+                    </div>
+                    ${chainHtml}
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-b border-slate-100">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Amount Breakdown</div>
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex items-center justify-between py-1"><span class="text-slate-500">Delta %</span><span class="font-mono text-slate-700">${fmtNum(r.deltaPct, 2)}%</span></div>
+                    <div class="flex items-center justify-between py-1"><span class="text-slate-500">${r.fxPair ? 'Nominal (source ccy)' : 'Nominal Rebate'}</span><span class="font-mono text-slate-700">${r.fxPair ? fmtNum(r.nominalUsdRaw) : fmtNum(r.nominalUsd)}</span></div>
+                    ${fxLine}
+                    <div class="flex items-center justify-between py-1"><span class="text-slate-500">Truncation Loss (2dp)</span><span class="font-mono text-slate-500">-${fmtNum(r.truncLoss)}</span></div>
+                    <div class="border-t border-slate-200 mt-2 pt-2 flex items-center justify-between"><span class="text-sm font-semibold text-slate-700">Net Credit</span><span class="font-mono font-bold text-emerald-600 text-base">"+${fmtNum(r.netUsd)} <span class="text-slate-500 font-semibold">${r.currency}</span></span></div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-b border-slate-100">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Linked Ledger Entry</div>
+                ${ledgerLine}
+            </div>
+
+            ${extraSection}
+
+            <div class="px-6 py-4">
+                <div class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Audit Timeline</div>
+                ${timelineHtml}
+            </div>
+        `;
+
+        document.getElementById('drawer-backdrop').classList.remove('hidden-state');
+        requestAnimationFrame(() => {
+            document.getElementById('drawer-backdrop').style.opacity = '1';
+            document.getElementById('drawer-detail').classList.add('open');
+        });
+    }
+    function closeDetailDrawer() {
+        document.getElementById('drawer-backdrop').style.opacity = '0';
+        document.getElementById('drawer-detail').classList.remove('open');
+        setTimeout(() => { document.getElementById('drawer-backdrop').classList.add('hidden-state'); }, 300);
+    }
+
+    // ============================ 其它 ============================
+
+    function exportCsv() { showToast('CSV export queued (prototype demo)', 'ok'); }
+
+    function showToast(msg, kind) {
+        const t = document.getElementById('toast');
+        const i = document.getElementById('toast-icon');
+        const m = document.getElementById('toast-msg');
+        m.textContent = msg;
+        i.className = kind === 'ok' ? 'fa-solid fa-check-circle text-emerald-500' : 'fa-solid fa-circle-info text-primary';
+        t.classList.remove('hidden-state');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => t.classList.add('hidden-state'), 2500);
+    }
+
+    // ============================ URL 参数联动 ============================
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('rebate_id')) {
+        setTimeout(() => openDetailDrawer(params.get('rebate_id')), 100);
+    }
+    if (params.get('ib_uid')) document.getElementById('f-ib').value = params.get('ib_uid');
+    if (params.get('order_id')) document.getElementById('f-order').value = params.get('order_id');
+
+    // ============================ 初始渲染 ============================
+    renderTable();
+    </script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

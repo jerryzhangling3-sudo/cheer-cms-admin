@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer Approval - CFD Admin Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.cn/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui'] },
+                    colors: { sidebar: '#0B1120', sidebarHover: '#1E293B', primary: '#3B82F6' }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .submenu-container { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out; }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.2s ease-in-out; }
+        .chevron.rotated { transform: rotate(90deg); }
+        .menu-level-1 { padding-left: 16px; }
+        .menu-level-2 { padding-left: 36px; }
+        .menu-level-3 { padding-left: 56px; }
+        .menu-level-4 { padding-left: 76px; }
+        .menu-item { display: flex; align-items: center; padding: 9px 16px; color: #94A3B8; font-size: 13px; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
+        .menu-item:hover { background: #1E293B; color: #E2E8F0; }
+        .menu-item.active { background: #1E293B; color: #FFFFFF; border-left-color: #3B82F6; }
+        .menu-item .icon { width: 18px; text-align: center; margin-right: 10px; font-size: 12px; }
+        .badge-done { margin-left: auto; background: #10B981; color: #FFFFFF; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+<div id="sidebar-root"></div>
+
+<!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8">
+            <nav id="breadcrumb" class="text-sm text-slate-500">
+                <span class="text-slate-400">Partner</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-300"></i>
+                <span class="text-slate-700 font-medium">Transfer Approval</span>
+            </nav>
+            <div class="flex items-center gap-5">
+                <div id="lang-switch"></div>
+                <button class="text-slate-500 hover:text-slate-700 transition-colors cursor-pointer relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+            <!-- Page Title -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">Transfer Approval</h1>
+                <p class="text-sm text-slate-500 mt-2">Approve Partner upline reassignment requests. Ops submits → Ops lead reviews → Super admin executes (PRD §3.1.4 data lock-down).</p>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">Pending</span>
+                        <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-regular fa-clock text-xs"></i></span>
+                    </div>
+                    <div id="stat-pending" class="text-2xl font-bold text-slate-800 font-mono">0</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">Approved</span>
+                        <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-check text-xs"></i></span>
+                    </div>
+                    <div id="stat-approved" class="text-2xl font-bold text-slate-800 font-mono">0</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">Rejected</span>
+                        <span class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></span>
+                    </div>
+                    <div id="stat-rejected" class="text-2xl font-bold text-slate-800 font-mono">0</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] tracking-wider font-semibold text-slate-500">This Month</span>
+                        <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-chart-line text-xs"></i></span>
+                    </div>
+                    <div id="stat-total" class="text-2xl font-bold text-slate-800 font-mono">0</div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-5">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <select id="f-status" class="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <input id="f-target" type="text" placeholder="Target Partner UID / Nick" class="px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary w-52">
+                    <input id="f-applicant" type="text" placeholder="Applicant" class="px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary w-40">
+                    <input id="f-reqId" type="text" placeholder="Request ID" class="px-3 py-2 border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary w-44">
+                    <button onclick="applyFilter()" class="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-magnifying-glass mr-1.5 text-[11px]"></i>Search
+                    </button>
+                    <button onclick="resetFilter()" class="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors cursor-pointer">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Request ID</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Target Partner</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Old Upline</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">New Upline</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Impact</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Applicant</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Apply Time</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Status</th>
+                                <th class="text-left px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Reviewer</th>
+                                <th class="text-right px-5 py-3.5 text-[11px] tracking-wider font-semibold text-slate-500">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex items-center justify-between mt-4 px-1">
+                <div class="text-xs text-slate-500">Total <span id="total-count" class="font-mono font-semibold text-slate-700">0</span> records</div>
+                <div class="flex items-center gap-1.5">
+                    <button class="px-3 py-1.5 border border-slate-200 rounded-md text-xs text-slate-400 cursor-not-allowed">Prev</button>
+                    <button class="px-3 py-1.5 bg-primary text-white rounded-md text-xs font-medium">1</button>
+                    <button class="px-3 py-1.5 border border-slate-200 rounded-md text-xs text-slate-600 hover:bg-slate-50 cursor-pointer">Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Drawer -->
+    <div id="drawer" class="fixed inset-0 z-50 hidden">
+        <div id="drawer-backdrop" class="absolute inset-0 bg-slate-900/40" onclick="closeDrawer()"></div>
+        <div class="absolute right-0 top-0 h-full w-[680px] bg-white shadow-2xl flex flex-col">
+            <div class="h-16 px-6 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-shuffle text-primary"></i>
+                    <h2 id="drawer-title" class="text-base font-semibold text-slate-800">Transfer Request Detail</h2>
+                    <span id="drawer-status" class="ml-2"></span>
+                </div>
+                <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-700 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="drawer-body" class="flex-1 overflow-y-auto p-6 bg-slate-50"></div>
+            <div id="drawer-footer" class="px-6 py-4 border-t border-slate-200 bg-white flex items-center justify-end gap-3"></div>
+        </div>
+    </div>
+
+    <!-- Review Confirm Modal -->
+    <div id="review-modal" class="fixed inset-0 z-[80] hidden">
+        <div class="absolute inset-0 bg-slate-900/50" onclick="closeReviewModal()"></div>
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] bg-white rounded-xl shadow-2xl">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div id="rm-icon" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-check text-sm"></i>
+                    </div>
+                    <h3 id="rm-title" class="text-base font-semibold text-slate-800">Confirm Approve & Execute</h3>
+                </div>
+                <button onclick="closeReviewModal()" class="text-slate-400 hover:text-slate-700 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6">
+                <div id="rm-summary" class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-slate-600 font-mono leading-relaxed"></div>
+                <div>
+                    <label class="flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 mb-2">
+                        <span id="rm-label">Review Note</span>
+                        <span id="rm-required" class="text-rose-500 hidden">*</span>
+                    </label>
+                    <textarea id="rm-note" rows="4" maxlength="500" placeholder="Enter review note..."
+                        class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-[13px] text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
+                    <div class="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
+                        <span id="rm-hint">Once approved, the transfer will be executed immediately</span>
+                        <span><span id="rm-count">0</span>/500</span>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center justify-end gap-3">
+                <button onclick="closeReviewModal()" class="px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">Cancel</button>
+                <button id="rm-confirm" onclick="submitReview()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer">
+                    <i class="fa-solid fa-check mr-1.5 text-[11px]"></i><span id="rm-confirm-text">Confirm & Execute</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast fixed bottom-6 right-6 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium z-[90] flex items-center gap-2 bg-slate-800 text-white opacity-0 translate-y-2 transition-all duration-200"></div>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / Transfer Approval", lang: "en" });
+    </script>
+    <script src="lang-switch.js?v=202607039500"></script>
+    <script>
+        // ============================ Mock Data ============================
+        const STATUS_META = {
+            pending:   { label: 'Pending',    cls: 'bg-amber-50 text-amber-600 border-amber-100',    icon: 'fa-circle-notch fa-spin' },
+            approved:  { label: 'Approved',   cls: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: 'fa-check' },
+            rejected:  { label: 'Rejected',   cls: 'bg-rose-50 text-rose-600 border-rose-100',       icon: 'fa-xmark' },
+        };
+
+        const mockTransferRequests = [
+            {
+                reqId: "TR_20260703_001",
+                targetUid: "UID_500003",
+                targetNick: "IB-Gamma",
+                targetLevel: "L2",
+                oldParentUid: "UID_500001",
+                oldParentNick: "IB-Alpha",
+                newParentUid: "UID_500002",
+                newParentNick: "IB-Beta",
+                impact: { subordinateCount: 12, tierDepth: 3, estimatedRebate30d: 8500, currency: "AED" },
+                reason: "BD reassignment: client moving from Alpha team to Beta team, confirmed with client",
+                applicant: "cs_jane",
+                applyTime: "2026-07-03 14:20:15",
+                status: "pending",
+                reviewer: null,
+                reviewTime: null,
+                reviewNote: null,
+                executor: null,
+                executeTime: null,
+            },
+            {
+                reqId: "TR_20260702_002",
+                targetUid: "UID_500007",
+                targetNick: "IB-Zeta",
+                targetLevel: "L1",
+                oldParentUid: "UID_500002",
+                oldParentNick: "IB-Beta",
+                newParentUid: "— Top —",
+                newParentNick: "— Top —",
+                impact: { subordinateCount: 3, tierDepth: 1, estimatedRebate30d: 1200, currency: "AED" },
+                reason: "IB requests independent operation,脱离 upline",
+                applicant: "cs_mark",
+                applyTime: "2026-07-02 10:05:42",
+                status: "approved",
+                reviewer: "ops_lead_bob",
+                reviewTime: "2026-07-02 15:30:18",
+                reviewNote: "Confirmed IB's willingness by phone, approved for independence",
+                executor: null,
+                executeTime: null,
+            },
+            {
+                reqId: "TR_20260628_004",
+                targetUid: "UID_500009",
+                targetNick: "IB-Theta",
+                targetLevel: "L1",
+                oldParentUid: "UID_500002",
+                oldParentNick: "IB-Beta",
+                newParentUid: "UID_500006",
+                newParentNick: "IB-Eta",
+                impact: { subordinateCount: 1, tierDepth: 1, estimatedRebate30d: 350, currency: "USDT" },
+                reason: "BD misoperation, requesting reassignment",
+                applicant: "cs_lily",
+                applyTime: "2026-06-28 16:40:33",
+                status: "rejected",
+                reviewer: "ops_lead_bob",
+                reviewTime: "2026-06-28 17:15:09",
+                reviewNote: "Rejected: insufficient reason, please provide evidence of BD misoperation (e.g., ticket ID)",
+                executor: null,
+                executeTime: null,
+            },
+        ];
+
+        // ============================ Helpers ============================
+        function statusBadge(status) {
+            const m = STATUS_META[status] || STATUS_META.pending;
+            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${m.cls}"><i class="fa-solid ${m.icon} text-[9px]"></i>${m.label}</span>`;
+        }
+
+        function levelBadge(level) {
+            const map = {
+                L1: 'bg-sky-50 text-sky-600 border-sky-100',
+                L2: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                L3: 'bg-amber-50 text-amber-600 border-amber-100',
+                L4: 'bg-rose-50 text-rose-600 border-rose-100',
+            };
+            const cls = map[level] || 'bg-slate-100 text-slate-600 border-slate-200';
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${cls}">${level}</span>`;
+        }
+
+        function partnerCell(uid, nick, level) {
+            return `<div class="flex items-center gap-2">
+                <span class="font-mono text-[12px] text-primary font-semibold">${uid}</span>
+                <span class="text-[12px] text-slate-600">${nick}</span>
+                ${level ? levelBadge(level) : ''}
+            </div>`;
+        }
+
+        function impactCell(impact) {
+            return `<div class="text-[12px] text-slate-600">
+                <div><span class="font-mono font-semibold text-slate-800">${impact.subordinateCount}</span> subs · <span class="font-mono font-semibold text-slate-800">${impact.tierDepth}</span> tiers</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Est. 30d rebate <span class="font-mono font-semibold text-slate-700">${impact.estimatedRebate30d.toLocaleString()}</span> <span class="text-[10px]">${impact.currency}</span></div>
+            </div>`;
+        }
+
+        function fmtTime(t) {
+            if (!t) return '<span class="text-slate-400">—</span>';
+            return `<span class="font-mono text-[12px] text-slate-600">${t}</span>`;
+        }
+
+        // ============================ Render ============================
+        let filtered = [...mockTransferRequests];
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            if (!filtered.length) {
+                tbody.innerHTML = `<tr><td colspan="10" class="px-5 py-16 text-center text-slate-400 text-sm">
+                    <i class="fa-regular fa-folder-open text-3xl text-slate-300 mb-2"></i><br>No transfer requests match the filter
+                </td></tr>`;
+                document.getElementById('total-count').textContent = '0';
+                return;
+            }
+            tbody.innerHTML = filtered.map(r => `
+                <tr class="hover:bg-slate-50/70 cursor-pointer" onclick="openDrawer('${r.reqId}')">
+                    <td class="px-5 py-4"><span class="font-mono text-[12px] text-slate-700 font-semibold">${r.reqId}</span></td>
+                    <td class="px-5 py-4">${partnerCell(r.targetUid, r.targetNick, r.targetLevel)}</td>
+                    <td class="px-5 py-4 text-[12px] text-slate-600">
+                        <span class="font-mono text-slate-700">${r.oldParentUid}</span>
+                        <span class="text-slate-400 text-[11px] ml-1">${r.oldParentNick}</span>
+                    </td>
+                    <td class="px-5 py-4 text-[12px] text-slate-600">
+                        ${r.newParentUid.startsWith('—')
+                            ? `<span class="text-slate-500 italic">${r.newParentUid}</span>`
+                            : `<span class="font-mono text-slate-700">${r.newParentUid}</span>
+                               <span class="text-slate-400 text-[11px] ml-1">${r.newParentNick}</span>`}
+                    </td>
+                    <td class="px-5 py-4">${impactCell(r.impact)}</td>
+                    <td class="px-5 py-4 text-[12px] text-slate-600">${r.applicant}</td>
+                    <td class="px-5 py-4">${fmtTime(r.applyTime)}</td>
+                    <td class="px-5 py-4">${statusBadge(r.status)}</td>
+                    <td class="px-5 py-4 text-[12px] text-slate-600">${r.reviewer || '<span class="text-slate-400">—</span>'}</td>
+                    <td class="px-5 py-4 text-right text-[12px]">
+                        <button onclick="event.stopPropagation(); openDrawer('${r.reqId}')" class="text-primary hover:underline cursor-pointer font-medium">
+                            Detail <i class="fa-solid fa-chevron-right text-[9px] ml-0.5"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('total-count').textContent = filtered.length;
+        }
+
+        function renderStats() {
+            const cnt = { pending: 0, approved: 0, rejected: 0 };
+            mockTransferRequests.forEach(r => { if (cnt[r.status] !== undefined) cnt[r.status]++; });
+            document.getElementById('stat-pending').textContent = cnt.pending;
+            document.getElementById('stat-approved').textContent = cnt.approved;
+            document.getElementById('stat-rejected').textContent = cnt.rejected;
+            document.getElementById('stat-total').textContent = mockTransferRequests.length;
+        }
+
+        function applyFilter() {
+            const status = document.getElementById('f-status').value;
+            const target = document.getElementById('f-target').value.trim().toLowerCase();
+            const applicant = document.getElementById('f-applicant').value.trim().toLowerCase();
+            const reqId = document.getElementById('f-reqId').value.trim().toLowerCase();
+            filtered = mockTransferRequests.filter(r => {
+                if (status && r.status !== status) return false;
+                if (target && !(r.targetUid.toLowerCase().includes(target) || r.targetNick.toLowerCase().includes(target))) return false;
+                if (applicant && !r.applicant.toLowerCase().includes(applicant)) return false;
+                if (reqId && !r.reqId.toLowerCase().includes(reqId)) return false;
+                return true;
+            });
+            renderTable();
+        }
+
+        function resetFilter() {
+            document.getElementById('f-status').value = '';
+            document.getElementById('f-target').value = '';
+            document.getElementById('f-applicant').value = '';
+            document.getElementById('f-reqId').value = '';
+            filtered = [...mockTransferRequests];
+            renderTable();
+        }
+
+        // ============================ Drawer ============================
+        let currentReq = null;
+
+        function openDrawer(reqId) {
+            currentReq = mockTransferRequests.find(r => r.reqId === reqId);
+            if (!currentReq) return;
+            const r = currentReq;
+            document.getElementById('drawer-status').innerHTML = statusBadge(r.status);
+
+            const body = document.getElementById('drawer-body');
+            body.innerHTML = `
+                <!-- Request Info -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-regular fa-file-lines text-primary"></i>
+                        <h3 class="text-sm font-semibold text-slate-800">Request Info</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                        <div class="flex justify-between py-1.5 gap-2">
+                            <span class="text-slate-500">Request ID</span>
+                            <span class="font-mono font-semibold text-slate-800">${r.reqId}</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 gap-2">
+                            <span class="text-slate-500">Applicant</span>
+                            <span class="font-medium text-slate-800">${r.applicant}</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 gap-2">
+                            <span class="text-slate-500">Apply Time</span>
+                            <span class="font-mono text-slate-700">${r.applyTime}</span>
+                        </div>
+                        <div class="flex justify-between py-1.5 gap-2">
+                            <span class="text-slate-500">Status</span>
+                            ${statusBadge(r.status)}
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-slate-100">
+                        <div class="text-[11px] text-slate-500 mb-1">Reason</div>
+                        <div class="text-[13px] text-slate-700 leading-relaxed">${r.reason}</div>
+                    </div>
+                </div>
+
+                <!-- Transfer Relation -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-shuffle text-primary"></i>
+                        <h3 class="text-sm font-semibold text-slate-800">Transfer Relation</h3>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-lg">
+                        <div class="flex-1">
+                            <div class="text-[11px] text-slate-500 mb-1">Target Partner</div>
+                            ${partnerCell(r.targetUid, r.targetNick, r.targetLevel)}
+                        </div>
+                        <div class="text-slate-300"><i class="fa-solid "></i></div>
+                        <div class="flex-1">
+                            <div class="text-[11px] text-slate-500 mb-1">Old Upline</div>
+                            <div class="font-mono text-[13px] text-slate-700">${r.oldParentUid}</div>
+                            <div class="text-[11px] text-slate-500">${r.oldParentNick}</div>
+                        </div>
+                        <div class="text-primary text-lg"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="flex-1">
+                            <div class="text-[11px] text-slate-500 mb-1">New Upline</div>
+                            ${r.newParentUid.startsWith('—')
+                                ? `<div class="text-slate-500 italic text-[13px]">${r.newParentUid}</div>`
+                                : `<div class="font-mono text-[13px] text-primary font-semibold">${r.newParentUid}</div>
+                                   <div class="text-[11px] text-slate-500">${r.newParentNick}</div>`}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Impact Analysis -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-chart-network text-primary"></i>
+                        <h3 class="text-sm font-semibold text-slate-800">Impact Analysis</h3>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="p-3 bg-slate-50 rounded-lg">
+                            <div class="text-[11px] text-slate-500 mb-1">Direct Subordinates</div>
+                            <div class="font-mono text-xl font-bold text-slate-800">${r.impact.subordinateCount} <span class="text-[11px] font-normal text-slate-500">subs</span></div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg">
+                            <div class="text-[11px] text-slate-500 mb-1">Rebate Chain Depth</div>
+                            <div class="font-mono text-xl font-bold text-slate-800">${r.impact.tierDepth} <span class="text-[11px] font-normal text-slate-500">tiers</span></div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-lg">
+                            <div class="text-[11px] text-slate-500 mb-1">Est. 30d Rebate</div>
+                            <div class="font-mono text-xl font-bold text-slate-800">${r.impact.estimatedRebate30d.toLocaleString()} <span class="text-[11px] font-normal text-slate-500">${r.impact.currency}</span></div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-amber-50/50 border border-amber-100 rounded-lg text-[12px] text-amber-800 leading-relaxed">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 mr-1.5"></i>
+                        After transfer, the rebate attribution chain of this Partner and subordinates will be recalculated. Historical performance attribution remains unchanged; only future new rebates will be affected.
+                    </div>
+                </div>
+
+                <!-- Review Info -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-user-check text-primary"></i>
+                        <h3 class="text-sm font-semibold text-slate-800">Review Info</h3>
+                    </div>
+                    ${r.reviewer ? `
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                            <div class="flex justify-between py-1.5 gap-2">
+                                <span class="text-slate-500">Reviewer</span>
+                                <span class="font-medium text-slate-800">${r.reviewer}</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 gap-2">
+                                <span class="text-slate-500">Review Time</span>
+                                <span class="font-mono text-slate-700">${r.reviewTime}</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-100">
+                            <div class="text-[11px] text-slate-500 mb-1">Review Note</div>
+                            <div class="text-[13px] text-slate-700 leading-relaxed">${r.reviewNote || '—'}</div>
+                        </div>
+                    ` : `
+                        <div class="text-[12px] text-slate-400 text-center py-4">
+                            <i class="fa-regular fa-clock text-xl text-slate-300 mb-1"></i><br>
+                            Awaiting reviewer
+                        </div>
+                    `}
+                </div>
+            `;
+
+            // Footer actions
+            const footer = document.getElementById('drawer-footer');
+            if (r.status === 'pending') {
+                footer.innerHTML = `
+                    <button onclick="approveReq()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer">
+                        <i class="fa-solid fa-check mr-1.5 text-[11px]"></i>Approve & Execute
+                    </button>
+                    <button onclick="rejectReq()" class="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer">
+                        <i class="fa-solid fa-xmark mr-1.5 text-[11px]"></i>Reject
+                    </button>
+                `;
+            } else if (r.status === 'approved') {
+                footer.innerHTML = `
+                `;
+            } else {
+                footer.innerHTML = `
+                    <button onclick="closeDrawer()" class="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors cursor-pointer">Close</button>
+                `;
+            }
+
+            document.getElementById('drawer').classList.remove('hidden', 'translate-x-full');
+            document.getElementById('drawer').classList.add('translate-x-0');
+        }
+
+        function quickReview(reqId) {
+            openDrawer(reqId);
+            setTimeout(() => {
+                const footer = document.getElementById('drawer').querySelector('.border-t.border-slate-200');
+                if (footer) footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 100);
+        }
+
+        function closeDrawer() {
+            const d = document.getElementById('drawer');
+            d.classList.add('translate-x-full');
+            d.classList.add('hidden');
+            document.getElementById('drawer-backdrop').classList.add('hidden');
+            currentReq = null;
+        }
+
+        /* ========== Review Confirm Modal */
+        let reviewMode = null; // 'approve' | 'reject'
+        const REVIEW_I18N = {
+            approve: {
+                title: 'Confirm Approve & Execute',
+                icon: 'fa-check',
+                iconBg: 'bg-emerald-50 text-emerald-600',
+                label: 'Review Note',
+                required: false,
+                placeholder: 'Enter review note (optional, defaults to "Transfer approved")...',
+                hint: 'Once approved, the transfer will be executed immediately',
+                confirmText: 'Confirm & Execute',
+                confirmColor: 'bg-emerald-500 hover:bg-emerald-600',
+                defaultNote: 'Transfer approved'
+            },
+            reject: {
+                title: 'Confirm Rejection',
+                icon: 'fa-xmark',
+                iconBg: 'bg-rose-50 text-rose-600',
+                label: 'Rejection Reason',
+                required: true,
+                placeholder: 'Enter rejection reason (required)...',
+                hint: 'Once rejected, the request will be terminated and the client will be notified',
+                confirmText: 'Confirm Rejection',
+                confirmColor: 'bg-rose-500 hover:bg-rose-600',
+                defaultNote: ''
+            }
+        };
+
+        function openReviewModal(mode) {
+            if (!currentReq) return;
+            reviewMode = mode;
+            const cfg = REVIEW_I18N[mode];
+            const modal = document.getElementById('review-modal');
+            document.getElementById('rm-title').textContent = cfg.title;
+            const iconEl = document.getElementById('rm-icon');
+            iconEl.className = 'w-8 h-8 rounded-lg flex items-center justify-center ' + cfg.iconBg;
+            iconEl.innerHTML = `<i class="fa-solid ${cfg.icon} text-sm"></i>`;
+            document.getElementById('rm-label').textContent = cfg.label;
+            const reqEl = document.getElementById('rm-required');
+            if (cfg.required) reqEl.classList.remove('hidden'); else reqEl.classList.add('hidden');
+            const noteEl = document.getElementById('rm-note');
+            noteEl.placeholder = cfg.placeholder;
+            noteEl.value = cfg.defaultNote;
+            document.getElementById('rm-hint').textContent = cfg.hint;
+            document.getElementById('rm-confirm-text').textContent = cfg.confirmText;
+            const confirmBtn = document.getElementById('rm-confirm');
+            confirmBtn.className = `px-4 py-2 ${cfg.confirmColor} text-white text-sm font-medium rounded-lg shadow-sm transition-colors cursor-pointer`;
+            // Summary
+            const summary = [
+                `Request: ${currentReq.reqId}`,
+                `Target IB: ${currentReq.targetNick} (${currentReq.targetUid})`,
+                `Old Parent: ${currentReq.oldParentNick} (${currentReq.oldParentUid})`,
+                `New Parent: ${currentReq.newParentNick} (${currentReq.newParentUid})`,
+                `Impact: ${currentReq.impact.subordinateCount} subordinates / Est. 30d rebate ${currentReq.impact.estimatedRebate30d.toLocaleString()} ${currentReq.impact.currency}`,
+                `Reason: ${currentReq.reason}`
+            ];
+            document.getElementById('rm-summary').innerHTML = summary.join('<br>');
+            // Char count
+            noteEl.oninput = () => {
+                document.getElementById('rm-count').textContent = noteEl.value.length;
+            };
+            document.getElementById('rm-count').textContent = noteEl.value.length;
+            modal.classList.remove('hidden');
+            setTimeout(() => noteEl.focus(), 50);
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.add('hidden');
+            reviewMode = null;
+        }
+
+        function submitReview() {
+            if (!currentReq || !reviewMode) return;
+            const cfg = REVIEW_I18N[reviewMode];
+            const note = document.getElementById('rm-note').value.trim();
+            if (cfg.required && !note) {
+                showToast(`${cfg.label} is required`, 'error');
+                document.getElementById('rm-note').focus();
+                return;
+            }
+            const finalNote = note || cfg.defaultNote;
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const reqId = currentReq.reqId;
+            const mode = reviewMode;
+            currentReq.status = mode === 'approve' ? 'approved' : 'rejected';
+            currentReq.reviewer = 'ops_lead_bob';
+            currentReq.reviewTime = ts;
+            currentReq.reviewNote = finalNote;
+            closeReviewModal();
+            closeDrawer();
+            applyFilter();
+            renderStats();
+            if (mode === 'approve') {
+                showToast(`Request ${reqId} approved and executed`, 'success');
+            } else {
+                showToast(`${reqId} rejected`, 'info');
+            }
+        }
+
+        function approveReq() { openReviewModal('approve'); }
+        function rejectReq()  { openReviewModal('reject'); }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            const cls = {
+                success: 'bg-emerald-500 text-white',
+                error:   'bg-rose-500 text-white',
+                info:    'bg-slate-800 text-white',
+            }[type] || 'bg-slate-800 text-white';
+            t.className = 'toast fixed bottom-6 right-6 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium z-[70] flex items-center gap-2 ' + cls;
+            t.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'circle-xmark' : 'circle-info'}"></i>${msg}`;
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // Init
+        renderStats();
+        renderTable();
+    </script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

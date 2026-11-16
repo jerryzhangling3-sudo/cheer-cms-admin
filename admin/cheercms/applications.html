@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Applications - CFD Admin Portal</title>
+ <!-- Include Tailwind CSS -->
+ <script src="https://cdn.tailwindcss.com"></script>
+ <!-- Include FontAwesome Icon set -->
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+ <!-- Include Inter Font -->
+ <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+ <script>
+ tailwind.config = {
+ theme: {
+ extend: {
+ fontFamily: { sans: ['Inter', 'sans-serif'] },
+ colors: {
+ sidebar: '#0B1120',
+ sidebarHover: '#1E293B',
+ primary: '#3B82F6',
+ }
+ }
+ }
+ }
+ </script>
+ <style>
+ ::-webkit-scrollbar { width: 6px; height: 6px; }
+ ::-webkit-scrollbar-track { background: transparent; }
+ ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+ ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+ .submenu-container {
+ transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+ max-height: 0; opacity: 0; overflow: hidden;
+ }
+ .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+ .chevron { transition: transform 0.3s ease; }
+ .chevron.rotated { transform: rotate(90deg); }
+
+ .menu-level-1 { padding-left: 1rem; }
+ .menu-level-2 { padding-left: 2.75rem; }
+ .menu-level-3 { padding-left: 4.5rem; }
+ .menu-level-4 { padding-left: 6.25rem; }
+
+ /* Toast feedback */
+ .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+ .toast.show { transform: translateY(0); opacity: 1; }
+
+ /* Drawer Drawer transition */
+ .drawer-backdrop { transition: opacity .25s ease; }
+ .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+ .drawer-panel.open { transform: translateX(0); }
+
+ /* Tab active underline */
+ .tab-btn { position: relative; }
+ .tab-btn.active { color: #3B82F6; }
+ .tab-btn.active::after {
+ content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+ height: 2px; background: #3B82F6; border-radius: 2px;
+ }
+ </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+ <!-- Left navigation sidebar -->
+<div id="sidebar-root"></div>
+
+<!-- Main content area -->
+ <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+ <!-- Top Header -->
+ <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+ <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+ <span class="text-slate-400">System</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-slate-400">Content</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-slate-400">Partner</span>
+ <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+ <span class="text-primary font-semibold">Applications</span>
+ </div>
+
+ <div class="flex items-center gap-5 text-slate-500">
+ <div id="lang-switch"></div>
+ <button class="hover:text-primary transition-colors relative">
+ <i class="fa-regular fa-bell text-lg"></i>
+ <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+ </button>
+ <button class="hover:text-primary transition-colors cursor-pointer">
+ <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out
+ </button>
+ </div>
+ </header>
+
+ <!-- Page content area -->
+ <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+ <!-- Page title -->
+ <div class="mb-6">
+ <h1 class="text-2xl font-bold text-slate-800">Applications (Applications)</h1>
+ </div>
+
+ <!-- RiskTipBanner -->
+ <div class="mb-6 px-4 py-3 bg-emerald-50/60 border border-emerald-200 rounded-lg flex items-start gap-3">
+ <i class="fa-solid fa-shield-halved text-emerald-500 text-sm mt-0.5"></i>
+ <div class="text-[13px] text-emerald-700 leading-relaxed">
+ ReviewApprove · ensure the user <span class="font-semibold">POA Approved</span>; Rejectreason required, system will auto-sync <span class="font-semibold">in-app message + email</span> Passnotify user. 
+ </div>
+ </div>
+
+ <!-- Status Tab -->
+ <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+ <div class="flex items-center border-b border-slate-200 px-5">
+ <button class="tab-btn active px-4 py-3.5 text-sm font-semibold" data-tab="all">
+ All <span class="ml-1 text-xs text-slate-400 font-mono" id="cnt-all">0</span>
+ </button>
+ <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="pending">
+ Pending Review <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold" id="cnt-pending">0</span>
+ </button>
+
+ </button>
+ <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="approved">
+ Approved <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold" id="cnt-approved">0</span>
+ </button>
+ <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="rejected">
+ Rejected <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold" id="cnt-rejected">0</span>
+ </button>
+ </div>
+
+ <!-- Filter section -->
+ <div class="p-5">
+ <div class="grid grid-cols-5 gap-4">
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">App ID</label>
+ <input id="f-appId" type="text" placeholder="APP_YYYYMMDD_XXX" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">UID</label>
+ <input id="f-userId" type="text" placeholder="ExactSearchCustomer ID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">KYC Status</label>
+ <select id="f-kyc" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+ <option value="all" selected>All</option>
+ <option value="registered">Registered Only</option>
+ <option value="poi">POI</option>
+ <option value="poa">POA</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">Channel</label>
+ <select id="f-channel" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+ <option value="all" selected>All</option>
+ <option value="online">Online</option>
+ <option value="assess">Assessment</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">Apply Time (Apply Time)</label>
+ <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+ <i class="fa-regular fa-calendar text-slate-400 mr-2 text-sm"></i>
+ <input type="text" placeholder="Start - End" class="w-full bg-transparent text-sm focus:outline-none text-slate-600" value="2026-06-20 ~ 2026-06-29">
+ </div>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">Approver (Approver)</label>
+ <select id="f-approver" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+ <option value="all" selected>All (All)</option>
+ <option value="admin_super">Admin Super</option>
+ </select>
+ </div>
+ </div>
+
+ <div class="flex items-center gap-3 justify-end mt-5 pt-5 border-t border-slate-100">
+ <button onclick="resetFilter()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+ <i class="fa-solid fa-rotate-right text-xs"></i> Reset
+ </button>
+ <button onclick="renderTable()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+ <i class="fa-solid fa-magnifying-glass text-xs"></i> Search
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Data list card -->
+ <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+ <div class="overflow-x-auto">
+ <table class="w-full text-left border-collapse whitespace-nowrap">
+ <thead>
+ <tr class="bg-slate-50 text-slate-500 text-[11px] tracking-wider border-b border-slate-200">
+ <th class="px-5 py-3.5 font-semibold sticky left-0 bg-slate-50">Application ID</th>
+ <th class="px-5 py-3.5 font-semibold">UID</th>
+ <th class="px-5 py-3.5 font-semibold text-center">KYC Status</th>
+ <th class="px-5 py-3.5 font-semibold">Channel</th>
+ <th class="px-5 py-3.5 font-semibold">Email</th>
+ <th class="px-5 py-3.5 font-semibold">Socials</th>
+ <th class="px-5 py-3.5 font-semibold">Promotion Model</th>
+ <th class="px-5 py-3.5 font-semibold">Settlement Currency</th>
+ <th class="px-5 py-3.5 font-semibold">IM Contact</th>
+ <th class="px-5 py-3.5 font-semibold">Apply Time</th>
+ <th class="px-5 py-3.5 font-semibold">Decision Time</th>
+ <th class="px-5 py-3.5 font-semibold">Approver</th>
+ <th class="px-5 py-3.5 font-semibold text-center">Rejection Reason</th>
+ <th class="px-5 py-3.5 font-semibold text-center">Status</th>
+ <th class="px-5 py-3.5 font-semibold text-center">Actions</th>
+ </tr>
+ </thead>
+ <tbody class="text-[13px] divide-y divide-slate-100" id="applications-tbody">
+ <!-- JS render -->
+ </tbody>
+ </table>
+ </div>
+
+ <!-- Table pagination -->
+ <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+ <span class="text-sm text-slate-500">Total <span class="font-mono font-semibold text-slate-700" id="page-total">0</span> Applications</span>
+ <div class="flex gap-1">
+ <button class="w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:bg-slate-200 disabled:opacity-50" disabled><i class="fa-solid fa-chevron-left text-xs"></i></button>
+ <button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-medium text-sm shadow-sm">1</button>
+ <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+ </div>
+ </div>
+ </div>
+
+ </div>
+
+ <!-- Application DetailDrawer -->
+ <div id="drawer" class="hidden fixed inset-0 z-40">
+ <div class="drawer-backdrop absolute inset-0 bg-slate-900/30" onclick="closeDrawer()"></div>
+ <div class="drawer-panel absolute top-0 right-0 h-full w-[720px] bg-white shadow-2xl flex flex-col">
+ <!-- Drawer header -->
+ <div class="h-14 px-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+ <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2">
+ <i class="fa-solid fa-file-circle-question text-primary"></i>
+ Application Detail <span id="d-appId" class="font-mono text-slate-500 text-sm ml-1"></span>
+ </h3>
+ <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-100">
+ <i class="fa-solid fa-xmark"></i>
+ </button>
+ </div>
+
+ <!-- Drawer content -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                    <!-- 段 2: Basic Info -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Basic Info</h4>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                            <div><div class="text-xs text-slate-500 mb-0.5">UID</div><div class="font-mono font-medium text-slate-800" id="d-userId"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Name</div><div class="text-slate-800" id="d-name"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Email</div><div class="font-mono text-slate-800" id="d-email"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Phone</div><div class="font-mono text-slate-800" id="d-phone"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Registered</div><div class="font-mono text-slate-700 text-xs" id="d-regTime"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Region</div><div class="text-slate-800" id="d-region"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Invite Code</div><div class="font-mono text-slate-800" id="d-inviteCode"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">Role</div><div class="text-slate-800" id="d-role"></div></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div class="border border-slate-200 rounded-lg px-3 py-2.5">
+                                <div class="text-[11px] text-slate-500 mb-1">KYC Status</div>
+                                <div id="d-poa"></div>
+                                <div class="text-[10px] text-slate-400 mt-1">None / POI / POA</div>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg px-3 py-2.5">
+                                <div class="text-[11px] text-slate-500 mb-1">Risk Tag</div>
+                                <div id="d-riskTag" class="text-[12px] text-slate-700">—</div>
+                            </div>
+                        </div>
+                        <div class="border border-slate-200 rounded-lg p-3.5 mt-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-coins text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">Settlement Currency</span>
+                                </div>
+                                <span id="d-settleCurrencyView" class="text-xs text-slate-400"></span>
+                            </div>
+                            <div id="d-settleCurrencyBadge" class="text-xs"></div>
+                            <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-circle-info mr-1"></i>Client-selected during application; IB rebates settle to Funding in this currency upon approval.</p>
+                        </div>
+                    </section>
+
+                    
+                    <!-- 段 1: Application Details -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Application Details</h4>
+                        <!-- 考核升级模块 -->
+                        <div id="d-assessBlock" class="hidden space-y-3">
+                            <div class="border border-cyan-100 bg-cyan-50/30 rounded-lg p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i class="fa-solid fa-medal text-cyan-600 text-sm"></i>
+                                    <span class="text-xs font-semibold text-cyan-700">Assessment Upgrade Data</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 text-[13px]" id="d-assessGrid"></div>
+                                <p class="text-[11px] text-cyan-500 mt-3"><i class="fa-solid fa-circle-info mr-1"></i>Assessment data is auto-snapshotted. Active clients and team margin only include direct and level 1–3 downline, excluding the applicant.</p>
+                            </div>
+                        </div>
+                        <!-- Online Application -->
+                        <div id="d-onlineBlock" class="space-y-3">
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-share-nodes text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">Social Media Promotion Links <span class="text-rose-500">*</span></span>
+                                </div>
+                                <div id="d-socials" class="space-y-1.5"></div>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-bullhorn text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">Promotion Model & Community Scale <span class="text-rose-500">*</span></span>
+                                </div>
+                                <p id="d-promo" class="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-comment-dots text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">Instant Messaging Contacts <span class="text-rose-500">*</span></span>
+                                </div>
+                                <div id="d-ims" class="space-y-1.5"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="border border-slate-200 rounded-lg p-3">
+                                    <div class="text-[11px] text-slate-500 mb-1">Referrer Page</div>
+                                    <div id="d-referrer" class="text-xs font-mono text-slate-700 break-all"></div>
+                                </div>
+                                <div class="border border-slate-200 rounded-lg p-3">
+                                    <div class="text-[11px] text-slate-500 mb-1">Submit IP / Device</div>
+                                    <div id="d-meta" class="text-xs font-mono text-slate-700"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    
+                    <!-- 段 4: Agent Settings（仅 pending 展示） -->
+                    <section id="d-reviewSection" class="hidden">
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Agent Settings</h4>
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600">Initial Level <span class="text-rose-500">*</span></label>
+                                    <select id="d-initLevel" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium">
+                                        <option value="L2" selected>L2 - Junior IB</option>
+                                        <option value="L3">L3 - Professional IB</option>
+                                        <option value="L4">L4 - Core IB</option>
+                                    </select>
+                                    <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Registered clients start at L1, approval starts from L2</p>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600">Protection (months) <span class="text-rose-500">*</span></label>
+                                    <input id="d-protectMonths" type="number" min="0" max="12" value="3" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono">
+                                    <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-shield-halved mr-1"></i>Level only rises during protection</p>
+                                </div>
+                            </div>
+                            <p id="d-poaBlock" class="hidden text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-md px-3 py-2"><i class="fa-solid fa-circle-exclamation mr-1"></i>KYC not at POA level. Please request additional documents. Approval is blocked.</p>
+                        </div>
+                    </section>
+
+                    <!-- 段 5: Timeline / Operation Log -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">Timeline / Operation Log</h4>
+                        <ol id="d-timeline" class="border-l-2 border-slate-200 ml-2 space-y-3 pl-4"></ol>
+                    </section>
+                </div>
+
+
+                <!-- 抽屉脚部 -->
+ <div id="d-footer" class="hidden border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-2.5 bg-slate-50 shrink-0">
+ <button onclick="closeDrawer()" class="px-6 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg min-w-[80px]">Close</button>
+ <button id="d-rejectBtn" onclick="openReject()" class="px-6 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-sm font-semibold rounded-lg transition-colors min-w-[80px]">
+ <i class="fa-solid fa-xmark text-[11px] mr-1"></i>Reject
+ </button>
+ <button id="d-approveBtn" onclick="confirmApprove()" class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors min-w-[80px]">
+ <i class="fa-solid fa-check text-[11px] mr-1"></i>Approve
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- RejectPopover -->
+ <div id="rejectModal" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center">
+ <div class="bg-white w-[460px] rounded-xl shadow-2xl border border-slate-200">
+ <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+ <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-rose-500"></i> Reject Application</h3>
+ <button onclick="closeReject()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+ </div>
+ <div class="p-6 space-y-3">
+ <p class="text-sm text-slate-600">About to reject <span class="font-mono font-semibold text-slate-800" id="rejectAppId"></span>, system auto-sends in-app message + email to notify user.</p>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">Reject Reason (Template) <span class="text-rose-500">*</span></label>
+ <select id="rejectTemplate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+ <option value="" selected>Please select</option>
+ <option value="Insufficient Information">Insufficient Information</option>
+ <option value="POA Not Completed">POA Not Completed</option>
+ <option value="Promotion Channels Questionable">Promotion Channels Questionable</option>
+ <option value="Community Size Below Threshold">Community Size Below Threshold</option>
+ <option value="Other">Other</option>
+ </select>
+ </div>
+ <div class="space-y-1.5">
+ <label class="text-xs font-semibold text-slate-600">Additional Note (optional)</label>
+ <textarea id="rejectReason" rows="3" placeholder="e.g.: provided Telegram group cannot be verified, promotion materials lack authenticity" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+ </div>
+ </div>
+ <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+ <button onclick="closeReject()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">Cancel</button>
+ <button onclick="confirmReject()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm rounded-lg shadow-sm">Confirm Reject</button>
+ </div>
+ </div>
+ </div>
+
+        <!-- Approve Confirmation Modal -->
+        <div id="approveModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-2xl w-[440px] max-w-[90vw]">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-[15px] font-semibold text-slate-800"><i class="fa-solid fa-circle-check text-emerald-500 mr-2"></i>Confirm Approval</h3>
+                    <button onclick="closeApprove()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-[13px] text-emerald-700">
+                        <i class="fa-solid fa-circle-info mr-1.5"></i>About to approve <span id="approveAppId" class="font-mono font-bold"></span>. System will auto-send in-app message + email to notify user.
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-[13px]">
+                        <div>
+                            <span class="text-slate-500">Initial Level:</span>
+                            <span id="approveLevel" class="font-semibold text-slate-800"></span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Protection:</span>
+                            <span id="approveProtect" class="font-semibold text-slate-800"></span>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">Approve Note (Optional)</label>
+                        <textarea id="approveNote" rows="3" placeholder="e.g. High-quality community, can be set to L2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeApprove()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">Cancel</button>
+                    <button onclick="doApprove()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg shadow-sm">Confirm Approve</button>
+                </div>
+            </div>
+        </div>
+
+ <!-- Toast -->
+ <div id="toast" class="toast fixed bottom-6 right-6 z-[60] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2">
+ <i id="toastIcon" class="fa-solid fa-check text-emerald-400"></i>
+ <span id="toastText">ActionsSuccess</span>
+ </div>
+
+ </main>
+
+ <script src="sidebar.js?v=202607221300"></script>
+ <script>
+ injectSidebar({ activePath: "Partner / Applications", lang: "en" });
+ </script>
+ <!-- Business script placeholder (by edit_file append) -->
+ <script>
+ // =================================================================
+ // Mock Data - 6 All §3.3 Online Application
+ // =================================================================
+ const SOCIAL_META = {
+ twitter: { name: 'Twitter', icon: 'fa-brands fa-x-twitter', color: 'text-slate-800' },
+ telegram: { name: 'Telegram', icon: 'fa-brands fa-telegram', color: 'text-sky-500' },
+ youtube: { name: 'YouTube', icon: 'fa-brands fa-youtube', color: 'text-rose-500' },
+ tradingview: { name: 'TradingView', icon: 'fa-solid fa-chart-line', color: 'text-indigo-500' },
+ };
+ const CHANNEL_META = {
+  online: { name: 'Online Apply', cls: 'bg-blue-50 text-blue-600 border-blue-100', icon: 'fa-globe' },
+  assess: { name: 'Assessment Upgrade', cls: 'bg-cyan-50 text-cyan-600 border-cyan-100', icon: 'fa-medal' },
+};
+function renderChannelBadge(ch) {
+  const m = CHANNEL_META[ch];
+  if (!m) return '<span class="text-slate-400">—</span>';
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tracking-wide border ${m.cls}"><i class="fa-solid ${m.icon} mr-1 text-[9px]"></i>${m.name}</span>`;
+}
+
+const SETTLE_CURRENCY_META = {
+  USDT: { label: 'USDT', cls: 'bg-slate-100 text-slate-700 border-slate-200',     icon: 'fa-coins' },
+  AED:  { label: 'AED',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: 'fa-coins' },
+  USD:  { label: 'USD',  cls: 'bg-blue-50 text-blue-700 border-blue-100',          icon: 'fa-coins' },
+};
+
+function renderSettleCurrency(cur) {
+  if (!cur) return '<span class="text-slate-300 text-xs">— Pending —</span>';
+  const m = SETTLE_CURRENCY_META[cur];
+  if (!m) return '<span class="text-slate-300 text-xs">—</span>';
+  return `<span class="inline-flex items-center px-2 py-0.5 ${m.cls} border rounded-md text-[11px] font-bold font-mono tracking-wide">
+    <i class="fa-solid ${m.icon} mr-1 text-[10px]"></i>${m.label}
+  </span>`;
+}
+
+const IM_META = {
+ whatsapp: { name: 'WhatsApp', icon: 'fa-brands fa-whatsapp', color: 'text-emerald-500' },
+ signal: { name: 'Signal', icon: 'fa-solid fa-shield-halved', color: 'text-blue-500' },
+ telegram: { name: 'Telegram', icon: 'fa-brands fa-telegram', color: 'text-sky-500' },
+ };
+
+ const mockApplications = [
+ {
+        appId: 'APP_20260721_009', channel: 'assess', userId: 'UID_557654', name: 'Chen Yuhao', email: 'yuha***@163.com', phone: '+86 159 **** 6628',
+        regTime: '2025-08-22 10:05', region: 'Shanghai', inviteCode: 'C9SH01', role: 'Client (L1)',
+        settlementCurrency: 'USDT',
+        socials: [],
+        promo: null,
+        ims: [],
+        referrer: 'partner.cheer-cfd.com/assess',
+        meta: 'IP 172.18.0.3 · Chrome / Windows',
+        kyc: 'poa', riskTag: '—',
+        applyTime: '2026-07-21 09:30', decisionTime: null,
+        approver: null, status: 'pending',
+        pushTime: '2026-07-21 09:30:15',
+        assessData: {
+            currentLevel: 'L1', targetLevel: 'L2',
+            activeClients: 1, targetActive: 1,
+            margin: 0, targetMargin: 0,
+            poaVerified: true, targetPoa: true,
+        },
+        timeline: [
+            { t: '2026-07-21 09:30:12', op: 'system', msg: 'System triggered L1→L2 assessment upgrade' },
+            { t: '2026-07-21 09:30:14', op: 'system', msg: 'Acquisition data snapshot generated · PUSH email sent' },
+        ],
+    },
+    {
+        appId: 'APP_20260720_008', channel: 'assess', userId: 'UID_661023', name: 'Fatima Rashid', email: 'fati***@gmail.com', phone: '+971 52 *** 3301',
+        regTime: '2026-03-14 15:22', region: 'Abu Dhabi', inviteCode: 'F8DX92', role: 'Client (L1)',
+        settlementCurrency: 'AED',
+        socials: [],
+        promo: null,
+        ims: [],
+        referrer: 'partner.cheer-cfd.com/assess',
+        meta: 'IP 10.84.2.17 · Safari / Mac',
+        kyc: 'poa', riskTag: '—',
+        applyTime: '2026-07-20 14:05', decisionTime: null,
+        approver: null, status: 'pending',
+        pushTime: '2026-07-20 14:05:42',
+        assessData: {
+            currentLevel: 'L1', targetLevel: 'L2',
+            activeClients: 0, targetActive: 1,
+            margin: 0, targetMargin: 0,
+            poaVerified: true, targetPoa: true,
+        },
+        timeline: [
+            { t: '2026-07-20 14:05:39', op: 'system', msg: 'System triggered L1→L2 assessment upgrade' },
+            { t: '2026-07-20 14:05:41', op: 'system', msg: 'KYC verification passed (POA)' },
+            { t: '2026-07-20 14:05:42', op: 'system', msg: 'Acquisition data snapshot generated · PUSH email sent' },
+        ],
+    },
+    {
+        appId: 'APP_20260629_007', channel: 'online', userId: 'UID_558012', name: 'Aaron Cheung', email: 'cheu***@gmail.com', phone: '+852 9123 ****',
+ regTime: '2025-11-08 09:21', region: 'Hong Kong', inviteCode: 'A8X7K2', role: 'Regular User', settlementCurrency: 'USDT',
+ socials: [
+ { type: 'twitter', label: '@cheung_fx', followers: '5.2K', url: 'https://twitter.com/cheung_fx' },
+ { type: 'telegram', label: 't.me/cheung_signals', followers: 'Group 1.2K', url: 'https://t.me/cheung_signals' },
+ { type: 'tradingview', label: 'TV/cheung_fx', followers: '80+ Public Ideas', url: 'https://tradingview.com/u/cheung_fx' },
+ ],
+ promo: 'Overseas Chinese FX community, Telegram 1200+ active members, Twitter 5K followers, focus on XAUUSD / EURUSD short-term strategies.\nPreviously partnered with 2 mid-size brokers, providing daily technical analysis live streams.',
+ ims: [
+ { type: 'whatsapp', label: '+852 9123 ****' },
+ { type: 'telegram', label: '@cheung_fx' },
+ ],
+ referrer: '/promo/become-partner?utm_source=cn-landing-2026Q2',
+ meta: 'IP 203.0.113.42 · Chrome 126 / macOS',
+ kyc: 'poa', riskTag: '—',
+ applyTime: '2026-06-29 11:08', decisionTime: null,
+ approver: null, status: 'pending',
+ pushTime: '2026-06-29 11:08:32',
+ timeline: [
+ { t: '2026-06-29 11:08:30', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-29 11:08:31', op: 'system', msg: 'POA validation passed' },
+ { t: '2026-06-29 11:08:32', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ ],
+ },
+ {
+ appId: 'APP_20260629_006', channel: 'online', userId: 'UID_558009', name: 'Liu Wei', email: 'liuw***@outlook.com', phone: '+86 138 **** 2031',
+ regTime: '2025-09-14 16:02', region: 'Shenzhen', inviteCode: 'L9P3M5', role: 'Regular User', settlementCurrency: 'AED',
+ socials: [
+ { type: 'youtube', label: '@LiuWeiTrades', followers: '8.4K subscribers', url: 'https://youtube.com/@LiuWeiTrades' },
+ ],
+ promo: 'YouTube single-platform, 8.4K subscribers, 60K monthly views. Focus on FX education for beginners and trade reviews; one paid course launched.\nHopes to launch co-branded campaigns after Partner upgrade.',
+ ims: [{ type: 'whatsapp', label: '+86 138 **** 2031' }],
+ referrer: '/become-partner',
+ meta: 'IP 198.51.100.7 · Edge 125 / Windows 11',
+ kyc: 'poa', riskTag: '—',
+ applyTime: '2026-06-29 09:45', decisionTime: null,
+ approver: null, status: 'pending',
+ pushTime: '2026-06-29 09:45:18',
+ timeline: [
+ { t: '2026-06-29 09:45:15', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-29 09:45:17', op: 'system', msg: 'POA validation passed' },
+ { t: '2026-06-29 09:45:18', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ ],
+ },
+ {
+ appId: 'APP_20260628_005', channel: 'online', userId: 'UID_557981', name: 'Khaled Al-Mansouri', email: 'khal***@protonmail.com', phone: '+971 50 *** 7788',
+ regTime: '2025-12-02 14:18', region: 'UAE Dubai', inviteCode: 'K7AE92', role: 'Regular User', settlementCurrency: 'USDT',
+ socials: [
+ { type: 'telegram', label: 't.me/dubai_fx_alpha', followers: 'Group 3.6K', url: 'https://t.me/dubai_fx_alpha' },
+ { type: 'twitter', label: '@dubai_fx', followers: '2.1K', url: 'https://twitter.com/dubai_fx' },
+ ],
+ promo: 'MENA Chinese + Arabic community, Telegram main group 3.6K + 4 sub-groups totaling 5K+. Strong private community, focused on 1-on-1 service.\nPromotes XAUUSD / Oil / Crypto, hopes to onboard AED deposit/withdrawal channels.',
+ ims: [
+ { type: 'whatsapp', label: '+971 50 *** 7788' },
+ { type: 'signal', label: '+971 50 *** 7788' },
+ ],
+ referrer: '/promo/partner-mena',
+ meta: 'IP 192.0.2.55 · Safari 17 / iPhone 15',
+ kyc: 'poi', riskTag: 'High-value Client',
+ applyTime: '2026-06-28 21:32', decisionTime: null,
+ approver: null, status: 'pending',
+ pushTime: '2026-06-28 21:32:45',
+ timeline: [
+ { t: '2026-06-28 21:32:40', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-28 21:32:43', op: 'system', msg: 'POA validation passed' },
+ { t: '2026-06-28 21:32:45', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ ],
+ },
+ {
+ appId: 'APP_20260628_004', channel: 'online', userId: 'UID_557872', name: 'Sara Goldberg', email: 'sara***@yahoo.com', phone: '+1 415 *** 0921',
+ regTime: '2026-05-19 11:42', region: 'USA San Francisco', inviteCode: 'S3US21', role: 'Regular User', settlementCurrency: 'USD',
+ socials: [
+ { type: 'twitter', label: '@sara_options', followers: '8.0K', url: 'https://twitter.com/sara_options' },
+ ],
+ promo: 'English Twitter single-platform, focused on options + gold. Followers growing fast but no community pool; hopes to leverage platform resources to build private community.',
+ ims: [{ type: 'whatsapp', label: '+1 415 *** 0921' }],
+ referrer: '/become-partner',
+ meta: 'IP 203.0.113.99 · Chrome 126 / Windows 10',
+ kyc: 'registered', riskTag: '—',
+ applyTime: '2026-06-28 18:11', decisionTime: null,
+ approver: null, status: 'pending',
+ pushTime: '2026-06-28 18:11:25',
+ timeline: [
+ { t: '2026-06-28 18:11:22', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-28 18:11:24', op: 'system', msg: 'POA validation failed - waiting for user resubmission' },
+ { t: '2026-06-28 18:11:25', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ ],
+ },
+ {
+ appId: 'APP_20260627_003', channel: 'online', userId: 'UID_557654', name: 'Chen Yuhao', email: 'yuha***@163.com', phone: '+86 159 **** 6628',
+ regTime: '2025-08-22 10:05', region: 'Shanghai', inviteCode: 'C9SH01', role: 'Partner (L2)', settlementCurrency: 'USDT',
+ socials: [
+ { type: 'telegram', label: 't.me/yuhao_fx', followers: 'Group 2.4K', url: 'https://t.me/yuhao_fx' },
+ { type: 'twitter', label: '@yuhao_fx', followers: '3.5K', url: 'https://twitter.com/yuhao_fx' },
+ ],
+ promo: 'TG + Twitter dual-platform, promotes FX EA signal subscriptions. Owns 300+ paid members, hopes to join Partner program for commissions.',
+ ims: [{ type: 'whatsapp', label: '+86 159 **** 6628' }],
+ referrer: '/become-partner',
+ meta: 'IP 192.0.2.130 · Chrome 125 / macOS',
+ kyc: 'poa', riskTag: '—',
+ applyTime: '2026-06-27 14:20', decisionTime: '2026-06-27 17:45',
+ approver: 'admin_super', status: 'approved',
+ pushTime: '2026-06-27 14:20:18',
+ approveNote: 'High-quality community; trial L2 for 3 months',
+ approveLevel: 'L2',
+ timeline: [
+ { t: '2026-06-27 14:20:15', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-27 14:20:17', op: 'system', msg: 'POA validation passed' },
+ { t: '2026-06-27 14:20:18', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ { t: '2026-06-27 17:45:02', op: 'admin_super', msg: 'Approved - Initial Level L2, Partner console activated' },
+ ],
+ },
+ {
+ appId: 'APP_20260627_002', channel: 'online', userId: 'UID_557612', name: 'Anonymous Promo', email: 'pq***@mail.ru', phone: '+7 9** *** 5512',
+ regTime: '2026-06-26 22:00', region: 'Russia', inviteCode: 'A0RU88', role: 'Regular User', settlementCurrency: 'AED',
+ socials: [],
+ promo: 'No social links provided; only claims of "large private community" in the note.',
+ ims: [{ type: 'telegram', label: '@anon_promo_88' }],
+ referrer: '/become-partner',
+ meta: 'IP 198.51.100.250 · Chrome 99 / Unknown',
+ kyc: 'poa', riskTag: 'Low activity / Applied right after registration',
+ applyTime: '2026-06-27 03:14', decisionTime: '2026-06-27 09:20',
+ approver: 'admin_super', status: 'rejected',
+ pushTime: '2026-06-27 03:14:22',
+ rejectTemplate: 'Promotion Channels Questionable',
+ rejectReason: 'No verifiable social links; only verbal claims of private community. Promotion materials lack authenticity.',
+ timeline: [
+ { t: '2026-06-27 03:14:18', op: 'system', msg: 'User submitted online application' },
+ { t: '2026-06-27 03:14:20', op: 'system', msg: 'POA validation passed' },
+ { t: '2026-06-27 03:14:22', op: 'system', msg: 'PUSH email sent to Partner Ops mailbox' },
+ { t: '2026-06-27 09:20:11', op: 'admin_super', msg: 'Rejected - Promotion channels questionable: no verifiable social links provided' },
+ ],
+ },
+ ];
+
+ // =================================================================
+ // StatusBadge
+ // =================================================================
+ const statusBadge = {
+ pending: { label: 'Pending Review', icon: 'fa-clock', cls: 'bg-amber-50 text-amber-600 border-amber-100' }, approved: { label: 'Approved', icon: 'fa-check', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+ rejected: { label: 'Rejected', icon: 'fa-xmark', cls: 'bg-rose-50 text-rose-600 border-rose-100' },
+ };
+ const kycBadge = {
+ registered: { label: 'Registered Only', icon: 'fa-user',          cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+ poi:        { label: 'POI',             icon: 'fa-id-card',        cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+ poa:        { label: 'POA',             icon: 'fa-check-circle',   cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+ };
+
+ function renderBadge(b) {
+ if (!b) return '<span class="text-slate-300 text-xs">—</span>';
+ return `<span class="inline-flex items-center justify-center px-2.5 py-1 ${b.cls} border rounded-md text-[11px] font-bold tracking-wide">
+ <i class="fa-solid ${b.icon} mr-1.5 text-[10px]"></i>${b.label}
+ </span>`;
+ }
+
+ function fmtNum(n) { return n != null ? n.toLocaleString('en-US') : '—'; }
+
+        function renderAssessData(ad) {
+            if (!ad) return '';
+            const items = [
+                { label: 'Current Level', val: ad.currentLevel, icon: 'fa-layer-group' },
+                { label: 'Apply to Upgrade', val: ad.targetLevel, icon: 'fa-arrow-up-wide-short', highlight: true },
+                { label: '3-Level Active Clients', val: String(ad.activeClients), icon: 'fa-users' },
+                { label: 'Target Requirement', val: '≥ ' + ad.targetActive, icon: 'fa-bullseye' },
+                { label: '3-Level Team Margin', val: '$' + fmtNum(ad.margin), icon: 'fa-hand-holding-dollar' },
+                { label: 'Target Requirement', val: '≥ $' + fmtNum(ad.targetMargin), icon: 'fa-bullseye' },
+                { label: 'POA Verified', val: ad.poaVerified ? 'Completed' : 'Incomplete', icon: 'fa-id-card', cls: ad.poaVerified ? 'text-emerald-600' : 'text-rose-600' },
+                { label: 'Target Requirement', val: ad.targetPoa ? 'POA Required' : 'No POA Required', icon: 'fa-bullseye' },
+            ];
+            return items.map(it => {
+                const valCls = it.highlight ? 'font-bold text-cyan-700' : (it.cls || 'text-slate-800');
+                return '<div class="flex items-center justify-between border-b border-cyan-100 pb-2 last:border-0 last:pb-0">' +
+                    '<span class="text-xs text-slate-500"><i class="fa-solid ' + it.icon + ' mr-1.5 text-[10px] text-cyan-500"></i>' + it.label + '</span>' +
+                    '<span class="font-mono text-xs ' + valCls + '">' + it.val + '</span>' +
+                '</div>';
+            }).join('');
+        }
+    
+
+ function splitDateTime(s) {
+ if (!s) return '<span class="font-mono text-slate-400 text-xs">--</span>';
+ const [d, t] = s.split(' ');
+ return `<span class="font-mono text-slate-500 text-xs">${d}<br>${t}</span>`;
+ }
+
+ function renderSocials(arr, opts = {}) {
+ if (!arr || !arr.length) return '<span class="text-slate-400 text-xs">— Not provided —</span>';
+ const compact = opts.compact;
+ return arr.map(s => {
+ const m = SOCIAL_META[s.type] || { name: s.type, icon: 'fa-solid fa-link', color: 'text-slate-500' };
+ if (compact) {
+ return `<span title="${m.name}: ${s.label}" class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 ${m.color}"><i class="${m.icon} text-xs"></i></span>`;
+ }
+ return `<a href="${s.url || '#'}" target="_blank" class="flex items-center justify-between gap-3 text-[13px] hover:bg-slate-50 px-2 py-1.5 -mx-2 rounded-md">
+ <span class="flex items-center gap-2"><i class="${m.icon} ${m.color} w-4 text-center"></i><span class="font-medium text-slate-700">${m.name}</span><span class="font-mono text-slate-600">${s.label}</span></span>
+ <span class="text-[11px] text-slate-500">${s.followers || ''}</span>
+ </a>`;
+ }).join(compact ? '' : '');
+ }
+
+ function renderIMs(arr) {
+ if (!arr || !arr.length) return '<span class="text-slate-400 text-xs">— Not provided —</span>';
+ return arr.map(im => {
+ const m = IM_META[im.type] || { name: im.type, icon: 'fa-solid fa-comment', color: 'text-slate-500' };
+ return `<div class="flex items-center gap-2 text-[13px]"><i class="${m.icon} ${m.color} w-4 text-center"></i><span class="font-medium text-slate-700">${m.name}</span><span class="font-mono text-slate-600">${im.label}</span></div>`;
+ }).join('');
+ }
+
+ function renderTimeline(arr) {
+ return arr.map(t => `
+ <li class="relative">
+ <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow"></span>
+ <div class="text-[12px] font-mono text-slate-400">${t.t}</div>
+ <div class="text-[13px] text-slate-700">${t.msg}<span class="ml-2 text-[11px] text-slate-400">@${t.op}</span></div>
+ </li>`).join('');
+ }
+
+ function renderActions(row) {
+        // Assess upgrades skip KYC check (L1→L2 don't require POA)
+        const isAssess = row.channel === 'assess';
+        if (row.status === 'pending' && !isAssess && row.kyc !== 'poa') {
+            return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold rounded-md transition-colors">Details</button>`;
+        }
+        if (row.status === 'pending') {
+            return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold rounded-md transition-colors">Review</button>`;
+        }
+        return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold rounded-md transition-colors">Details</button>`;
+    }
+
+ // =================================================================
+ // List rendering + Tab + Filter
+ // =================================================================
+ let currentTab = 'all';
+
+ function applyFilter() {
+ const fAppId = document.getElementById('f-appId').value.trim().toLowerCase();
+ const fUserId = document.getElementById('f-userId').value.trim().toLowerCase();
+ const fKyc = document.getElementById('f-kyc').value;
+ const fCh = document.getElementById('f-channel').value;
+ const fAppr = document.getElementById('f-approver').value;
+ return mockApplications.filter(r => {
+ if (currentTab !== 'all' && r.status !== currentTab) return false;
+ if (fAppId && !r.appId.toLowerCase().includes(fAppId)) return false;
+ if (fUserId && !r.userId.toLowerCase().includes(fUserId)) return false;
+ if (fKyc !== 'all' && r.kyc !== fKyc) return false;
+ if (fAppr !== 'all' && r.approver !== fAppr) return false;
+ if (fCh !== 'all' && r.channel !== fCh) return false;
+ return true;
+ });
+ }
+
+ function renderTable() {
+ const list = applyFilter();
+ const html = list.map(row => {
+ const rowCls = (row.status === 'pending' && row.kyc !== 'poa') ? 'hover:bg-slate-50/70 bg-amber-50/10' : 'hover:bg-slate-50/70';
+ return `<tr class="${rowCls} transition-colors cursor-pointer" onclick="openDrawer('${row.appId}')">
+ <td class="px-5 py-4 font-mono text-slate-500 text-xs sticky left-0 bg-white">${row.appId}</td>
+ <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline">${row.userId}</span></td>
+ <td class="px-5 py-4 text-center">${renderBadge(kycBadge[row.kyc])}</td>
+ <td class="px-5 py-4">${renderChannelBadge(row.channel)}</td>
+ <td class="px-5 py-4 font-mono text-slate-600 text-xs">${row.email}</td>
+ <td class="px-5 py-4"><div class="flex items-center gap-1">${row.channel === 'assess' ? '<span class="text-slate-300">—</span>' : (renderSocials(row.socials, { compact: true }) || '<span class="text-slate-400 text-xs">—</span>')}</div></td>
+ <td class="px-5 py-4 text-slate-600 text-xs max-w-[220px] truncate" title="${row.promo ? row.promo.replace(/\n/g, ' ') : ''}">${row.channel === 'assess' ? '<span class="text-slate-300">—</span>' : (row.promo ? row.promo.split('\n')[0] : '—')}</td>
+ <td class="px-5 py-4">${renderSettleCurrency(row.settlementCurrency)}</td>
+ <td class="px-5 py-4 font-mono text-slate-600 text-xs">${row.channel === 'assess' ? '<span class="text-slate-300">—</span>' : (row.ims && row.ims[0] ? (IM_META[row.ims[0].type]?.name + ' ' + row.ims[0].label) : '—')}</td>
+ <td class="px-5 py-4">${splitDateTime(row.applyTime)}</td>
+ <td class="px-5 py-4">${splitDateTime(row.decisionTime)}</td>
+ <td class="px-5 py-4 text-xs text-slate-600">${row.approver || '<span class="text-slate-300">—</span>'}</td>
+ <td class="px-5 py-4 text-center">${row.rejectReason ? `<div class="text-[11px] text-rose-600 max-w-[160px] mx-auto leading-tight truncate" title="${row.rejectReason}">${row.rejectTemplate}</div>` : '<span class="text-slate-300 text-xs">—</span>'}</td>
+ <td class="px-5 py-4 text-center">${renderBadge(statusBadge[row.status])}</td>
+ <td class="px-5 py-4 text-center" onclick="event.stopPropagation()">${renderActions(row)}</td>
+ </tr>`;
+ }).join('');
+ document.getElementById('applications-tbody').innerHTML = html || `<tr><td colspan="16" class="px-5 py-10 text-center text-slate-400 text-sm">No matching applications</td></tr>`;
+ document.getElementById('page-total').textContent = list.length;
+ updateTabCounts();
+ }
+
+ function updateTabCounts() {
+ const all = mockApplications.length;
+ document.getElementById('cnt-all').textContent = all;
+ document.getElementById('cnt-pending').textContent = mockApplications.filter(r => r.status === 'pending').length;
+ document.getElementById('cnt-approved').textContent = mockApplications.filter(r => r.status === 'approved').length;
+ document.getElementById('cnt-rejected').textContent = mockApplications.filter(r => r.status === 'rejected').length;
+ }
+
+ function resetFilter() {
+ document.getElementById('f-appId').value = '';
+ document.getElementById('f-userId').value = '';
+ document.getElementById('f-kyc').value = 'all';
+ document.getElementById('f-channel').value = 'all';
+  document.getElementById('f-approver').value = 'all';
+ renderTable();
+ }
+
+ // Tab Switch
+ document.querySelectorAll('.tab-btn').forEach(btn => {
+ btn.addEventListener('click', () => {
+ document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'text-primary'));
+ document.querySelectorAll('.tab-btn').forEach(b => { if (!b.classList.contains('active')) b.classList.add('text-slate-500'); });
+ btn.classList.add('active');
+ btn.classList.remove('text-slate-500');
+ currentTab = btn.dataset.tab;
+ renderTable();
+ });
+ });
+
+ renderTable();
+
+ // =================================================================
+ // Drawer interaction
+ // =================================================================
+ let currentRow = null;
+
+ function openDrawer(appId) {
+ const row = mockApplications.find(r => r.appId === appId);
+ if (!row) return;
+ currentRow = row;
+
+ document.getElementById('d-appId').textContent = row.appId;
+ document.getElementById('d-userId').textContent = row.userId;
+ document.getElementById('d-name').textContent = row.name;
+ document.getElementById('d-email').textContent = row.email;
+ document.getElementById('d-phone').textContent = row.phone;
+ document.getElementById('d-regTime').textContent = row.regTime;
+ document.getElementById('d-region').textContent = row.region;
+ document.getElementById('d-inviteCode').textContent = row.inviteCode;
+ document.getElementById('d-role').textContent = row.role;
+ document.getElementById('d-poa').innerHTML = renderBadge(kycBadge[row.kyc]);
+ document.getElementById('d-riskTag').textContent = row.riskTag || '—';
+ const isAssess = row.channel === 'assess';
+
+	 // Toggle assess vs online blocks
+	 document.getElementById('d-assessBlock').classList.toggle('hidden', !isAssess);
+	 document.getElementById('d-onlineBlock').classList.toggle('hidden', isAssess);
+	 if (isAssess && row.assessData) {
+	   document.getElementById('d-assessGrid').innerHTML = renderAssessData(row.assessData);
+	 }
+
+	 const emptyPlaceholder = '<span class="text-slate-400 text-xs">— Assessment · No promo data required —</span>';
+	 document.getElementById('d-socials').innerHTML = isAssess ? emptyPlaceholder : (renderSocials(row.socials) || '<span class="text-slate-400 text-xs">— Not provided —</span>');
+ document.getElementById('d-promo').innerHTML = isAssess ? emptyPlaceholder : (row.promo || '—');
+ // Settlement Currency
+ const scBadge = document.getElementById('d-settleCurrencyBadge');
+ const scView  = document.getElementById('d-settleCurrencyView');
+ if (row.settlementCurrency) {
+   scBadge.innerHTML = renderSettleCurrency(row.settlementCurrency);
+   scView.textContent = 'Client pre-selected';
+ } else {
+   scBadge.innerHTML = '<span class="text-slate-300 text-xs">— Pending —</span>';
+   scView.textContent = '';
+ }
+ document.getElementById('d-ims').innerHTML = isAssess ? emptyPlaceholder : renderIMs(row.ims);
+ document.getElementById('d-referrer').textContent = row.referrer;
+ document.getElementById('d-meta').textContent = row.meta;
+ document.getElementById('d-timeline').innerHTML = renderTimeline(row.timeline);
+
+ const isPending = (row.status === 'pending');
+      // Assess entries skip KYC check (L1→L2 upgrades don't require POA)
+      const kycOk = isAssess || row.kyc === 'poa';
+      const poaBlock = isPending && !kycOk;
+ document.getElementById('d-reviewSection').classList.toggle('hidden', !isPending || poaBlock);
+ document.getElementById('d-footer').classList.toggle('hidden', !isPending || poaBlock);
+
+ // POA Not Passed → Approvebutton disabled
+ document.getElementById('d-poaBlock').classList.toggle('hidden', !poaBlock);
+ const approveBtn = document.getElementById('d-approveBtn');
+ approveBtn.disabled = poaBlock;
+ approveBtn.classList.toggle('opacity-40', poaBlock);
+ approveBtn.classList.toggle('cursor-not-allowed', poaBlock);
+ approveBtn.classList.toggle('hover:bg-emerald-500', poaBlock);
+
+ document.getElementById('drawer').classList.remove('hidden');
+ requestAnimationFrame(() => {
+ document.querySelector('#drawer .drawer-panel').classList.add('open');
+ });
+ }
+
+ function closeDrawer() {
+ document.querySelector('#drawer .drawer-panel').classList.remove('open');
+ setTimeout(() => document.getElementById('drawer').classList.add('hidden'), 250);
+ }
+
+ function confirmApprove() {
+ if (!currentRow) return;
+ if (currentRow.kyc !== 'poa') {
+ showToast('KYC not yet at POA, Approve action not allowed', 'error');
+ return;
+ }
+ // Open approve confirmation modal
+ document.getElementById('approveAppId').textContent = currentRow.appId;
+ document.getElementById('approveLevel').textContent = document.getElementById('d-initLevel').value;
+ const months = parseInt(document.getElementById('d-protectMonths').value, 10) || 0;
+ document.getElementById('approveProtect').textContent = months > 0 ? `${months} months` : 'None';
+ document.getElementById('approveNote').value = '';
+ document.getElementById('approveModal').classList.remove('hidden');
+ }
+
+ function closeApprove() {
+ document.getElementById('approveModal').classList.add('hidden');
+ }
+
+ function doApprove() {
+ if (!currentRow) return;
+ const lv = document.getElementById('d-initLevel').value;
+ const months = parseInt(document.getElementById('d-protectMonths').value, 10) || 0;
+ const currency = currentRow.settlementCurrency || 'USDT';
+ const note = document.getElementById('approveNote').value.trim();
+ const protectMsg = months > 0
+ ? `Protection Period ${months} months`
+ : 'No protection period';
+ const noteText = note ? ` · Note: ${note}` : '';
+ showToast(`Approved ${currentRow.appId} · Initial Level ${lv} · Settlement ${currency} · ${protectMsg}${noteText} · in-app message + email synced`, 'success');
+ closeApprove();
+ closeDrawer();
+ }
+
+ // =================================================================
+ // RejectModal
+ // =================================================================
+ function openReject() {
+ if (!currentRow) return;
+ document.getElementById('rejectAppId').textContent = currentRow.appId;
+ document.getElementById('rejectTemplate').value = '';
+ document.getElementById('rejectReason').value = '';
+ document.getElementById('rejectModal').classList.remove('hidden');
+ }
+
+ function closeReject() {
+ document.getElementById('rejectModal').classList.add('hidden');
+ }
+
+ function confirmReject() {
+ const tpl = document.getElementById('rejectTemplate').value;
+ if (!tpl) {
+ showToast('Please select a reject reason', 'error');
+ return;
+ }
+ const note = document.getElementById('rejectReason').value.trim();
+ showToast(`Rejected ${currentRow.appId} (${tpl}) · in-app message + email synced`, 'success');
+ closeReject();
+ closeDrawer();
+ }
+
+ // =================================================================
+ // Toast
+ // =================================================================
+ let toastTimer = null;
+ function showToast(msg, type = 'success') {
+ const t = document.getElementById('toast');
+ const icon = document.getElementById('toastIcon');
+ document.getElementById('toastText').textContent = msg;
+ icon.className = type === 'success'
+ ? 'fa-solid fa-check text-emerald-400'
+ : 'fa-solid fa-circle-exclamation text-rose-400';
+ t.classList.add('show');
+ if (toastTimer) clearTimeout(toastTimer);
+ toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+ }
+ </script>
+ <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

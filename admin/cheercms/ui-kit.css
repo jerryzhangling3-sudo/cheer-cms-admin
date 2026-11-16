@@ -1,0 +1,72 @@
+/*
+ * Cheer CMS · Static UI Kit
+ * Material Kit-inspired patterns translated to plain HTML/Tailwind pages.
+ * No React, build tool, or runtime dependency is required.
+ */
+
+.ui-card {
+    background: #fff;
+    border: 1px solid #e8ebf2;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.ui-stat {
+    position: relative;
+    overflow: hidden;
+    padding: 1.25rem;
+    background: #fff;
+    border: 1px solid #e8ebf2;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.ui-stat::after {
+    content: "";
+    position: absolute;
+    right: -1.5rem;
+    bottom: -1.875rem;
+    width: 4.875rem;
+    height: 4.875rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.08);
+    pointer-events: none;
+}
+
+.ui-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.ui-action-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    background: #3b82f6;
+    padding: 0.625rem 1rem;
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.ui-action-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.ui-empty {
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.75rem;
+    background: rgba(248, 250, 252, 0.7);
+    padding: 2rem;
+    text-align: center;
+    color: #94a3b8;
+}

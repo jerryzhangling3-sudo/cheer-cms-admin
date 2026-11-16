@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代理申请 - CFD 业务管理后台</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0; opacity: 0; overflow: hidden;
+        }
+        .submenu-container.expanded { max-height: 1000px; opacity: 1; }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        /* Toast 反馈 */
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Drawer 抽屉过渡 */
+        .drawer-backdrop { transition: opacity .25s ease; }
+        .drawer-panel { transition: transform .3s ease; transform: translateX(100%); }
+        .drawer-panel.open { transform: translateX(0); }
+
+        /* Tab active 下划线 */
+        .tab-btn { position: relative; }
+        .tab-btn.active { color: #3B82F6; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+            height: 2px; background: #3B82F6; border-radius: 2px;
+        }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">内容管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">Partner</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">代理申请</span>
+            </div>
+
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 实际页面内容承载区 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <!-- 页面标题区 -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">代理申请</h1>
+            </div>
+
+            <!-- 风控提示横幅 -->
+            <div class="mb-6 px-4 py-3 bg-emerald-50/60 border border-emerald-200 rounded-lg flex items-start gap-3">
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-sm mt-0.5"></i>
+                <div class="text-[13px] text-emerald-700 leading-relaxed">
+                    审批通过前请确保该用户 <span class="font-semibold">POA 已通过</span>；驳回须录入理由，系统将自动同步 <span class="font-semibold">站内信 + 邮件</span> 通知用户。
+                </div>
+            </div>
+
+            <!-- 状态 Tab -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex items-center border-b border-slate-200 px-5">
+                    <button class="tab-btn active px-4 py-3.5 text-sm font-semibold" data-tab="all">
+                        全部 <span class="ml-1 text-xs text-slate-400 font-mono" id="cnt-all">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="pending">
+                        待审核 <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold" id="cnt-pending">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="approved">
+                        已通过 <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold" id="cnt-approved">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-3.5 text-sm font-medium text-slate-500 hover:text-primary" data-tab="rejected">
+                        已拒绝 <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold" id="cnt-rejected">0</span>
+                    </button>
+                </div>
+
+                <!-- 筛选区 -->
+                <div class="p-5">
+                    <div class="grid grid-cols-5 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">申请 ID (App ID)</label>
+                            <input id="f-appId" type="text" placeholder="APP_YYYYMMDD_XXX" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">客户 UID</label>
+                            <input id="f-userId" type="text" placeholder="精确查询客户 ID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">KYC 状态</label>
+                            <select id="f-kyc" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                                <option value="all" selected>全部</option>
+                                <option value="registered">仅注册</option>
+                                <option value="poi">POI</option>
+                                <option value="poa">POA</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">入驻通道</label>
+                            <select id="f-channel" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                                <option value="all" selected>全部</option>
+                                <option value="online">在线申请</option>
+                                <option value="assess">考核升级</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">申请时间</label>
+                            <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                <i class="fa-regular fa-calendar text-slate-400 mr-2 text-sm"></i>
+                                <input type="text" placeholder="开始 - 结束" class="w-full bg-transparent text-sm focus:outline-none text-slate-600" value="2026-06-20 ~ 2026-06-29">
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-600">审批人</label>
+                            <select id="f-approver" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                                <option value="all" selected>全部</option>
+                                <option value="admin_super">Admin Super</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 justify-end mt-5 pt-5 border-t border-slate-100">
+                        <button onclick="resetFilter()" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right text-xs"></i> 重置
+                        </button>
+                        <button onclick="renderTable()" class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i> 查询
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据列表卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] tracking-wider border-b border-slate-200">
+                                <th class="px-5 py-3.5 font-semibold sticky left-0 bg-slate-50">申请 ID</th>
+                                <th class="px-5 py-3.5 font-semibold">客户 UID</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">KYC 状态</th>
+                                <th class="px-5 py-3.5 font-semibold">入驻通道</th>
+                                <th class="px-5 py-3.5 font-semibold">客户邮箱</th>
+                                <th class="px-5 py-3.5 font-semibold">社媒链接</th>
+                                <th class="px-5 py-3.5 font-semibold">推广模式</th>
+                                <th class="px-5 py-3.5 font-semibold">佣金结算币种</th>
+                                <th class="px-5 py-3.5 font-semibold">IM 联系方式</th>
+                                <th class="px-5 py-3.5 font-semibold">申请时间</th>
+                                <th class="px-5 py-3.5 font-semibold">处理时间</th>
+                                <th class="px-5 py-3.5 font-semibold">审批人</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">驳回原因</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">状态</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-[13px] divide-y divide-slate-100" id="applications-tbody">
+                            <!-- JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 表格底部分页区域 -->
+                <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span class="text-sm text-slate-500">共 <span class="font-mono font-semibold text-slate-700" id="page-total">0</span> 条代理申请</span>
+                    <div class="flex gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:bg-slate-200 disabled:opacity-50" disabled><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-medium text-sm shadow-sm">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 申请详情抽屉 -->
+        <div id="drawer" class="hidden fixed inset-0 z-40">
+            <div class="drawer-backdrop absolute inset-0 bg-slate-900/30" onclick="closeDrawer()"></div>
+            <div class="drawer-panel absolute top-0 right-0 h-full w-[720px] bg-white shadow-2xl flex flex-col">
+                <!-- 抽屉头部 -->
+                <div class="h-14 px-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+                    <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2">
+                        <i class="fa-solid fa-file-circle-question text-primary"></i>
+                        申请详情 <span id="d-appId" class="font-mono text-slate-500 text-sm ml-1"></span>
+                    </h3>
+                    <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- 抽屉内容 -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                    <!-- 段 2: 基础信息 -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">基础信息</h4>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                            <div><div class="text-xs text-slate-500 mb-0.5">UID</div><div class="font-mono font-medium text-slate-800" id="d-userId"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">姓名</div><div class="text-slate-800" id="d-name"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">邮箱</div><div class="font-mono text-slate-800" id="d-email"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">手机</div><div class="font-mono text-slate-800" id="d-phone"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">注册时间</div><div class="font-mono text-slate-700 text-xs" id="d-regTime"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">注册地区</div><div class="text-slate-800" id="d-region"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">当前邀请码</div><div class="font-mono text-slate-800" id="d-inviteCode"></div></div>
+                            <div><div class="text-xs text-slate-500 mb-0.5">当前角色</div><div class="text-slate-800" id="d-role"></div></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div class="border border-slate-200 rounded-lg px-3 py-2.5">
+                                <div class="text-[11px] text-slate-500 mb-1">KYC 状态</div>
+                                <div id="d-poa"></div>
+                                <div class="text-[10px] text-slate-400 mt-1">仅注册 / POI / POA</div>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg px-3 py-2.5">
+                                <div class="text-[11px] text-slate-500 mb-1">风控标签</div>
+                                <div id="d-riskTag" class="text-[12px] text-slate-700">—</div>
+                            </div>
+                        </div>
+                        <div class="border border-slate-200 rounded-lg p-3.5 mt-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-coins text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">佣金结算币种</span>
+                                </div>
+                                <span id="d-settleCurrencyView" class="text-xs text-slate-400"></span>
+                            </div>
+                            <div id="d-settleCurrencyBadge" class="text-xs"></div>
+                            <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-circle-info mr-1"></i>客户申请时自选；审批通过后 IB 返佣将按此币种结算至 Funding。</p>
+                        </div>
+                    </section>
+
+                    
+                    <!-- 段 1: 申请详情 -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">申请详情</h4>
+                        <!-- 考核升级模块 -->
+                        <div id="d-assessBlock" class="hidden space-y-3">
+                            <div class="border border-cyan-100 bg-cyan-50/30 rounded-lg p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i class="fa-solid fa-medal text-cyan-600 text-sm"></i>
+                                    <span class="text-xs font-semibold text-cyan-700">考核升级获客数据</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 text-[13px]" id="d-assessGrid"></div>
+                                <p class="text-[11px] text-cyan-500 mt-3"><i class="fa-solid fa-circle-info mr-1"></i>获客数据由系统在考核触发时自动快照；活跃客户与团队保证金仅统计直属及下属第 1–3 级，不含申请人本人。</p>
+                            </div>
+                        </div>
+                        <!-- 在线申请模块 -->
+                        <div id="d-onlineBlock" class="space-y-3">
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-share-nodes text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">外部主要推广社交媒体链接 <span class="text-rose-500">*</span></span>
+                                </div>
+                                <div id="d-socials" class="space-y-1.5"></div>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-bullhorn text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">过往主要推广模式与社群规模 <span class="text-rose-500">*</span></span>
+                                </div>
+                                <p id="d-promo" class="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3.5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-comment-dots text-primary text-sm"></i>
+                                    <span class="text-xs font-semibold text-slate-700">常用即时通讯联系方式 <span class="text-rose-500">*</span></span>
+                                </div>
+                                <div id="d-ims" class="space-y-1.5"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="border border-slate-200 rounded-lg p-3">
+                                    <div class="text-[11px] text-slate-500 mb-1">申请来源页</div>
+                                    <div id="d-referrer" class="text-xs font-mono text-slate-700 break-all"></div>
+                                </div>
+                                <div class="border border-slate-200 rounded-lg p-3">
+                                    <div class="text-[11px] text-slate-500 mb-1">提交 IP / 设备</div>
+                                    <div id="d-meta" class="text-xs font-mono text-slate-700"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    
+                    <!-- 段 4: 代理设置（仅 pending 展示） -->
+                    <section id="d-reviewSection" class="hidden">
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">代理设置</h4>
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600">初始等级 <span class="text-rose-500">*</span></label>
+                                    <select id="d-initLevel" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium">
+                                        <option value="L2" selected>L2 - 见习代理</option>
+                                        <option value="L3">L3 - 专业代理</option>
+                                        <option value="L4">L4 - 核心代理</option>
+                                    </select>
+                                    <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>注册客户即 L1，审批通过后须从 L2 起步</p>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-semibold text-slate-600">等级保护期 (月) <span class="text-rose-500">*</span></label>
+                                    <input id="d-protectMonths" type="number" min="0" max="12" value="3" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono">
+                                    <p class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-shield-halved mr-1"></i>保护期内只升不降</p>
+                                </div>
+                            </div>
+                            <p id="d-poaBlock" class="hidden text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-md px-3 py-2"><i class="fa-solid fa-circle-exclamation mr-1"></i>KYC 尚未到 POA，请先督促用户补充资料；当前不允许执行「通过」操作。</p>
+                        </div>
+                    </section>
+
+                    <!-- 段 5: 时间轴 / 操作日志 -->
+                    <section>
+                        <h4 class="text-[11px] tracking-wider font-semibold text-slate-500 mb-3">时间轴 / 操作日志</h4>
+                        <ol id="d-timeline" class="border-l-2 border-slate-200 ml-2 space-y-3 pl-4"></ol>
+                    </section>
+                </div>
+
+
+                <!-- 抽屉脚部 -->
+                <div id="d-footer" class="hidden border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-2.5 bg-slate-50 shrink-0">
+                    <button onclick="closeDrawer()" class="px-6 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg min-w-[80px]">关闭</button>
+                    <button id="d-rejectBtn" onclick="openReject()" class="px-6 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-sm font-semibold rounded-lg transition-colors min-w-[80px]">
+                        <i class="fa-solid fa-xmark text-[11px] mr-1"></i>驳回
+                    </button>
+                    <button id="d-approveBtn" onclick="confirmApprove()" class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors min-w-[80px]">
+                        <i class="fa-solid fa-check text-[11px] mr-1"></i>通过
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 驳回弹层 -->
+        <div id="rejectModal" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center">
+            <div class="bg-white w-[460px] rounded-xl shadow-2xl border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-rose-500"></i> 驳回代理申请</h3>
+                    <button onclick="closeReject()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <p class="text-sm text-slate-600">即将驳回 <span class="font-mono font-semibold text-slate-800" id="rejectAppId"></span>，系统将自动发送站内信 + 邮件通知用户。</p>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">驳回理由 (模板) <span class="text-rose-500">*</span></label>
+                        <select id="rejectTemplate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                            <option value="" selected>请选择</option>
+                            <option value="资料不全">资料不全</option>
+                            <option value="POA 未通过">POA 未通过</option>
+                            <option value="推广渠道存疑">推广渠道存疑</option>
+                            <option value="社群规模不达标">社群规模不达标</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">补充说明 (可选)</label>
+                        <textarea id="rejectReason" rows="3" placeholder="如：提供的 Telegram 群组无法验证，推广材料真实性不足" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeReject()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">取消</button>
+                    <button onclick="confirmReject()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm rounded-lg shadow-sm">确认驳回</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通过确认弹层 -->
+        <div id="approveModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-2xl w-[440px] max-w-[90vw]">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-[15px] font-semibold text-slate-800"><i class="fa-solid fa-circle-check text-emerald-500 mr-2"></i>确认通过代理申请</h3>
+                    <button onclick="closeApprove()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-[13px] text-emerald-700">
+                        <i class="fa-solid fa-circle-info mr-1.5"></i>即将通过申请 <span id="approveAppId" class="font-mono font-bold"></span>，系统自动发送站内信 + 邮件通知用户。
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-[13px]">
+                        <div>
+                            <span class="text-slate-500">初始等级：</span>
+                            <span id="approveLevel" class="font-semibold text-slate-800"></span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">保护期：</span>
+                            <span id="approveProtect" class="font-semibold text-slate-800"></span>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">通过备注 (选填)</label>
+                        <textarea id="approveNote" rows="3" placeholder="如：社群质量高，可定级 L2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeApprove()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">取消</button>
+                    <button onclick="doApprove()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg shadow-sm">确认通过</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast fixed bottom-6 right-6 z-[60] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2">
+            <i id="toastIcon" class="fa-solid fa-check text-emerald-400"></i>
+            <span id="toastText">操作成功</span>
+        </div>
+
+    </main>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        injectSidebar({ activePath: "Partner / 代理申请" });
+    </script>
+    <!-- 业务脚本占位（由 edit_file 追加） -->
+    <script>
+        // =================================================================
+        // Mock 数据 - 6 条全部 §3.3 在线申请
+        // =================================================================
+        const SOCIAL_META = {
+            twitter:     { name: 'Twitter',     icon: 'fa-brands fa-x-twitter',     color: 'text-slate-800' },
+            telegram:    { name: 'Telegram',    icon: 'fa-brands fa-telegram',      color: 'text-sky-500' },
+            youtube:     { name: 'YouTube',     icon: 'fa-brands fa-youtube',       color: 'text-rose-500' },
+            tradingview: { name: 'TradingView', icon: 'fa-solid fa-chart-line',     color: 'text-indigo-500' },
+        };
+        const IM_META = {
+            whatsapp: { name: 'WhatsApp', icon: 'fa-brands fa-whatsapp', color: 'text-emerald-500' },
+            signal:   { name: 'Signal',   icon: 'fa-solid fa-shield-halved', color: 'text-blue-500' },
+            telegram: { name: 'Telegram', icon: 'fa-brands fa-telegram', color: 'text-sky-500' },
+        };
+
+        const mockApplications = [
+            {
+                appId: 'APP_20260721_009', channel: 'assess', userId: 'UID_557654', name: 'Chen Yuhao', email: 'yuha***@163.com', phone: '+86 159 **** 6628',
+                regTime: '2025-08-22 10:05', region: '上海', inviteCode: 'C9SH01', role: '普通用户',
+                settlementCurrency: 'USDT',
+                socials: [],
+                promo: null,
+                ims: [],
+                referrer: '/become-partner',
+                meta: 'IP 192.0.2.130 · iOS Safari 18 / iPhone 16 Pro',
+                kyc: 'poa', riskTag: '—',
+                applyTime: '2026-07-21 09:30', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-07-21 09:30:15',
+                assessData: {
+                    currentLevel: 'L1', targetLevel: 'L2',
+                    activeClients: 3, targetActive: 1,
+                    margin: 0, targetMargin: 0,
+                    poaVerified: true, targetPoa: true,
+                },
+                timeline: [
+                    { t: '2026-07-21 09:30:12', op: 'system', msg: '客户申请 L1→L2 考核升级' },
+                    { t: '2026-07-21 09:30:14', op: 'system', msg: 'KYC 校验通过 (POA)' },
+                    { t: '2026-07-21 09:30:15', op: 'system', msg: '获客数据快照已生成 · PUSH 邮件已发送' },
+                ],
+            },
+            {
+                appId: 'APP_20260720_008', channel: 'assess', userId: 'UID_661023', name: 'Fatima Rashid', email: 'fati***@gmail.com', phone: '+971 52 *** 3301',
+                regTime: '2026-03-14 15:22', region: '阿联酋 阿布扎比', inviteCode: 'F8DX92', role: '普通用户',
+                settlementCurrency: 'AED',
+                socials: [],
+                promo: null,
+                ims: [],
+                referrer: '/promo/partner-mena',
+                meta: 'IP 192.0.2.175 · Chrome 128 / Windows 11',
+                kyc: 'poa', riskTag: '—',
+                applyTime: '2026-07-20 14:05', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-07-20 14:05:42',
+                assessData: {
+                    currentLevel: 'L1', targetLevel: 'L2',
+                    activeClients: 0, targetActive: 1,
+                    margin: 0, targetMargin: 0,
+                    poaVerified: true, targetPoa: true,
+                },
+                timeline: [
+                    { t: '2026-07-20 14:05:39', op: 'system', msg: '客户申请 L1→L2 考核升级' },
+                    { t: '2026-07-20 14:05:41', op: 'system', msg: 'KYC 校验通过 (POA)' },
+                    { t: '2026-07-20 14:05:42', op: 'system', msg: '获客数据快照已生成 · PUSH 邮件已发送' },
+                ],
+            },
+            {
+                appId: 'APP_20260629_007', channel: 'online', userId: 'UID_558012', name: 'Aaron Cheung', email: 'cheu***@gmail.com', phone: '+852 9123 ****',
+                regTime: '2025-11-08 09:21', region: '香港', inviteCode: 'A8X7K2', role: '普通用户',
+                settlementCurrency: 'USDT',
+                socials: [
+                    { type: 'twitter', label: '@cheung_fx', followers: '5.2K', url: 'https://twitter.com/cheung_fx' },
+                    { type: 'telegram', label: 't.me/cheung_signals', followers: '群组 1.2K', url: 'https://t.me/cheung_signals' },
+                    { type: 'tradingview', label: 'TV/cheung_fx', followers: 'Idea 公开 80+', url: 'https://tradingview.com/u/cheung_fx' },
+                ],
+                promo: '主营海外华人外汇社群，Telegram 群组 1200+ 活跃成员，Twitter 5K 粉丝，主推 XAUUSD / EURUSD 短线策略。\n过往合作过 2 家中型 Broker，提供日度技术分析直播。',
+                ims: [
+                    { type: 'whatsapp', label: '+852 9123 ****' },
+                    { type: 'telegram', label: '@cheung_fx' },
+                ],
+                referrer: '/promo/become-partner?utm_source=cn-landing-2026Q2',
+                meta: 'IP 203.0.113.42 · Chrome 126 / macOS',
+                kyc: 'poa', riskTag: '—',
+                applyTime: '2026-06-29 11:08', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-06-29 11:08:32',
+                timeline: [
+                    { t: '2026-06-29 11:08:30', op: 'system',  msg: '用户提交在线代理申请' },
+                    { t: '2026-06-29 11:08:31', op: 'system',  msg: 'POA 校验通过' },
+                    { t: '2026-06-29 11:08:32', op: 'system',  msg: 'PUSH 邮件已发送至商务公邮' },
+                ],
+            },
+            {
+                appId: 'APP_20260629_006', channel: 'online', userId: 'UID_558009', name: 'Liu Wei', email: 'liuw***@outlook.com', phone: '+86 138 **** 2031',
+                regTime: '2025-09-14 16:02', region: '深圳', inviteCode: 'L9P3M5', role: '普通用户',
+                settlementCurrency: 'AED',
+                socials: [
+                    { type: 'youtube', label: '@LiuWeiTrades', followers: '订阅 8.4K', url: 'https://youtube.com/@LiuWeiTrades' },
+                ],
+                promo: 'YouTube 单平台运营，订阅 8.4K，月均播放 6 万。专注新人外汇教学与复盘，已上线付费课程 1 套。\n希望升级 Partner 后做品牌联名活动。',
+                ims: [{ type: 'whatsapp', label: '+86 138 **** 2031' }],
+                referrer: '/become-partner',
+                meta: 'IP 198.51.100.7 · Edge 125 / Windows 11',
+                kyc: 'poa', riskTag: '—',
+                applyTime: '2026-06-29 09:45', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-06-29 09:45:18',
+                timeline: [
+                    { t: '2026-06-29 09:45:15', op: 'system', msg: '用户提交在线代理申请' },
+                    { t: '2026-06-29 09:45:17', op: 'system', msg: 'POA 校验通过' },
+                    { t: '2026-06-29 09:45:18', op: 'system', msg: 'PUSH 邮件已发送至商务公邮' },
+                ],
+            },
+            {
+                appId: 'APP_20260628_005', channel: 'online', userId: 'UID_557981', name: 'Khaled Al-Mansouri', email: 'khal***@protonmail.com', phone: '+971 50 *** 7788',
+                regTime: '2025-12-02 14:18', region: '阿联酋 迪拜', inviteCode: 'K7AE92', role: '普通用户',
+                settlementCurrency: 'USDT',
+                socials: [
+                    { type: 'telegram', label: 't.me/dubai_fx_alpha', followers: '群组 3.6K', url: 'https://t.me/dubai_fx_alpha' },
+                    { type: 'twitter', label: '@dubai_fx', followers: '2.1K', url: 'https://twitter.com/dubai_fx' },
+                ],
+                promo: '中东地区华人 + 阿语社群，Telegram 主群 3.6K，子群 4 个累计 5K+。私域属性强，强调一对一服务。\n推广 XAUUSD / Oil / Crypto，期望对接平台 AED 出入金通道。',
+                ims: [
+                    { type: 'whatsapp', label: '+971 50 *** 7788' },
+                    { type: 'signal', label: '+971 50 *** 7788' },
+                ],
+                referrer: '/promo/partner-mena',
+                meta: 'IP 192.0.2.55 · Safari 17 / iPhone 15',
+                kyc: 'poi', riskTag: '高净值客户',
+                applyTime: '2026-06-28 21:32', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-06-28 21:32:45',
+                timeline: [
+                    { t: '2026-06-28 21:32:40', op: 'system', msg: '用户提交在线代理申请' },
+                    { t: '2026-06-28 21:32:43', op: 'system', msg: 'POA 校验通过' },
+                    { t: '2026-06-28 21:32:45', op: 'system', msg: 'PUSH 邮件已发送至商务公邮' },
+                ],
+            },
+            {
+                appId: 'APP_20260628_004', channel: 'online', userId: 'UID_557872', name: 'Sara Goldberg', email: 'sara***@yahoo.com', phone: '+1 415 *** 0921',
+                regTime: '2026-05-19 11:42', region: '美国 旧金山', inviteCode: 'S3US21', role: '普通用户',
+                settlementCurrency: 'USD',
+                socials: [
+                    { type: 'twitter', label: '@sara_options', followers: '8.0K', url: 'https://twitter.com/sara_options' },
+                ],
+                promo: '英文 Twitter 单平台，关注期权 + 黄金。粉丝增长较快但群组未沉淀，希望借平台资源扩展私域。',
+                ims: [{ type: 'whatsapp', label: '+1 415 *** 0921' }],
+                referrer: '/become-partner',
+                meta: 'IP 203.0.113.99 · Chrome 126 / Windows 10',
+                kyc: 'registered', riskTag: '—',
+                applyTime: '2026-06-28 18:11', decisionTime: null,
+                approver: null, status: 'pending',
+                pushTime: '2026-06-28 18:11:25',
+                timeline: [
+                    { t: '2026-06-28 18:11:22', op: 'system', msg: '用户提交在线代理申请' },
+                    { t: '2026-06-28 18:11:24', op: 'system', msg: 'POA 校验未通过 - 等待用户补充' },
+                    { t: '2026-06-28 18:11:25', op: 'system', msg: 'PUSH 邮件已发送至商务公邮' },
+                ],
+            },
+            {
+                appId: 'APP_20260627_003', channel: 'online', userId: 'UID_557654', name: 'Chen Yuhao', email: 'yuha***@163.com', phone: '+86 159 **** 6628',
+                regTime: '2025-08-22 10:05', region: '上海', inviteCode: 'C9SH01', role: 'Partner (L2)',
+                settlementCurrency: 'USDT',
+                socials: [
+                    { type: 'telegram', label: 't.me/yuhao_fx', followers: '群组 2.4K', url: 'https://t.me/yuhao_fx' },
+                    { type: 'twitter', label: '@yuhao_fx', followers: '3.5K', url: 'https://twitter.com/yuhao_fx' },
+                ],
+                promo: 'TG + Twitter 双平台，主推外汇 EA 信号订阅。已自有付费会员 300+，希望接入 Partner 体系做返佣。',
+                ims: [{ type: 'whatsapp', label: '+86 159 **** 6628' }],
+                referrer: '/become-partner',
+                meta: 'IP 192.0.2.130 · Chrome 125 / macOS',
+                kyc: 'poa', riskTag: '—',
+                applyTime: '2026-06-27 14:20', decisionTime: '2026-06-27 17:45',
+                approver: 'admin_super', status: 'approved',
+                pushTime: '2026-06-27 14:20:18',
+                approveNote: '社群质量高，定级 L2 试运营 3 个月',
+                approveLevel: 'L2',
+                timeline: [
+                    { t: '2026-06-27 14:20:15', op: 'system',      msg: '用户提交在线代理申请' },
+                    { t: '2026-06-27 14:20:17', op: 'system',      msg: 'POA 校验通过' },
+                    { t: '2026-06-27 14:20:18', op: 'system',      msg: 'PUSH 邮件已发送至商务公邮' },
+                    { t: '2026-06-27 17:45:02', op: 'admin_super', msg: '审批通过 - 初始等级 L2，Partner 控制台已激活' },
+                ],
+            },
+            {
+                appId: 'APP_20260627_002', channel: 'online', userId: 'UID_557612', name: 'Anonymous Promo', email: 'pq***@mail.ru', phone: '+7 9** *** 5512',
+                regTime: '2026-06-26 22:00', region: '俄罗斯', inviteCode: 'A0RU88', role: '普通用户',
+                settlementCurrency: 'AED',
+                socials: [],
+                promo: '未提供任何社媒平台链接，仅在备注中声称有"私域大群"。',
+                ims: [{ type: 'telegram', label: '@anon_promo_88' }],
+                referrer: '/become-partner',
+                meta: 'IP 198.51.100.250 · Chrome 99 / Unknown',
+                kyc: 'poa', riskTag: '低活跃 / 注册即申请',
+                applyTime: '2026-06-27 03:14', decisionTime: '2026-06-27 09:20',
+                approver: 'admin_super', status: 'rejected',
+                pushTime: '2026-06-27 03:14:22',
+                rejectTemplate: '推广渠道存疑',
+                rejectReason: '未提供任何可验证的社媒链接，仅口头声称私域群组；推广材料真实性不足。',
+                timeline: [
+                    { t: '2026-06-27 03:14:18', op: 'system',      msg: '用户提交在线代理申请' },
+                    { t: '2026-06-27 03:14:20', op: 'system',      msg: 'POA 校验通过' },
+                    { t: '2026-06-27 03:14:22', op: 'system',      msg: 'PUSH 邮件已发送至商务公邮' },
+                    { t: '2026-06-27 09:20:11', op: 'admin_super', msg: '审批驳回 - 推广渠道存疑：未提供任何可验证的社媒链接' },
+                ],
+            },
+        ];
+
+        // =================================================================
+        // 状态徽章
+        // =================================================================
+        const statusBadge = {
+            pending:     { label: '待审核',     icon: 'fa-clock',                cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+
+            approved:    { label: '已通过',     icon: 'fa-check',                cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+            rejected:    { label: '已拒绝',     icon: 'fa-xmark',                cls: 'bg-rose-50 text-rose-600 border-rose-100' },
+        };
+        const CHANNEL_META = {
+            online:  { label: '在线申请',  cls: 'bg-blue-50 text-blue-600 border-blue-100',      icon: 'fa-globe' },
+            assess:  { label: '考核升级',  cls: 'bg-cyan-50 text-cyan-600 border-cyan-100',      icon: 'fa-medal' },
+        };
+
+        const kycBadge = {
+            registered: { label: '仅注册', icon: 'fa-user',          cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+            poi:        { label: 'POI',    icon: 'fa-id-card',        cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+            poa:        { label: 'POA',    icon: 'fa-check-circle',   cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+        };
+
+        const SETTLE_CURRENCY_META = {
+            USDT: { label: 'USDT', cls: 'bg-slate-100 text-slate-700 border-slate-200',     icon: 'fa-coins' },
+            AED:  { label: 'AED',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: 'fa-coins' },
+            USD:  { label: 'USD',  cls: 'bg-blue-50 text-blue-700 border-blue-100',          icon: 'fa-coins' },
+        };
+
+        function renderSettleCurrency(cur) {
+            if (!cur) return '<span class="text-slate-300 text-xs">— 待选择 —</span>';
+            const m = SETTLE_CURRENCY_META[cur];
+            if (!m) return '<span class="text-slate-300 text-xs">—</span>';
+            return `<span class="inline-flex items-center px-2 py-0.5 ${m.cls} border rounded-md text-[11px] font-bold font-mono tracking-wide">
+                        <i class="fa-solid ${m.icon} mr-1 text-[10px]"></i>${m.label}
+                    </span>`;
+        }
+
+        function renderBadge(b) {
+            if (!b) return '<span class="text-slate-300 text-xs">—</span>';
+            return `<span class="inline-flex items-center justify-center px-2.5 py-1 ${b.cls} border rounded-md text-[11px] font-bold tracking-wide">
+                        <i class="fa-solid ${b.icon} mr-1.5 text-[10px]"></i>${b.label}
+                    </span>`;
+        }
+
+        function fmtNum(n) { return n != null ? n.toLocaleString('en-US') : '—'; }
+
+        function renderAssessData(ad) {
+            if (!ad) return '';
+            const items = [
+                { label: '当前等级', val: ad.currentLevel, icon: 'fa-layer-group' },
+                { label: '申请升级至', val: ad.targetLevel, icon: 'fa-arrow-up-wide-short', highlight: true },
+                { label: '3级团队活跃客户', val: `${ad.activeClients} 人`, icon: 'fa-users' },
+                { label: '目标等级要求', val: `≥ ${ad.targetActive} 人`, icon: 'fa-bullseye' },
+                { label: '3级团队保证金', val: `$${fmtNum(ad.margin)}`, icon: 'fa-hand-holding-dollar' },
+                { label: '目标等级要求', val: `≥ $${fmtNum(ad.targetMargin)}`, icon: 'fa-bullseye' },
+                { label: 'POA 认证', val: ad.poaVerified ? '已完成' : '未完成', icon: 'fa-id-card', cls: ad.poaVerified ? 'text-emerald-600' : 'text-rose-600' },
+                { label: '目标等级要求', val: ad.targetPoa ? '需要 POA' : '不要求 POA', icon: 'fa-bullseye' },
+            ];
+            return items.map(it => {
+                const valCls = it.highlight ? 'font-bold text-cyan-700' : (it.cls || 'text-slate-800');
+                return `<div class="flex items-center justify-between border-b border-cyan-100 pb-2 last:border-0 last:pb-0">
+                    <span class="text-xs text-slate-500"><i class="fa-solid ${it.icon} mr-1.5 text-[10px] text-cyan-500"></i>${it.label}</span>
+                    <span class="font-mono text-xs ${valCls}">${it.val}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function splitDateTime(s) {
+            if (!s) return '<span class="font-mono text-slate-400 text-xs">--</span>';
+            const [d, t] = s.split(' ');
+            return `<span class="font-mono text-slate-500 text-xs">${d}<br>${t}</span>`;
+        }
+
+        function renderSocials(arr, opts = {}) {
+            if (!arr || !arr.length) return '<span class="text-slate-400 text-xs">— 未提供 —</span>';
+            const compact = opts.compact;
+            return arr.map(s => {
+                const m = SOCIAL_META[s.type] || { name: s.type, icon: 'fa-solid fa-link', color: 'text-slate-500' };
+                if (compact) {
+                    return `<span title="${m.name}: ${s.label}" class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 ${m.color}"><i class="${m.icon} text-xs"></i></span>`;
+                }
+                return `<a href="${s.url || '#'}" target="_blank" class="flex items-center justify-between gap-3 text-[13px] hover:bg-slate-50 px-2 py-1.5 -mx-2 rounded-md">
+                            <span class="flex items-center gap-2"><i class="${m.icon} ${m.color} w-4 text-center"></i><span class="font-medium text-slate-700">${m.name}</span><span class="font-mono text-slate-600">${s.label}</span></span>
+                            <span class="text-[11px] text-slate-500">${s.followers || ''}</span>
+                        </a>`;
+            }).join(compact ? '' : '');
+        }
+
+        function renderIMs(arr) {
+            if (!arr || !arr.length) return '<span class="text-slate-400 text-xs">— 未提供 —</span>';
+            return arr.map(im => {
+                const m = IM_META[im.type] || { name: im.type, icon: 'fa-solid fa-comment', color: 'text-slate-500' };
+                return `<div class="flex items-center gap-2 text-[13px]"><i class="${m.icon} ${m.color} w-4 text-center"></i><span class="font-medium text-slate-700">${m.name}</span><span class="font-mono text-slate-600">${im.label}</span></div>`;
+            }).join('');
+        }
+
+        function renderTimeline(arr) {
+            return arr.map(t => `
+                <li class="relative">
+                    <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow"></span>
+                    <div class="text-[12px] font-mono text-slate-400">${t.t}</div>
+                    <div class="text-[13px] text-slate-700">${t.msg}<span class="ml-2 text-[11px] text-slate-400">@${t.op}</span></div>
+                </li>`).join('');
+        }
+
+        function renderActions(row) {
+        // 考核升级免 KYC 检查（在线申请未到 POA 则只显示详情）
+        const isAssess = row.channel === 'assess';
+        if (row.status === 'pending' && !isAssess && row.kyc !== 'poa') {
+            return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold rounded-md transition-colors">详情</button>`;
+        }
+        if (row.status === 'pending') {
+            return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold rounded-md transition-colors">审核</button>`;
+        }
+        return `<button onclick="openDrawer('${row.appId}')" class="px-3 py-1 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold rounded-md transition-colors">详情</button>`;
+    }
+
+        // =================================================================
+        // 列表渲染 + Tab + 筛选
+        // =================================================================
+        let currentTab = 'all';
+
+        function applyFilter() {
+            const fAppId   = document.getElementById('f-appId').value.trim().toLowerCase();
+            const fUserId  = document.getElementById('f-userId').value.trim().toLowerCase();
+            const fKyc     = document.getElementById('f-kyc').value;
+            const fChannel = document.getElementById('f-channel').value;
+            const fAppr    = document.getElementById('f-approver').value;
+            return mockApplications.filter(r => {
+                if (currentTab !== 'all' && r.status !== currentTab) return false;
+                if (fAppId && !r.appId.toLowerCase().includes(fAppId)) return false;
+                if (fUserId && !r.userId.toLowerCase().includes(fUserId)) return false;
+                if (fKyc !== 'all' && r.kyc !== fKyc) return false;
+                if (fChannel !== 'all' && r.channel !== fChannel) return false;
+                if (fAppr !== 'all' && r.approver !== fAppr) return false;
+                return true;
+            });
+        }
+
+        function renderTable() {
+            const list = applyFilter();
+            const html = list.map(row => {
+                const rowCls = (row.status === 'pending' && row.kyc !== 'poa') ? 'hover:bg-slate-50/70 bg-amber-50/10' : 'hover:bg-slate-50/70';
+                return `<tr class="${rowCls} transition-colors cursor-pointer" onclick="openDrawer('${row.appId}')">
+                    <td class="px-5 py-4 font-mono text-slate-500 text-xs sticky left-0 bg-white">${row.appId}</td>
+                    <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline">${row.userId}</span></td>
+                    <td class="px-5 py-4 text-center">${renderBadge(kycBadge[row.kyc])}</td>
+                    <td class="px-5 py-4">${renderBadge(CHANNEL_META[row.channel])}</td>
+                    <td class="px-5 py-4 font-mono text-slate-600 text-xs">${row.email}</td>
+                    <td class="px-5 py-4"><div class="flex items-center gap-1">${row.channel === 'assess' ? '<span class="text-slate-300 text-xs">—</span>' : (renderSocials(row.socials, { compact: true }) || '<span class="text-slate-400 text-xs">—</span>')}</div></td>
+                    <td class="px-5 py-4 text-slate-600 text-xs max-w-[220px] truncate" title="${(row.promo || '').replace(/\n/g, ' ')}">${row.channel === 'assess' ? '<span class="text-slate-300">—</span>' : (row.promo ? row.promo.split('\n')[0] : '—')}</td>
+                    <td class="px-5 py-4">${renderSettleCurrency(row.settlementCurrency)}</td>
+                    <td class="px-5 py-4 font-mono text-slate-600 text-xs">${row.channel === 'assess' ? '<span class="text-slate-300">—</span>' : (row.ims[0] ? (IM_META[row.ims[0].type]?.name + ' ' + row.ims[0].label) : '—')}</td>
+                    <td class="px-5 py-4">${splitDateTime(row.applyTime)}</td>
+                    <td class="px-5 py-4">${splitDateTime(row.decisionTime)}</td>
+                    <td class="px-5 py-4 text-xs text-slate-600">${row.approver || '<span class="text-slate-300">—</span>'}</td>
+                    <td class="px-5 py-4 text-center">${row.rejectReason ? `<div class="text-[11px] text-rose-600 max-w-[160px] mx-auto leading-tight truncate" title="${row.rejectReason}">${row.rejectTemplate}</div>` : '<span class="text-slate-300 text-xs">—</span>'}</td>
+                    <td class="px-5 py-4 text-center">${renderBadge(statusBadge[row.status])}</td>
+                    <td class="px-5 py-4 text-center" onclick="event.stopPropagation()">${renderActions(row)}</td>
+                </tr>`;
+            }).join('');
+            document.getElementById('applications-tbody').innerHTML = html || `<tr><td colspan="15" class="px-5 py-10 text-center text-slate-400 text-sm">暂无匹配的申请记录</td></tr>`;
+            document.getElementById('page-total').textContent = list.length;
+            updateTabCounts();
+        }
+
+        function updateTabCounts() {
+            const all = mockApplications.length;
+            document.getElementById('cnt-all').textContent = all;
+            document.getElementById('cnt-pending').textContent     = mockApplications.filter(r => r.status === 'pending').length;
+            document.getElementById('cnt-approved').textContent    = mockApplications.filter(r => r.status === 'approved').length;
+            document.getElementById('cnt-rejected').textContent    = mockApplications.filter(r => r.status === 'rejected').length;
+        }
+
+        function resetFilter() {
+            document.getElementById('f-appId').value = '';
+            document.getElementById('f-userId').value = '';
+            document.getElementById('f-kyc').value = 'all';
+            document.getElementById('f-approver').value = 'all';
+            renderTable();
+        }
+
+        // Tab 切换
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'text-primary'));
+                document.querySelectorAll('.tab-btn').forEach(b => { if (!b.classList.contains('active')) b.classList.add('text-slate-500'); });
+                btn.classList.add('active');
+                btn.classList.remove('text-slate-500');
+                currentTab = btn.dataset.tab;
+                renderTable();
+            });
+        });
+
+        renderTable();
+
+        // =================================================================
+        // Drawer 交互
+        // =================================================================
+        let currentRow = null;
+
+        function openDrawer(appId) {
+            const row = mockApplications.find(r => r.appId === appId);
+            if (!row) return;
+            currentRow = row;
+
+            document.getElementById('d-appId').textContent = row.appId;
+            document.getElementById('d-userId').textContent = row.userId;
+            document.getElementById('d-name').textContent = row.name;
+            document.getElementById('d-email').textContent = row.email;
+            document.getElementById('d-phone').textContent = row.phone;
+            document.getElementById('d-regTime').textContent = row.regTime;
+            document.getElementById('d-region').textContent = row.region;
+            document.getElementById('d-inviteCode').textContent = row.inviteCode;
+            document.getElementById('d-role').textContent = row.role;
+            document.getElementById('d-poa').innerHTML = renderBadge(kycBadge[row.kyc]);
+            document.getElementById('d-riskTag').textContent = row.riskTag || '—';
+            const isAssess = row.channel === 'assess';
+
+            // 段 1: 申请快照 → 考核升级 / 在线申请 切换
+            document.getElementById('d-assessBlock').classList.toggle('hidden', !isAssess);
+            document.getElementById('d-onlineBlock').classList.toggle('hidden', isAssess);
+            if (isAssess && row.assessData) {
+                document.getElementById('d-assessGrid').innerHTML = renderAssessData(row.assessData);
+            }
+
+            const emptyPlaceholder = `<span class="text-slate-400 text-xs">— 考核升级 · 无需推广资料 —</span>`;
+            document.getElementById('d-socials').innerHTML = isAssess ? emptyPlaceholder : (renderSocials(row.socials) || '<span class="text-slate-400 text-xs">— 未提供 —</span>');
+            document.getElementById('d-promo').innerHTML   = isAssess ? emptyPlaceholder : (row.promo || '—');
+            document.getElementById('d-ims').innerHTML     = isAssess ? emptyPlaceholder : renderIMs(row.ims);
+            document.getElementById('d-referrer').textContent = row.referrer;
+            document.getElementById('d-meta').textContent = row.meta;
+
+            // 段 2: 结算币种
+            const scBadge = document.getElementById('d-settleCurrencyBadge');
+            const scView  = document.getElementById('d-settleCurrencyView');
+            if (row.settlementCurrency) {
+                scBadge.innerHTML = renderSettleCurrency(row.settlementCurrency);
+                scView.textContent = '客户自选';
+            } else {
+                scBadge.innerHTML = '<span class="text-slate-300 text-xs">— 待选择 —</span>';
+                scView.textContent = '';
+            }
+
+            document.getElementById('d-timeline').innerHTML = renderTimeline(row.timeline);
+
+            const isPending = (row.status === 'pending');
+            // 考核升级免 KYC 检查（L1→L2 非代理升级为代理，不要求 POA）
+            const kycOk = isAssess || row.kyc === 'poa';
+            const poaBlock = isPending && !kycOk;
+            document.getElementById('d-reviewSection').classList.toggle('hidden', !isPending);
+            document.getElementById('d-footer').classList.toggle('hidden', !isPending);
+            document.getElementById('d-poaBlock').classList.toggle('hidden', !poaBlock);
+            const approveBtn = document.getElementById('d-approveBtn');
+            approveBtn.disabled = poaBlock;
+            approveBtn.classList.toggle('opacity-40', poaBlock);
+            approveBtn.classList.toggle('cursor-not-allowed', poaBlock);
+            approveBtn.classList.toggle('hover:bg-emerald-500', poaBlock);
+            approveBtn.classList.toggle('bg-emerald-500', !poaBlock);
+            approveBtn.classList.toggle('bg-slate-300', poaBlock);
+
+            document.getElementById('drawer').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.querySelector('#drawer .drawer-panel').classList.add('open');
+            });
+        }
+
+        function closeDrawer() {
+            document.querySelector('#drawer .drawer-panel').classList.remove('open');
+            setTimeout(() => document.getElementById('drawer').classList.add('hidden'), 250);
+        }
+
+        function confirmApprove() {
+            if (!currentRow) return;
+            // 打开通过确认弹层
+            document.getElementById('approveAppId').textContent = currentRow.appId;
+            document.getElementById('approveLevel').textContent = document.getElementById('d-initLevel').value;
+            const months = parseInt(document.getElementById('d-protectMonths').value) || 0;
+            document.getElementById('approveProtect').textContent = months > 0 ? `${months} 个月` : '无';
+            document.getElementById('approveNote').value = '';
+            document.getElementById('approveModal').classList.remove('hidden');
+        }
+
+        function closeApprove() {
+            document.getElementById('approveModal').classList.add('hidden');
+        }
+
+        function doApprove() {
+            if (!currentRow) return;
+            const lv = document.getElementById('d-initLevel').value;
+            const months = parseInt(document.getElementById('d-protectMonths').value) || 0;
+            const currency = currentRow.settlementCurrency || 'USDT';
+            const note = document.getElementById('approveNote').value.trim();
+            const protect = months > 0 ? `，等级保护期 ${months} 个月` : '，无等级保护期';
+            const noteText = note ? `，备注：${note}` : '';
+            showToast(`已通过 ${currentRow.appId}，初始等级 ${lv}${protect}，佣金结算币种 ${currency}${noteText}，已同步站内信 + 邮件`, 'success');
+            closeApprove();
+            closeDrawer();
+        }
+
+        // =================================================================
+        // 驳回弹窗
+        // =================================================================
+        function openReject() {
+            if (!currentRow) return;
+            document.getElementById('rejectAppId').textContent = currentRow.appId;
+            document.getElementById('rejectTemplate').value = '';
+            document.getElementById('rejectReason').value = '';
+            document.getElementById('rejectModal').classList.remove('hidden');
+        }
+
+        function closeReject() {
+            document.getElementById('rejectModal').classList.add('hidden');
+        }
+
+        function confirmReject() {
+            const tpl = document.getElementById('rejectTemplate').value;
+            if (!tpl) {
+                showToast('请选择驳回理由', 'error');
+                return;
+            }
+            const note = document.getElementById('rejectReason').value.trim();
+            showToast(`已驳回 ${currentRow.appId}（${tpl}），已同步站内信 + 邮件`, 'success');
+            closeReject();
+            closeDrawer();
+        }
+
+        // =================================================================
+        // Toast
+        // =================================================================
+        let toastTimer = null;
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            document.getElementById('toastText').textContent = msg;
+            icon.className = type === 'success'
+                ? 'fa-solid fa-check text-emerald-400'
+                : 'fa-solid fa-circle-exclamation text-rose-400';
+            t.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+        }
+    </script>
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>

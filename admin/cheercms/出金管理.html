@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出金管理 - CFD 业务管理后台</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        sidebar: '#0B1120',
+                        sidebarHover: '#1E293B',
+                        primary: '#3B82F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .submenu-container {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .submenu-container.expanded {
+            max-height: 1000px;
+            opacity: 1;
+        }
+        .chevron { transition: transform 0.3s ease; }
+        .chevron.rotated { transform: rotate(90deg); }
+
+        .menu-level-1 { padding-left: 1rem; }
+        .menu-level-2 { padding-left: 2.75rem; }
+        .menu-level-3 { padding-left: 4.5rem; }
+        .menu-level-4 { padding-left: 6.25rem; }
+
+        /* Toast 反馈 */
+        .toast { transition: transform .3s ease, opacity .3s ease; transform: translateY(20px); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+<link rel="stylesheet" href="../cms-assets/cms-embed.css?v=20261102-bi1">
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex font-sans">
+
+<div id="sidebar-root"></div>
+
+<!-- 右侧主体内容区域 -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- 顶部 Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
+            <div class="flex items-center text-sm text-slate-500 font-medium" id="breadcrumb">
+                <span class="text-slate-400">系统</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">资金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-slate-400">出入金管理</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-3 text-slate-300"></i>
+                <span class="text-primary font-semibold">出金管理</span>
+            </div>
+
+            <div class="flex items-center gap-5 text-slate-500">
+                <div id="lang-switch"></div>
+                <button class="hover:text-primary transition-colors relative">
+                    <i class="fa-regular fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <button class="hover:text-primary transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出
+                </button>
+            </div>
+        </header>
+
+        <!-- 实际页面内容承载区 -->
+        <div class="flex-1 overflow-auto p-8 bg-slate-50">
+
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">出金管理</h1>
+                <p class="text-sm text-slate-500 mt-2">集中处理客户提现申请：审核提现资格，通过唯一 TxID 追踪单据全生命周期，按通道阶梯费率核算实际打款金额。</p>
+            </div>
+
+            <!-- 筛选查询区 -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="grid grid-cols-6 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">流水 ID (TxID)</label>
+                        <input type="text" placeholder="TX_W_YYYYMMDDXXX" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">客户ID</label>
+                        <input type="text" placeholder="精确查询客户 ID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-mono placeholder:font-sans placeholder:text-slate-400">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">出金渠道</label>
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                            <option value="all" selected>全部</option>
+                            <option value="GW_U_TRC20">USDT-TRC20</option>
+                            <option value="GW_B_AED">Bank Wire (FAB-AED)</option>
+                            <option value="GW_USDC_POLY">USDC-Polygon</option>
+                            <option value="GW_BANK_CNY">Bank Wire (CNY)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">申请时间</label>
+                        <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                            <i class="fa-regular fa-calendar text-slate-400 mr-2 text-sm"></i>
+                            <input type="text" placeholder="开始 - 结束" class="w-full bg-transparent text-sm focus:outline-none text-slate-600" value="2026-06-01 ~ 2026-06-27">
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">审核状态</label>
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                            <option value="all" selected>全部</option>
+                            <option value="pending">待审核</option>
+                            <option value="approved">通过</option>
+                            <option value="rejected">驳回</option>
+                            <option value="canceled">取消</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">财务状态</label>
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary font-medium text-slate-700">
+                            <option value="all" selected>全部</option>
+                            <option value="processing">财务处理中</option>
+                            <option value="completed">已完成</option>
+                            <option value="failed">失败</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 justify-end mt-5 pt-5 border-t border-slate-100">
+                    <button class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right text-xs"></i> 重置
+                    </button>
+                    <button class="px-5 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-500/30 transition-colors cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i> 查询
+                    </button>
+                </div>
+            </div>
+
+            <!-- 数据列表卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <!-- 表头 -->
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] tracking-wider border-b border-slate-200">
+                                <th class="px-5 py-3.5 font-semibold sticky left-0 bg-slate-50">流水ID (TxID)</th>
+                                <th class="px-5 py-3.5 font-semibold">客户 ID</th>
+                                <th class="px-5 py-3.5 font-semibold">申请时间</th>
+                                <th class="px-5 py-3.5 font-semibold">完成时间</th>
+                                <th class="px-5 py-3.5 font-semibold">出金渠道</th>
+                                <th class="px-5 py-3.5 font-semibold">币种</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">申请金额</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">手续费</th>
+                                <th class="px-5 py-3.5 font-semibold text-right">实际到账</th>
+                                <th class="px-5 py-3.5 font-semibold">出金地址</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">审核状态</th>
+                                <th class="px-5 py-3.5 font-semibold">备注</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">财务状态</th>
+                                <th class="px-5 py-3.5 font-semibold text-center">操作</th>
+                            </tr>
+                        </thead>
+
+                        <!-- 纯静态硬编码数据展示区 -->
+                        <tbody class="text-[13px] divide-y divide-slate-100" id="withdrawals-tbody">
+                            <!-- JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 表格底部分页区域 -->
+                <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span class="text-sm text-slate-500">共 <span class="font-mono font-semibold text-slate-700">6</span> 条出金申请</span>
+                    <div class="flex gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-400 hover:bg-slate-200 disabled:opacity-50" disabled><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-medium text-sm shadow-sm">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 font-medium text-sm">2</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 通过确认弹层 -->
+        <div id="approveModal" class="hidden fixed inset-0 bg-slate-900/40 z-30 flex items-center justify-center">
+            <div class="bg-white w-[420px] rounded-xl shadow-2xl border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-500"></i> 通过出金申请</h3>
+                    <button onclick="closeApprove()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <p class="text-sm text-slate-600">即将通过 <span class="font-mono font-semibold text-slate-800" id="approveTxId"></span>，资金将从【冻结】流转至【财务处理中】。</p>
+                    <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 text-[12px] text-emerald-700 leading-relaxed">
+                        <div class="font-semibold mb-1 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-[11px]"></i>操作提示</div>
+                        <ul class="list-disc list-inside space-y-0.5 text-emerald-600/90">
+                            <li>通过后订单转入财务处理，不可再取消</li>
+                            <li>请确认已完成 KYC 核验、风控规则复核</li>
+                            <li>操作将写入审计日志（含审批人、时间戳）</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">审批备注 <span class="text-slate-400 font-normal">（可选）</span></label>
+                        <textarea id="approveNote" rows="2" placeholder="如：KYC 材料齐全，风控通过" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeApprove()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">取消</button>
+                    <button onclick="confirmApprove()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg shadow-sm">确认通过</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 驳回备注弹层 -->
+        <div id="rejectModal" class="hidden fixed inset-0 bg-slate-900/40 z-30 flex items-center justify-center">
+            <div class="bg-white w-[420px] rounded-xl shadow-2xl border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-rose-500"></i> 驳回出金申请</h3>
+                    <button onclick="closeReject()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <p class="text-sm text-slate-600">即将驳回 <span class="font-mono font-semibold text-slate-800" id="rejectTxId"></span>，资金将释放回客户 Funding。</p>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-600">驳回原因 <span class="text-rose-500">*</span></label>
+                        <textarea id="rejectReason" rows="3" placeholder="如：KYC 等级与出金金额不匹配、风控规则触发等" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeReject()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">取消</button>
+                    <button onclick="confirmReject()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm rounded-lg shadow-sm">确认驳回</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 出金地址详情弹层 -->
+        <div id="addressModal" class="hidden fixed inset-0 bg-slate-900/40 z-30 flex items-center justify-center">
+            <div class="bg-white w-[520px] rounded-xl shadow-2xl border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800 text-base flex items-center gap-2"><i class="fa-solid fa-location-crosshairs text-primary"></i> 出金地址详情</h3>
+                    <button onclick="closeAddress()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-[11px] text-slate-400 tracking-wider font-semibold">流水ID (TxID)</div>
+                            <div class="font-mono text-slate-800 text-sm mt-0.5" id="addressTxId">—</div>
+                        </div>
+                        <span id="addressTypeBadge" class="inline-flex items-center gap-1 px-2.5 py-1 border rounded-md text-[11px] font-bold tracking-wide">
+                            <i class="fa-solid fa-link text-[10px]"></i><span>—</span>
+                        </span>
+                    </div>
+                    <div id="addressDetails" class="space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-4"></div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed"><i class="fa-solid fa-circle-info text-slate-400 mr-1"></i> 数字货币地址请务必核对链类型（TRC20 / ERC20），链错误将导致资金无法追回。</p>
+                </div>
+                <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 rounded-b-xl">
+                    <button onclick="closeAddress()" class="px-4 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm rounded-lg">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast fixed bottom-6 right-6 z-40 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2">
+            <i id="toastIcon" class="fa-solid fa-check text-emerald-400"></i>
+            <span id="toastText">操作成功</span>
+        </div>
+    </main>
+
+    <script src="sidebar.js?v=202607221300"></script>
+    <script>
+        // 接入共享侧栏
+        injectSidebar({ activePath: "资金管理 / 出入金管理 / 出金管理" });
+
+        // =================================================================
+        // 业务 mock 数据（覆盖状态机所有 6 个组合）
+        // =================================================================
+        const STATE_FUND = { frozen: '冻结', deduct: '扣减', release: '释放' };
+
+        const mockWithdrawals = [
+            {
+                // 1. 待审核 / -          / 冻结
+                txId: 'TX_W_20260627_001', userId: '88102934',
+                requestTime: '2026-06-27 09:12:48', completionTime: null,
+                channel: 'USDT-TRC20', currency: 'USD',
+                amount: 5000, fee: 1, net: 4999,
+                risk: 'pending', status: null, fund: 'frozen',
+                address: { type: 'crypto', chain: 'TRC20', asset: 'USDT', address: 'TQrZ9wBnhP6mAUmzX3s2ct8VtDgY4kQ8yE' },
+                refId: null
+            },
+            {
+                // 2. 通过 / 财务处理中  / 冻结
+                txId: 'TX_W_20260627_002', userId: '99201140',
+                requestTime: '2026-06-27 10:35:12', completionTime: null,
+                channel: 'USDT-TRC20', currency: 'USD',
+                amount: 8000, fee: 1, net: 7999,
+                risk: 'approved', status: 'processing', fund: 'frozen',
+                approveNote: 'KYC 材料齐全，风控通过',
+                address: { type: 'crypto', chain: 'ERC20', asset: 'USDT', address: '0x9F2b3C1dE4a5F67890AbCdEf1234567890abCDeF' },
+                refId: null
+            },
+            {
+                // 3. 通过 / 已完成      / 扣减
+                txId: 'TX_W_20260626_088', userId: '10293845',
+                requestTime: '2026-06-26 14:02:31', completionTime: '2026-06-26 15:48:09',
+                channel: 'Bank Wire (FAB-AED)', currency: 'AED',
+                amount: 50000, fee: 50, net: 49950,
+                risk: 'approved', status: 'completed', fund: 'deduct',
+                approveNote: '大额出金已复核，资金来源已确认',
+                address: { type: 'bank', bankName: 'First Abu Dhabi Bank (FAB)', accountName: 'AHMED ALI AL MANSOORI', accountNo: 'AE07 0331 2345 6789 0123 456', swift: 'NBADAEAA', branch: 'FAB Abu Dhabi HQ' },
+                refId: 'FAB_OUT_2026062689'
+            },
+            {
+                // 4. 通过 / 失败        / 释放（已扣，财务退回）
+                txId: 'TX_W_20260626_055', userId: '77108822',
+                requestTime: '2026-06-26 09:20:01', completionTime: '2026-06-26 11:15:33',
+                channel: 'USDT-TRC20', currency: 'USD',
+                amount: 3200, fee: 1, net: 3199,
+                risk: 'approved', status: 'failed', fund: 'release',
+                approveNote: 'USDT 地址无效，财务退回',
+                address: { type: 'crypto', chain: 'TRC20', asset: 'USDT', address: 'TInvalidAddr9x0y1z2QwErTyUiOpAsDf' },
+                refId: 'TRX_FAIL_INVALID_ADDR'
+            },
+            {
+                // 5. 驳回 / -          / 释放
+                txId: 'TX_W_20260627_003', userId: '52049913',
+                requestTime: '2026-06-27 08:55:17', completionTime: '2026-06-27 09:30:00',
+                channel: 'Bank Wire (FAB-AED)', currency: 'AED',
+                amount: 200000, fee: 50, net: 199950,
+                risk: 'rejected', status: null, fund: 'release',
+                rejectReason: '出金金额超出当前 KYC 等级单笔限额',
+                address: { type: 'third_party', platform: 'Skrill', account: 'ali.mansoori@example.com', holderName: 'ALI AL MANSOORI', accountId: 'SKR_88024719' },
+                refId: null
+            },
+            {
+                // 6. 取消 / -          / 释放
+                txId: 'TX_W_20260625_017', userId: '88102934',
+                requestTime: '2026-06-25 22:14:50', completionTime: '2026-06-25 22:16:11',
+                channel: 'USDT-TRC20', currency: 'USD',
+                amount: 500, fee: 1, net: 499,
+                risk: 'canceled', status: null, fund: 'release',
+                address: { type: 'crypto', chain: 'TRC20', asset: 'USDT', address: 'TQrZ9wBnhP6mAUmzX3s2ct8VtDgY4kQ8yE' },
+                refId: null
+            },
+        ];
+
+        // =================================================================
+        // 渲染逻辑
+        // =================================================================
+        const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const riskBadge = {
+            pending:  { label: '待审核', icon: 'fa-clock',              cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+            approved: { label: '通过',   icon: 'fa-check',              cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+            rejected: { label: '驳回',   icon: 'fa-xmark',              cls: 'bg-rose-50 text-rose-600 border-rose-100' },
+            canceled: { label: '取消',   icon: 'fa-ban',                cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+        };
+
+        const statusBadge = {
+            processing: { label: '财务处理中', icon: 'fa-circle-notch fa-spin', cls: 'bg-amber-50 text-amber-600 border-amber-100' },
+            completed:  { label: '已完成',     icon: 'fa-check-double',         cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+            failed:     { label: '失败',       icon: 'fa-triangle-exclamation', cls: 'bg-rose-50 text-rose-600 border-rose-100' },
+        };
+
+        const fundBadge = {
+            frozen:  { label: '冻结', cls: 'text-amber-600 bg-amber-50/60' },
+            deduct:  { label: '扣减', cls: 'text-rose-600 bg-rose-50/60' },
+            release: { label: '释放', cls: 'text-emerald-600 bg-emerald-50/60' },
+        };
+
+        function renderBadge(b) {
+            return `<span class="inline-flex items-center justify-center px-2.5 py-1 ${b.cls} border rounded-md text-[11px] font-bold tracking-wide">
+                        <i class="fa-solid ${b.icon} mr-1.5 text-[10px]"></i>${b.label}
+                    </span>`;
+        }
+
+        function splitDateTime(s) {
+            if (!s) return '<span class="font-mono text-slate-400 text-xs">--</span>';
+            const [d, t] = s.split(' ');
+            return `<span class="font-mono text-slate-500 text-xs">${d}<br>${t}</span>`;
+        }
+
+        // ------- 出金地址：类型元数据 + 摘要单元格 + 详情弹层 -------
+        const addressTypeMeta = {
+            crypto:      { label: '数字货币地址', short: 'Crypto',    icon: 'fa-link',              cls: 'text-amber-500  bg-amber-50  border-amber-100'  },
+            bank:        { label: '银行卡',       short: 'Bank card', icon: 'fa-building-columns',  cls: 'text-blue-600   bg-blue-50   border-blue-100'   },
+            third_party: { label: '三方账号',     short: '三方账号',  icon: 'fa-globe',             cls: 'text-violet-600 bg-violet-50 border-violet-100' }
+        };
+
+        function maskMiddle(str, head = 6, tail = 4) {
+            if (!str) return '';
+            if (str.length <= head + tail) return str;
+            return `${str.slice(0, head)}···${str.slice(-tail)}`;
+        }
+
+        function renderAddressCell(row) {
+            const addr = row.address;
+            if (!addr) return '<span class="text-slate-300 text-xs">—</span>';
+            const meta = addressTypeMeta[addr.type];
+            if (!meta) return '<span class="text-slate-300 text-xs">—</span>';
+
+            return `<button type="button" onclick="openAddress('${row.txId}')" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${meta.cls} text-[10px] font-bold tracking-wide border cursor-pointer hover:brightness-95 transition" title="查看完整出金地址">
+                <i class="fa-solid ${meta.icon} text-[9px]"></i>${meta.short}
+            </button>`;
+        }
+
+        function renderActions(row) {
+            if (row.risk === 'pending') {
+                return `<div class="flex items-center justify-center gap-1.5">
+                    <button onclick="approveWithdraw('${row.txId}')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 text-[11px] font-semibold rounded-md transition-colors cursor-pointer">
+                        <i class="fa-solid fa-check text-[9px] mr-1"></i>通过
+                    </button>
+                    <button onclick="openReject('${row.txId}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-semibold rounded-md transition-colors cursor-pointer">
+                        <i class="fa-solid fa-xmark text-[9px] mr-1"></i>不通过
+                    </button>
+                </div>`;
+            }
+            return `<span class="text-slate-300">—</span>`;
+        }
+
+        function renderRow(row) {
+            const rowCls = row.risk === 'pending' ? 'hover:bg-slate-50/70 bg-amber-50/10' : 'hover:bg-slate-50/70';
+
+            return `<tr class="${rowCls} transition-colors">
+                <td class="px-5 py-4 font-mono text-slate-500 text-xs sticky left-0 bg-white">${row.txId}</td>
+                <td class="px-5 py-4"><span class="font-mono font-medium text-blue-600 hover:underline cursor-pointer">${row.userId}</span></td>
+                <td class="px-5 py-4">${splitDateTime(row.requestTime)}</td>
+                <td class="px-5 py-4">${splitDateTime(row.completionTime)}</td>
+                <td class="px-5 py-4 text-slate-700 font-medium">${row.channel}</td>
+                <td class="px-5 py-4 font-medium text-slate-600">${row.currency}</td>
+                <td class="px-5 py-4 font-mono text-slate-700 text-right">${fmt(row.amount)}</td>
+                <td class="px-5 py-4 font-mono text-slate-500 text-right text-xs">- ${fmt(row.fee)}</td>
+                <td class="px-5 py-4 text-right">
+                    <div class="font-mono font-bold text-emerald-600 text-sm">${fmt(row.net)}</div>
+                </td>
+                <td class="px-5 py-4">${renderAddressCell(row)}</td>
+                <td class="px-5 py-4 text-center">${renderBadge(riskBadge[row.risk])}</td>
+                <td class="px-5 py-4">
+                    ${row.rejectReason ? `<div class="text-[12px] text-rose-500 leading-snug max-w-[200px] truncate" title="${row.rejectReason}"><i class="fa-solid fa-xmark text-[9px] mr-1"></i>${row.rejectReason}</div>` : ''}
+                    ${row.approveNote ? `<div class="text-[12px] text-emerald-600 leading-snug max-w-[200px] truncate" title="${row.approveNote}"><i class="fa-solid fa-check text-[9px] mr-1"></i>${row.approveNote}</div>` : ''}
+                    ${!row.rejectReason && !row.approveNote ? '<span class="text-slate-300 text-xs">—</span>' : ''}
+                </td>
+                <td class="px-5 py-4 text-center">${row.status ? renderBadge(statusBadge[row.status]) : '<span class="text-slate-300 text-xs">—</span>'}</td>
+                <td class="px-5 py-4 text-center">${renderActions(row)}</td>
+            </tr>`;
+        }
+
+        document.getElementById('withdrawals-tbody').innerHTML = mockWithdrawals.map(renderRow).join('');
+
+        // =================================================================
+        // 审核动作
+        // =================================================================
+        let pendingRejectTxId = null;
+        let pendingApproveTxId = null;
+
+        function approveWithdraw(txId) {
+            pendingApproveTxId = txId;
+            document.getElementById('approveTxId').textContent = txId;
+            document.getElementById('approveNote').value = '';
+            document.getElementById('approveModal').classList.remove('hidden');
+        }
+
+        function closeApprove() {
+            pendingApproveTxId = null;
+            document.getElementById('approveModal').classList.add('hidden');
+        }
+
+        function confirmApprove() {
+            showToast(`已通过 ${pendingApproveTxId}，资金从【冻结】流转至【财务处理中】`, 'success');
+            closeApprove();
+        }
+
+        function openReject(txId) {
+            pendingRejectTxId = txId;
+            document.getElementById('rejectTxId').textContent = txId;
+            document.getElementById('rejectReason').value = '';
+            document.getElementById('rejectModal').classList.remove('hidden');
+        }
+
+        function closeReject() {
+            pendingRejectTxId = null;
+            document.getElementById('rejectModal').classList.add('hidden');
+        }
+
+        function confirmReject() {
+            const reason = document.getElementById('rejectReason').value.trim();
+            if (!reason) {
+                showToast('驳回原因为必填项', 'error');
+                return;
+            }
+            showToast(`已驳回 ${pendingRejectTxId}，资金释放回客户账户`, 'success');
+            closeReject();
+        }
+
+        // =================================================================
+        // 出金地址详情弹层
+        // =================================================================
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function addressDetailRow(label, value, opts = {}) {
+            const isMono = opts.mono !== false;
+            const canCopy = !!opts.copy;
+            const breakAll = opts.break === true;
+            return `<div class="flex items-start justify-between gap-3">
+                <span class="text-[11px] text-slate-500 tracking-wider font-semibold shrink-0 pt-0.5 w-24">${escapeHtml(label)}</span>
+                <div class="flex-1 flex items-start justify-between gap-2">
+                    <span class="text-[13px] text-slate-800 ${isMono ? 'font-mono' : 'font-medium'} ${breakAll ? 'break-all' : ''}">${escapeHtml(value)}</span>
+                    ${canCopy ? `<button type="button" onclick="copyAddressValue(this, '${encodeURIComponent(value)}')" class="shrink-0 text-slate-400 hover:text-primary transition-colors" title="复制"><i class="fa-solid fa-copy text-xs"></i></button>` : ''}
+                </div>
+            </div>`;
+        }
+
+        function openAddress(txId) {
+            const row = mockWithdrawals.find(r => r.txId === txId);
+            if (!row || !row.address) return;
+            const addr = row.address;
+            const meta = addressTypeMeta[addr.type];
+
+            document.getElementById('addressTxId').textContent = txId;
+            const badge = document.getElementById('addressTypeBadge');
+            badge.className = `inline-flex items-center gap-1 px-2.5 py-1 border rounded-md text-[11px] font-bold tracking-wide ${meta.cls}`;
+            badge.innerHTML = `<i class="fa-solid ${meta.icon} text-[10px]"></i>${meta.label}`;
+
+            const details = document.getElementById('addressDetails');
+            let html = '';
+            if (addr.type === 'crypto') {
+                html += addressDetailRow('币种资产', addr.asset || '—', { mono: false });
+                html += addressDetailRow('链类型', addr.chain || '—');
+                html += addressDetailRow('钱包地址', addr.address, { copy: true, break: true });
+            } else if (addr.type === 'bank') {
+                html += addressDetailRow('开户银行', addr.bankName, { mono: false });
+                html += addressDetailRow('户名', addr.accountName, { mono: false });
+                html += addressDetailRow('账号 / IBAN', addr.accountNo, { copy: true, break: true });
+                if (addr.swift) html += addressDetailRow('SWIFT / BIC', addr.swift, { copy: true });
+                if (addr.branch) html += addressDetailRow('开户支行', addr.branch, { mono: false });
+            } else if (addr.type === 'third_party') {
+                html += addressDetailRow('三方平台', addr.platform, { mono: false });
+                if (addr.holderName) html += addressDetailRow('户名', addr.holderName, { mono: false });
+                html += addressDetailRow('账号 / 邮箱', addr.account, { copy: true, break: true });
+                if (addr.accountId) html += addressDetailRow('平台内部ID', addr.accountId, { copy: true });
+            }
+            details.innerHTML = html;
+
+            document.getElementById('addressModal').classList.remove('hidden');
+        }
+
+        function closeAddress() {
+            document.getElementById('addressModal').classList.add('hidden');
+        }
+
+        function copyAddressValue(btn, encoded) {
+            const value = decodeURIComponent(encoded);
+            const done = () => {
+                const icon = btn.querySelector('i');
+                if (!icon) return;
+                const original = icon.className;
+                icon.className = 'fa-solid fa-check text-emerald-500 text-xs';
+                setTimeout(() => { icon.className = original; }, 1400);
+                showToast('已复制到剪贴板', 'success');
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(() => {
+                    // 兜底：临时 textarea
+                    const ta = document.createElement('textarea');
+                    ta.value = value; document.body.appendChild(ta); ta.select();
+                    try { document.execCommand('copy'); } catch (e) {}
+                    document.body.removeChild(ta);
+                    done();
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = value; document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); } catch (e) {}
+                document.body.removeChild(ta);
+                done();
+            }
+        }
+
+        // =================================================================
+        // Toast
+        // =================================================================
+        let toastTimer = null;
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            document.getElementById('toastText').textContent = msg;
+            icon.className = type === 'success'
+                ? 'fa-solid fa-check text-emerald-400'
+                : 'fa-solid fa-circle-exclamation text-rose-400';
+            t.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+        }
+    </script>
+
+    <script src="lang-switch.js?v=202607039500"></script>
+<script src="../cms-assets/cms-embed.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n-data.js?v=20261102-bi1"></script>
+<script src="../cms-assets/cms-i18n.js?v=20261102-bi1"></script>
+</body>
+</html>
