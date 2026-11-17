@@ -22,3 +22,6 @@
 .cc-dialog-actions{display:flex;align-items:center;gap:14px}.cc-dialog-actions .cms-language{margin:0;font-size:12px}.cc-dialog-actions .cms-language button{min-height:28px}
 /* The legacy shell uses fixed table layouts and global nth-child widths. */
 #cms-client-view .cc-table{table-layout:auto;min-width:1200px}#cms-client-view .cc-table th,#cms-client-view .cc-table td{width:auto;min-width:85px}#cms-client-view .cc-table th:first-child,#cms-client-view .cc-table td:first-child{min-width:125px}
+
+/* AppsFlyer market source detail cards. */
+.cc-market .cc-info{gap:24px 28px;padding:4px}.cc-market .cc-info dt{display:block;margin:0 0 6px;color:#888;font-size:12px}.cc-market .cc-info dd{display:block;color:#333;line-height:1.6}.cc-market-demo{font-weight:400;font-size:12px;color:#999}.cc-market>.cc-section-head{margin:8px 0 16px}.cc-market .cc-card-body{padding:20px 16px}

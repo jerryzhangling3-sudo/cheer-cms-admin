@@ -3,7 +3,7 @@
   'use strict';
   const locale = () => window.CMS_I18N.getLanguage();
   const zhLabels = {
-    'Workbench':'工作台','Customer Tickets':'客服工单','Customers':'客户管理','Client':'客户列表','Black List':'黑名单','White List':'白名单',
+    'System Mgmt':'系统管理','Resource Mgmt':'资源管理','Role Mgmt':'角色管理','User Mgmt':'系统用户管理','Log Mgmt':'日志管理','Workbench':'工作台','Customer Tickets':'客服工单','Customers':'客户管理','Client':'客户列表','Black List':'黑名单','White List':'白名单',
     'Trade':'交易管理','Trading Information':'交易信息','Funding':'资金管理','Cash Mgmt':'出入金管理','Deposits':'入金管理','Withdrawals':'出金管理','FX Rates':'汇率管理','Gateways':'通道管理',
     'Balances':'资金账户管理','Loss Compensation':'负余额补偿','Ledger':'资金流水','Islamic Account Fee':'伊斯兰账户费用','Account Dormant Mgmt':'休眠账户管理','Funding Adjustment':'资金调整','Providers':'服务商','Cobo':'Cobo','Reconciliation Reports':'对账报表',
     'Operations':'运营管理','Notification':'通知管理','Notification Scenes':'消息场景','Display Settings':'展示设置','Hot Trading':'热门交易','Ad Mgmt':'广告管理','Article Management':'文章管理',
@@ -69,6 +69,8 @@
       node('Profit Share Ledger', '/copytrading/profit-share', { file: 'ct-profit-share.html' }),
       node('System Logs', '/copytrading/engine-logs', { file: 'ct-engine-log.html' })
     ])
+,
+    group('System Mgmt', 'shield', [node('Resource Mgmt', '/manager/resources', {page:'system-resources'}), node('Role Mgmt', '/manager/roles', {page:'system-roles'}), node('User Mgmt', '/manager/users', {page:'system-users'}), node('Log Mgmt', '/manager/logs', {page:'system-logs'})])
   ];
   const leaves = new Map();
   function collect(items, parents = []) {
@@ -150,7 +152,7 @@
       const url = new URL(`cheercms/${target.file}`, location.href.split('#')[0]);
       query.forEach((value, key) => url.searchParams.set(key, value));
       url.searchParams.set('embedded', '1');
-      url.searchParams.set('v', '20261102-bi1');
+      url.searchParams.set('v', path === '/copytrading/masters' ? '20261110-master-restrict1' : '20261102-bi1');
       if (frame.src !== url.href) {
         loading.hidden = false; error.hidden = true; frame.hidden = true;
         frame.src = url.href;
