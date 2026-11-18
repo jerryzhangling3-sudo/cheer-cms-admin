@@ -1,7 +1,7 @@
 {
   "source_commit": "d508ae620874252c2a8c9ba245cb4384aaccd05f",
-  "revision": "cms-server-1.0.18",
-  "scope": "Verified static CMS snapshot matching online iteration 1.0.18",
+  "revision": "cms-server-1.1.2",
+  "scope": "Verified online CMS snapshot including requirements page and withdrawal limits",
   "files": {
     "assets/finance-banner-v1.png": "95364863e574ae9762682cabc5d957ac751aad34137496b38617ea8923b4e822",
     "assets/finance-popup-v1.png": "19fd9f1b2ade4bd668c44258ac13b304a7f092510ffe0017e3b042eb496d7f11",
@@ -63,11 +63,15 @@
     "cms-assets/qa-icons/close.svg": "9d78e2f2f1af31b564a2f0d1ef806eef419bcbed001ffe26883a0bc765bc626e",
     "cms-assets/qa-icons/down.svg": "d1aa891c477e95096d7ecb0201af4ef83cc9996820d78a6dc84e828ab02bf19c",
     "cms-assets/qa-icons/setting.svg": "03d17518167e3cf2d5f3a17cca946e391a902bdf417b26a5e9489519b3c77f70",
+    "cms-assets/withdrawal-limits.css": "606d38dbf5767fa4ef6ff26c02cb7ab04ef39cf45d0db9ee38c0a941daeaf717",
+    "cms-assets/withdrawal-limits.js": "7385c752d5e452881ca4661f128b070207c1e3490c40faf984f95abadb510448",
     "ct-master-order-preview.html": "0b3d2826fa4aac29dc432401a2d9de1bbf51776a2ff392f0b461fc92686e7364",
     "favicon-32.png": "a1a6a1f49f12b9ee55138f67bb81dc42c4aede7bd5e55c034b0da3fb3757d92e",
     "favicon.ico": "445651764c8c9a406cc092f5c130492cd0b883dbd25fee502a4fa016ac3b8745",
     "favicon.svg": "ea64f84fbc424a68164b4955bdfca843ce1197a9adb15409a985447ff0e107a8",
-    "index.html": "20f365c11a992dcaf478aa3873bbc38486b0ffd887886ad713c43b38a4d1abc4",
-    "quote-delay-alert.wav": "e5ee37e19761a674621194316175ac937861720616012fb221c7a666063bae9e"
+    "index.html": "ba36f9a5de5041952560c695bb7dfa297901276ffcf8751310a2a5655f119a18",
+    "quote-delay-alert.wav": "e5ee37e19761a674621194316175ac937861720616012fb221c7a666063bae9e",
+    "requirements-icon.svg": "8aa8510ac2b1e1d9b6a560670da58f3ade9c4e7821f2a1756e3f187fca7ab598",
+    "requirements.html": "3da52f2f89c4f897ecc387405de52abc394f1e499ea6e848141465bcbbef8e24"
   }
 }

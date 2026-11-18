@@ -1,0 +1,1573 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>需求管理提交页</title>
+  <link rel="icon" type="image/svg+xml" href="/admin/requirements-icon.svg?v=1">
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-soft: #f9fafb;
+      --line: #d9e1e8;
+      --line-strong: #c8d3dd;
+      --text: #17212b;
+      --muted: #65758a;
+      --primary: #1769e0;
+      --primary-dark: #1052b3;
+      --primary-soft: #eaf2ff;
+      --green: #16794c;
+      --green-soft: #e8f6ee;
+      --amber: #9a650f;
+      --amber-soft: #fff7e8;
+      --red: #c9362e;
+      --red-soft: #fff0ef;
+      --shadow: 0 12px 30px rgba(24, 39, 56, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 1180px;
+      min-height: 100vh;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 18px 14px;
+      background: #17212b;
+      color: #dce6ee;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 26px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .brand-title {
+      font-weight: 760;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      margin-top: 2px;
+      color: #9fb0bf;
+      font-size: 12px;
+    }
+
+    .nav-label {
+      margin: 18px 8px 8px;
+      color: #8fa1b1;
+      font-size: 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 38px;
+      margin-bottom: 4px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #dce6ee;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .nav-item.is-active {
+      background: #263849;
+      color: #fff;
+    }
+
+    .nav-icon {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      color: #b7c6d2;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .content {
+      min-width: 0;
+      padding: 20px 24px 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 760;
+    }
+
+    .subtext {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: #24313d;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover { border-color: var(--line-strong); }
+    .btn.primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .btn.primary:hover { background: var(--primary-dark); }
+    .btn.danger { border-color: var(--red); color: var(--red); }
+    .btn.ghost { border-color: transparent; background: transparent; }
+    .btn.small { min-height: 30px; padding: 5px 9px; font-size: 12px; }
+    .btn[disabled] { opacity: .55; cursor: not-allowed; }
+
+    .icon {
+      width: 15px;
+      height: 15px;
+      display: inline-block;
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .icon.copy::before {
+      content: "";
+      position: absolute;
+      inset: 3px 1px 1px 5px;
+      border: 1.7px solid currentColor;
+      border-radius: 2px;
+    }
+
+    .icon.copy::after {
+      content: "";
+      position: absolute;
+      inset: 1px 5px 5px 1px;
+      border: 1.7px solid currentColor;
+      border-radius: 2px;
+    }
+
+    .icon.save::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border: 1.7px solid currentColor;
+      border-radius: 2px;
+    }
+
+    .icon.save::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: 3px;
+      height: 4px;
+      border: 1.7px solid currentColor;
+      border-bottom: 0;
+    }
+
+    .icon.download::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 1px;
+      width: 1.7px;
+      height: 8px;
+      background: currentColor;
+    }
+
+    .icon.download::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 6px;
+      width: 8px;
+      height: 8px;
+      border-left: 1.7px solid currentColor;
+      border-bottom: 1.7px solid currentColor;
+      transform: rotate(-45deg);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      min-height: 84px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 1px 0 rgba(20, 36, 50, .03);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-value {
+      margin-top: 9px;
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 760;
+    }
+
+    .metric-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(430px, .92fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .page-view {
+      display: none;
+    }
+
+    .page-view.is-active {
+      display: block;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 740;
+    }
+
+    .panel-body {
+      padding: 15px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .required::after {
+      content: " *";
+      color: var(--red);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    textarea {
+      min-height: 94px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(23, 105, 224, .12);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .section-title {
+      grid-column: span 12;
+      margin: 4px 0 -2px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: #24313d;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: #2b3743;
+      font-size: 13px;
+    }
+
+    .check-item input {
+      width: 15px;
+      min-height: 15px;
+      padding: 0;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .preview {
+      min-height: 692px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .preview-tools {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .preview-box {
+      width: 100%;
+      min-height: 640px;
+      padding: 14px;
+      border: 0;
+      border-radius: 0;
+      background: #101820;
+      color: #e7edf4;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      resize: vertical;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 10;
+      display: none;
+      min-width: 220px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 14px 36px rgba(24, 39, 56, .16);
+      color: #24313d;
+    }
+
+    .toast.show { display: block; }
+
+    .drawer {
+      margin-top: 14px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: none;
+      overflow: auto;
+    }
+
+    .record-filters {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+
+    .history-title {
+      font-weight: 720;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .record-edit {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) minmax(220px, 2fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .record-edit[hidden] { display: none; }
+    .record-edit .field { min-width: 0; }
+    .record-edit .actions { padding-bottom: 1px; }
+
+    @media (max-width: 760px) {
+      .record-edit { grid-template-columns: 1fr; }
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: #1559bf;
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .badge.major {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .badge.minor {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .badge.submitted {
+      background: var(--primary-soft);
+      color: #1559bf;
+    }
+
+    .empty {
+      padding: 18px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 7px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .conditional-fields {
+      display: contents;
+    }
+
+    .conditional-fields[hidden] {
+      display: none;
+    }
+
+    .badge.document {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">PRD</div>
+        <div>
+          <div class="brand-title">需求管理</div>
+          <div class="brand-sub">AI 迭代提交台</div>
+        </div>
+      </div>
+      <div class="nav-label">工作区</div>
+      <div class="nav-item is-active" data-page="submit"><span class="nav-icon">01</span><span>提交需求</span></div>
+      <div class="nav-item" data-page="records"><span class="nav-icon">02</span><span>提交记录</span></div>
+      <div class="nav-label">说明</div>
+      <div class="nav-item"><span class="nav-icon">AI</span><span>提交后仍需复制或导出给 Codex</span></div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div>
+          <h1>需求管理提交页</h1>
+          <p class="subtext">用最少的信息记录一次可评审、可迭代的 MVP 需求。</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" id="newBtn">新建</button>
+          <button class="btn" type="button" id="saveBtn"><span class="icon save"></span>保存草稿</button>
+          <button class="btn primary" type="button" id="submitBtn">提交需求</button>
+          <button class="btn" type="button" id="copyBtn"><span class="icon copy"></span>复制给 AI</button>
+          <button class="btn" type="button" id="downloadBtn"><span class="icon download"></span>导出 Markdown</button>
+        </div>
+      </div>
+
+      <section class="summary">
+        <div class="metric">
+          <div class="metric-label">当前版本</div>
+          <div class="metric-value" id="metricVersion">未填写</div>
+          <div class="metric-note" id="metricType">等待输入</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">需求完整度</div>
+          <div class="metric-value" id="metricComplete">0%</div>
+          <div class="metric-note">按必填项和核心说明估算</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">本地记录</div>
+          <div class="metric-value" id="metricDrafts">0</div>
+          <div class="metric-note" id="metricRecordsNote">保存在当前浏览器</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">下一步</div>
+          <div class="metric-value" id="metricNext">方案评审</div>
+          <div class="metric-note">复制右侧内容提交给 AI</div>
+        </div>
+      </section>
+
+      <div class="page-view is-active" id="submitPage">
+      <div class="workspace">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">MVP 需求表单</h2>
+            <span class="badge" id="statusBadge">草稿</span>
+          </div>
+          <div class="panel-body">
+            <form class="form-grid" id="requirementForm">
+              <div class="field span-3">
+                <label class="required" for="project">所属项目</label>
+                <input id="project" name="project" list="projectOptions" placeholder="例如 管理后台 / 交易后台">
+                <datalist id="projectOptions">
+                  <option value="管理后台"></option>
+                  <option value="交易后台"></option>
+                  <option value="BI 数据系统"></option>
+                </datalist>
+              </div>
+              <div class="field span-3">
+                <label class="required" for="category">需求分类</label>
+                <select id="category" name="category">
+                  <option value="功能需求">功能需求</option>
+                  <option value="主产品文档更新">主产品文档更新</option>
+                  <option value="体验优化">体验优化</option>
+                  <option value="缺陷修复">缺陷修复</option>
+                  <option value="技术需求">技术需求</option>
+                </select>
+              </div>
+
+              <div class="conditional-fields" id="documentFields" hidden>
+                <div class="section-title">文档合并</div>
+                <div class="field span-6">
+                  <label class="required" for="sourceDocument">上传新需求文档</label>
+                  <input id="sourceFile" type="file" accept=".docx,.doc,.pdf,.md,.txt">
+                  <input id="sourceDocument" name="sourceDocument" type="hidden">
+                </div>
+                <div class="field span-6">
+                  <label for="targetDocument">目标主产品文档</label>
+                  <input id="targetDocument" name="targetDocument" value="V1.0.0后台管理需求文档.docx" readonly>
+                </div>
+              </div>
+
+              <div class="conditional-fields" id="standardRequirementFields">
+              <div class="field span-3">
+                <label class="required" for="requirementId">需求编号</label>
+                <input id="requirementId" name="requirementId" placeholder="例如 REQ-20260721-01，用于关联原型和迭代记录">
+              </div>
+              <div class="field span-3">
+                <label class="required" for="version">版本号</label>
+                <input id="version" name="version" placeholder="例如 V1.3.0">
+              </div>
+              <div class="field span-3">
+                <label class="required" for="versionType">版本类型</label>
+                <select id="versionType" name="versionType">
+                  <option value="">请选择</option>
+                  <option value="大版本">大版本</option>
+                  <option value="小版本">小版本</option>
+                  <option value="补充需求">补充需求</option>
+                  <option value="修订">修订</option>
+                </select>
+              </div>
+              <div class="field span-3">
+                <label for="priority">优先级</label>
+                <select id="priority" name="priority">
+                  <option value="P1">P1 高</option>
+                  <option value="P2" selected>P2 中</option>
+                  <option value="P3">P3 低</option>
+                </select>
+              </div>
+              <div class="field span-6">
+                <label for="module">所属模块</label>
+                <input id="module" name="module" list="moduleOptions" placeholder="例如 交易下单 / 风控管理">
+                <datalist id="moduleOptions"></datalist>
+              </div>
+              <div class="field span-12">
+                <label class="required" for="title">需求名称</label>
+                <input id="title" name="title" placeholder="例如 保证金金额反算下单手数">
+              </div>
+
+              <div class="conditional-fields" id="biRequirementFields" hidden>
+                <div class="section-title">BI 迭代基线</div>
+                <div class="field span-4">
+                  <label for="biBaselineVersion">当前基线版本</label>
+                  <input id="biBaselineVersion" name="biBaselineVersion" value="V1.4.1" readonly>
+                </div>
+                <div class="field span-4">
+                  <label for="biChangeType">迭代类型</label>
+                  <select id="biChangeType" name="biChangeType">
+                    <option value="">请选择</option>
+                    <option value="新增指标或页面">新增指标或页面</option>
+                    <option value="指标口径调整">指标口径调整</option>
+                    <option value="筛选与联动调整">筛选与联动调整</option>
+                    <option value="图表与交互调整">图表与交互调整</option>
+                    <option value="经营数据调整">经营数据调整</option>
+                    <option value="账户角色权限调整">账户角色权限调整</option>
+                    <option value="中英文与文案调整">中英文与文案调整</option>
+                    <option value="性能与数据质量">性能与数据质量</option>
+                  </select>
+                </div>
+                <div class="field span-4">
+                  <label for="dataDomain">数据域</label>
+                  <select id="dataDomain" name="dataDomain">
+                    <option value="">请选择</option>
+                    <option value="用户数据">用户数据</option>
+                    <option value="出入金数据">出入金数据</option>
+                    <option value="交易数据">交易数据</option>
+                    <option value="资金数据">资金数据</option>
+                    <option value="经营数据">经营数据</option>
+                    <option value="系统管理">系统管理</option>
+                  </select>
+                </div>
+                <div class="field span-6">
+                  <label for="metricDefinition">指标与计算口径</label>
+                  <textarea id="metricDefinition" name="metricDefinition" placeholder="指标名称、英文名、技术字段、业务定义、公式、UID/Account/Order 去重、状态、币种、EOD 与时间口径"></textarea>
+                </div>
+                <div class="field span-6">
+                  <label for="dimensions">分析维度与筛选条件</label>
+                  <textarea id="dimensions" name="dimensions" placeholder="例如 时间、地区、渠道、账户类型、Symbol、客户等级"></textarea>
+                </div>
+                <div class="field span-12">
+                  <label for="preservedLogic">必须保留的第一期逻辑</label>
+                  <textarea id="preservedLogic" name="preservedLogic" placeholder="说明本次不能改变的旧口径、联合筛选、权限、图表、关注、语言切换或经营计算逻辑"></textarea>
+                </div>
+              </div>
+
+              <div class="section-title">需求背景与目标</div>
+              <div class="field span-12">
+                <label class="required" for="background">需求背景</label>
+                <textarea id="background" name="background" placeholder="为什么要做这个需求？当前问题是什么？业务希望解决什么？"></textarea>
+              </div>
+              <div class="field span-12">
+                <label class="required" for="goal">需求目标</label>
+                <textarea id="goal" name="goal" placeholder="这个版本完成后，用户或运营能做到什么？成功标准是什么？"></textarea>
+              </div>
+
+              <div class="section-title">MVP 范围与核心逻辑</div>
+              <div class="field span-12">
+                <label class="required" for="scope">本期范围</label>
+                <textarea id="scope" name="scope" placeholder="本期要交付哪些页面、能力和关键场景？不做的内容也可在这里说明。"></textarea>
+              </div>
+              <div class="field span-12">
+                <label class="required" for="logic">主要逻辑点</label>
+                <textarea id="logic" name="logic" placeholder="写核心规则、计算公式、判断条件、状态流转。每条可换行。"></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="fields">关键字段 / 数据项</label>
+                <textarea id="fields" name="fields" placeholder="例如 手数、合约量、杠杆、账户币种、保证金币种"></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="edgeCases">边界情况</label>
+                <textarea id="edgeCases" name="edgeCases" placeholder="例如 数据为空、权限不足、低于最小手数、汇率缺失"></textarea>
+              </div>
+
+              <div class="section-title">影响与验收</div>
+              <div class="field span-6">
+                <label for="affectedModules">影响范围</label>
+                <textarea id="affectedModules" name="affectedModules" placeholder="会影响哪些页面、角色、数据、接口或旧逻辑？"></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="acceptance">验收标准</label>
+                <textarea id="acceptance" name="acceptance" placeholder="用可验证的结果描述成功、边界和异常场景。"></textarea>
+              </div>
+
+              <div class="section-title">希望 AI 帮你产出的内容</div>
+              <div class="field span-12">
+                <div class="check-grid">
+                  <label class="check-item"><input type="checkbox" name="outputs" value="完善产品方案" checked>完善产品方案</label>
+                  <label class="check-item"><input type="checkbox" name="outputs" value="查漏补缺与逻辑矫正" checked>查漏补缺</label>
+                  <label class="check-item"><input type="checkbox" name="outputs" value="HTML 交互原型">HTML 原型</label>
+                  <label class="check-item"><input type="checkbox" name="outputs" value="详细 PRD">详细 PRD</label>
+                  <label class="check-item"><input type="checkbox" name="outputs" value="版本迭代记录">版本记录</label>
+                </div>
+              </div>
+
+              <div class="field span-12">
+                <label for="questions">补充说明 / 待确认问题</label>
+                <textarea id="questions" name="questions" placeholder="补充限制条件、参考资料，或希望 AI 重点确认的问题。"></textarea>
+              </div>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel preview">
+          <div class="panel-head">
+            <h2 class="panel-title">提交给 AI 的内容</h2>
+            <div class="preview-tools">
+              <button class="btn small" type="button" id="formatBtn">刷新</button>
+              <button class="btn small" type="button" id="copyBtn2"><span class="icon copy"></span>复制</button>
+            </div>
+          </div>
+          <textarea class="preview-box" id="preview" spellcheck="false"></textarea>
+        </section>
+      </div>
+      </div>
+
+      <section class="panel page-view" id="recordsPage">
+        <div class="panel-head">
+          <h2 class="panel-title">需求提交记录</h2>
+          <button class="btn small danger" type="button" id="clearHistoryBtn">清空记录</button>
+        </div>
+        <div class="panel-body">
+          <div class="record-filters">
+            <div class="field">
+              <label for="recordKeyword">搜索</label>
+              <input id="recordKeyword" placeholder="搜索项目、版本、需求名称、模块">
+            </div>
+            <div class="field">
+              <label for="recordProject">项目</label>
+              <select id="recordProject">
+                <option value="">全部项目</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="recordCategory">分类</label>
+              <select id="recordCategory">
+                <option value="">全部分类</option>
+                <option value="功能需求">功能需求</option>
+                <option value="主产品文档更新">主产品文档更新</option>
+                <option value="体验优化">体验优化</option>
+                <option value="缺陷修复">缺陷修复</option>
+                <option value="技术需求">技术需求</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="recordStatus">状态</label>
+              <select id="recordStatus">
+                <option value="">全部状态</option>
+                <option value="submitted">已提交</option>
+                <option value="draft">草稿</option>
+              </select>
+            </div>
+            <button class="btn" type="button" id="resetFilterBtn">重置筛选</button>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = "pm_requirement_submissions_v1";
+    const form = document.getElementById("requirementForm");
+    const preview = document.getElementById("preview");
+    const toast = document.getElementById("toast");
+    const fields = Array.from(form.querySelectorAll("input:not([type=checkbox]):not([type=file]), select, textarea"));
+    const outputChecks = Array.from(form.querySelectorAll("input[name=outputs]"));
+    const recordKeyword = document.getElementById("recordKeyword");
+    const recordProject = document.getElementById("recordProject");
+    const recordCategory = document.getElementById("recordCategory");
+    const recordStatus = document.getElementById("recordStatus");
+    const categoryField = document.getElementById("category");
+    const projectField = document.getElementById("project");
+    const documentFields = document.getElementById("documentFields");
+    const standardRequirementFields = document.getElementById("standardRequirementFields");
+    const biRequirementFields = document.getElementById("biRequirementFields");
+    const moduleOptions = document.getElementById("moduleOptions");
+    const sourceFile = document.getElementById("sourceFile");
+    let currentId = "";
+    let currentStatus = "draft";
+    const DEFAULT_RECORDS = [
+      {
+        id: "REQ-BI-V141-BASELINE",
+        requirementId: "REQ-BI-V141-BASELINE",
+        project: "BI 数据系统",
+        category: "功能需求",
+        version: "V1.4.1",
+        versionType: "小版本",
+        priority: "P1",
+        owner: "张玲",
+        title: "Cheer Trade BI 系统第一期功能基线",
+        module: "用户数据",
+        relatedRequirements: "V1.0.0—V1.4.1",
+        biBaselineVersion: "V1.4.1",
+        biBaselineDocument: "Cheer_Trade_BI系统需求文档_V1.4.1.docx",
+        biBaselinePrototype: "BI-System-Standalone.html（#users）",
+        biChangeType: "指标口径调整",
+        dataDomain: "用户数据",
+        sourceSystem: "Cheer Trade 客户、交易、资金及经营数据源",
+        refreshFrequency: "实时",
+        background: "第一期已经完成独立 BI 系统原型和 V1.4.1 需求基线，后续需求必须基于现有信息架构、指标口径、联合筛选、经营计算和 RBAC 权限进行增量迭代。",
+        goal: "将 V1.4.1 作为当前有效基线，新增需求时自动识别受影响的指标、页面、筛选、图表、权限、英文文案和历史口径，避免覆盖已确认逻辑。",
+        scope: "基础数据：用户数据、出入金数据、交易数据、资金数据、我的关注\n财务数据：经营数据\n系统管理：账户管理、角色管理、权限管理",
+        includedScope: "保留第一期全部页面和功能\n支持基于第一期进行增量需求迭代\n每次迭代记录基线版本、影响模块、口径变化和回归范围",
+        excludedScope: "不得用通用 BI 模板覆盖现有 Cheer Trade 业务结构\n不得未经确认修改既有指标定义、联合筛选、经营公式或权限关系",
+        logic: "时间范围统一支持近 7 日、近 30 日、近 90 日和自定义\n不同维度使用 AND 联合筛选且所有视图共享同一过滤数据集\n排除白名单 UID 及其全部 Account Number\n用户、账户、订单分别按 UID、Account Number、Order ID 去重\n资金快照取范围内最后一个有数据日期的 EOD 值\n指标详情、我的关注、经营损益、账户角色权限和中英文切换保持有效",
+        fields: "metric_code\nstart_time / end_time\ntimezone\ndimension_type / dimension_value\ndate / value\ncurrency / usd_equivalent\nupdated_at\nis_eod",
+        metricDefinition: "以 V1.4.1 指标表为准；每个新指标必须补充中文名、英文名、技术字段、统计对象、去重键、状态条件、计算公式、币种、时区、数据刷新和口径版本。",
+        dimensions: "时间、注册渠道、KYC 等级、开户类型、币种、出入金通道、交易品类、Symbol、账户类型、金额类型。",
+        visualizationType: "概览卡片、每日趋势、详情趋势、覆盖率横向柱状图、正负金额图、品类/品种 Top N、月度损益表",
+        biPermissionScope: "RBAC：业务模块—页面—数据指标查看/页面操作；系统管理—管理页面—页面内操作",
+        exportSubscription: "基础数据第一期暂不开放导出；经营数据按权限控制操作；订阅推送待后续评审",
+        dataQuality: "空结果展示暂无数据且不得回退到全部数据；接口错误保留页面结构并提供重试；刷新保留当前筛选并更新查询时间。",
+        biAcceptance: "页面值与确认查询结果一致；筛选后汇总、趋势、分布和排名来源于同一数据集；关键财务指标与源系统对账。",
+        preservedLogic: "保留 V1.4.1 的导航、指标定义、联合筛选、白名单排除、去重规则、USD equivalent、EOD、图表详情、我的关注、公司视角损益公式、LP 清算盈亏录入、RBAC 父子联动和中英文切换。",
+        affectedModules: "用户数据、出入金数据、交易数据、资金数据、我的关注、经营数据、账户管理、角色管理、权限管理",
+        rolesPermissions: "超级管理员、财务管理员、数据分析员、合规查看员；权限修改需记录操作人、时间及前后差异",
+        statesFlows: "新需求草稿、待评审、已确认、开发中、待验收、已上线、已归档",
+        dataHistory: "指标口径变更必须记录新旧版本、生效时间和历史数据是否回算；经营数据修订需保留修订人、原因和前后值",
+        integrations: "数据查询接口、经营数据人工维护、权限接口、审计日志和中英文词典",
+        releasePlan: "以 V1.4.1 为回归基线；新增需求采用小版本迭代，不直接覆盖旧口径",
+        acceptance: "第一期导航和所有既有页面可访问；核心指标、筛选、详情、关注、经营数据、权限和中英文切换无回归",
+        regression: "V1.4.1 全量页面与指标；重点回归联合筛选、覆盖率图、净入金正负图、EOD、经营公式和权限父子联动",
+        observation: "数据准确率、接口失败率、筛选响应时间、月度修订次数和权限异常访问",
+        residualItems: "定制报表、文件导出、订阅推送、对账功能及最大查询跨度继续作为后续迭代候选",
+        constraints: "第一期已完成，后续只做增量更新；不得修改已确认业务逻辑，除非新需求明确说明替代规则及生效方式。",
+        questions: "下一期优先级是新增指标、定制报表、导出订阅还是数据对账？\n指标口径变化是否需要历史回算？\n新功能需要哪些角色和操作权限？",
+        references: "原型：BI-System-Standalone.html#users\n需求文档：Cheer_Trade_BI系统需求文档_V1.4.1.docx\nCodex 对话：创建符合 Cheer CMS 标准的 BI 系统项目",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "需求影响分析", "详细 PRD"],
+        status: "submitted",
+        updatedAt: "2026-08-06T14:30:00.000Z"
+      },
+      {
+        id: "REQ-CHREE-V131-ABNORMAL-TRADING",
+        project: "管理后台",
+        version: "V1.3.1",
+        versionType: "小版本",
+        priority: "P2",
+        owner: "ZL",
+        title: "风控管理—风控规则：异常交易监控（剥头皮交易监控、对冲套利交易监控）",
+        module: "风控管理—风控规则",
+        background: "当前风控规则已支持交易类型风控，并已覆盖盈利平仓订单数量和 Net Period P&L 高盈利两个场景。随着交易业务发展，需要继续识别更复杂的异常交易行为，尤其是剥头皮交易和对冲套利交易。",
+        goal: "在交易风控类型下新增剥头皮交易监控和对冲套利交易监控能力，支持按场景配置命中条件，命中后可标记高风险标签、触发预警通知或转人工审核。",
+        scope: "风控管理—风控规则\n交易类型风控\n剥头皮交易监控\n对冲套利交易监控",
+        logic: "剥头皮交易通过短持仓时间、短持仓平仓订单数量、短持仓盈利订单数量、短持仓盈利订单占比等条件识别\n对冲套利交易通过同 IP、同设备 ID、关联账户数量、相反方向订单配对组数、开仓时间差、持仓重叠时间、手数偏移比例等条件识别\n两个异常交易场景的可选命中条件需要按场景隔离，不能混用\n异常交易监控适用范围固定为全局，范围值展示为正常用户 / 排除白名单",
+        fields: "风控类型\n风控场景\n统计时间范围\n短持仓时间阈值\n短持仓平仓订单数量\n短持仓盈利订单数量\n短持仓盈利订单占比\n关联依据命中数量\n关联账户数量\n相反方向订单配对组数\n开仓时间差\n持仓重叠时间\n手数偏移比例\n处理动作",
+        edgeCases: "短持仓但亏损较多不一定是剥头皮套利\n对冲订单品种后缀不同可能代表同一标的\n关联账户证据不足时不能误判\n异常交易规则不能配置为局部用户范围\n同 KYC 信息和同银行卡信息不作为本期对冲套利关联依据",
+        constraints: "MVP 阶段不自动限制交易账户、不自动限制出金、不自动提高点差或手续费；命中后只支持标记高风险标签、触发预警通知、转人工审核。",
+        questions: "对冲套利的相同或相似品种是否需要建立 Symbol 归一化配置？\n对冲套利默认条件是否需要加入持仓重叠时间？\n剥头皮默认短持仓时间阈值是多少？\n命中后高风险标签名称是否复用现有标签？",
+        references: "PRD Markdown：异常交易风控规则需求文档_V1.3.1.md\nPRD Word：异常交易风控规则需求文档_V1.3.1.docx\nHTML 原型：risk-rule-admin-trading.html\n本地记录：06_迭代记录/后台管理Chree_需求提交记录.md",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "HTML 交互原型", "详细 PRD", "版本迭代记录"],
+        status: "submitted",
+        updatedAt: "2026-06-23T08:20:08.000Z"
+      },
+      {
+        id: "REQ-CHREE-V114-TRADING-RISK",
+        project: "后台管理 Chree",
+        version: "V1.1.4",
+        versionType: "小版本",
+        priority: "P2",
+        owner: "产品",
+        title: "风控规则—交易类型风控：盈利平仓订单数量、Net Period P&L 高盈利",
+        module: "风控规则",
+        background: "在风控规则模块中新增交易类型风控场景，用于监控交易账户的盈利平仓订单数量和 Net Period P&L 高盈利风险。",
+        goal: "支持按交易风控场景配置规则，并根据场景动态限制命中条件，降低误配置风险。",
+        scope: "风控规则模块\n交易类型风控\n盈利平仓订单数量\nNet Period P&L 高盈利",
+        logic: "盈利平仓订单数量按交易账户统计指定时间范围内的盈利平仓订单数量\nNet Period P&L 高盈利按 Closed P/L +（截止 Floating P/L - 起始 Floating P/L）计算\n不同场景仅展示对应允许配置的命中条件",
+        fields: "风控类型\n风控场景\n统计时间范围\n盈利平仓订单数量\nNet Period P&L\n执行动作\n优先级",
+        edgeCases: "滚动时间窗口\n多币种金额口径\n汇率缺失\n同币种 Group 限制",
+        constraints: "以当前风控规则模块的信息架构为基础迭代。",
+        questions: "两个交易风控场景是否需要默认阈值？\nNet Period P&L 是否继续限制同币种 Group？",
+        references: "PRD Markdown：交易类型风控规则创建需求文档.md\nPRD Word：交易类型风控规则创建需求文档.docx\nHTML 原型：risk-rule-admin-trading.html",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "HTML 交互原型", "详细 PRD", "版本迭代记录"],
+        status: "submitted",
+        updatedAt: "2026-06-12T18:00:00.000Z"
+      },
+      {
+        id: "REQ-CHREE-V113-AEDUSD-RATE",
+        project: "后台管理 Chree",
+        version: "V1.1.3",
+        versionType: "小版本",
+        priority: "P2",
+        owner: "产品",
+        title: "资金管理—汇率管理：AEDUSD汇率管理",
+        module: "资金管理",
+        background: "资金管理中需要维护 AEDUSD 汇率，用于涉及 AED 与 USD 的金额折算、展示和审核。",
+        goal: "支持后台维护 AEDUSD 汇率管理能力，为资金相关业务提供统一汇率口径。",
+        scope: "资金管理\n汇率管理\nAEDUSD 汇率",
+        logic: "支持 AEDUSD 汇率的维护、查看和使用\n后续产品方案阶段补充编辑权限、有效期、历史记录和审核规则",
+        fields: "币种对\n汇率\n生效时间\n状态\n操作人",
+        edgeCases: "汇率缺失\n汇率过期\n重复生效记录\n权限不足",
+        constraints: "本记录为需求索引，详细 PRD 待后续补充。",
+        questions: "AEDUSD 是否允许手工维护？\n是否需要审批后生效？\n是否需要保存历史汇率？",
+        references: "本地记录：06_迭代记录/后台管理Chree_需求提交记录.md",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "HTML 交互原型", "详细 PRD", "版本迭代记录"],
+        status: "submitted",
+        updatedAt: "2026-06-10T18:00:00.000Z"
+      },
+      {
+        id: "REQ-CHREE-V112-ISLAMIC-FEE",
+        project: "后台管理 Chree",
+        version: "V1.1.2",
+        versionType: "小版本",
+        priority: "P2",
+        owner: "产品",
+        title: "资金管理—伊斯兰管理费：按照订单和免费持仓天数收取伊斯兰账户管理费",
+        module: "资金管理",
+        background: "需要对伊斯兰账户按照订单与免费持仓天数规则收取管理费，支持资金管理侧进行规则配置与费用核算。",
+        goal: "支持按订单和免费持仓天数计算并收取伊斯兰账户管理费。",
+        scope: "资金管理\n伊斯兰管理费\n订单维度\n免费持仓天数",
+        logic: "按订单维度识别伊斯兰账户持仓\n超过免费持仓天数后计算管理费\n后续产品方案阶段补充计费周期、豁免规则和扣费流程",
+        fields: "账户类型\n订单\n开仓时间\n持仓天数\n免费持仓天数\n管理费\n扣费状态",
+        edgeCases: "免费天数边界\n部分平仓\n跨日计费\n余额不足\n重复扣费",
+        constraints: "本记录为需求索引，详细 PRD 待后续补充。",
+        questions: "免费持仓天数按自然日还是交易日？\n管理费按订单、symbol 还是账户维度配置？\n余额不足时是否进入待扣费？",
+        references: "本地记录：06_迭代记录/后台管理Chree_需求提交记录.md",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "HTML 交互原型", "详细 PRD", "版本迭代记录"],
+        status: "submitted",
+        updatedAt: "2026-06-09T18:00:00.000Z"
+      },
+      {
+        id: "REQ-CHREE-V111-NEGATIVE-BALANCE",
+        project: "后台管理 Chree",
+        version: "V1.1.1",
+        versionType: "小版本",
+        priority: "P2",
+        owner: "产品",
+        title: "风控规则—负余额保护风控：负余额保护风控规则逻辑；资金管理—负余额保护：人工审核流程和负余额保护触发历史记录",
+        module: "风控规则 / 资金管理",
+        background: "需要在风控规则和资金管理中支持负余额保护能力，覆盖规则判断、人工审核流程和触发历史记录。",
+        goal: "支持负余额保护规则逻辑、人工审核流程以及负余额保护触发历史记录的管理和追溯。",
+        scope: "风控规则\n负余额保护风控\n资金管理\n人工审核流程\n触发历史记录",
+        logic: "风控规则侧定义负余额保护触发逻辑\n资金管理侧支持人工审核流程\n记录负余额保护触发历史，便于运营和风控复核",
+        fields: "账户余额\n负余额金额\n触发规则\n审核状态\n审核人\n触发时间\n处理结果",
+        edgeCases: "重复触发\n人工审核驳回\n余额恢复\n历史记录追溯",
+        constraints: "以风控规则和资金管理两个模块协同实现。",
+        questions: "负余额保护触发后是否自动冻结相关操作？\n人工审核通过后资金处理动作是什么？\n触发历史需要保留哪些快照字段？",
+        references: "HTML 原型：risk-rule-admin-trading.html\n本地记录：06_迭代记录/后台管理Chree_需求提交记录.md",
+        outputs: ["完善产品方案", "查漏补缺与逻辑矫正", "HTML 交互原型", "详细 PRD", "版本迭代记录"],
+        status: "submitted",
+        updatedAt: "2026-06-08T18:00:00.000Z"
+      }
+    ];
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function switchPage(page) {
+      document.querySelectorAll(".nav-item[data-page]").forEach(item => {
+        item.classList.toggle("is-active", item.dataset.page === page);
+      });
+      document.getElementById("submitPage").classList.toggle("is-active", page === "submit");
+      document.getElementById("recordsPage").classList.toggle("is-active", page === "records");
+      if (page === "records") renderHistory();
+    }
+
+    function getDrafts() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function setDrafts(drafts) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    }
+
+    function getCurrentBiBaselineVersion() {
+      const latest = getDrafts()
+        .filter(item => item.project === "BI 数据系统" && item.status === "submitted" && item.version)
+        .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+      return latest ? latest.version : "V1.4.1";
+    }
+
+    function syncBiBaselineVersion() {
+      form.elements.biBaselineVersion.value = getCurrentBiBaselineVersion();
+    }
+
+    function seedDefaultRecords() {
+      const drafts = getDrafts().filter(item => item.id !== "REQ-BI-20260806-01");
+      let changed = drafts.length !== getDrafts().length;
+      DEFAULT_RECORDS.forEach(record => {
+        if (!drafts.some(item => item.id === record.id)) {
+          drafts.push(record);
+          changed = true;
+        }
+      });
+      if (changed) setDrafts(drafts);
+    }
+
+    function getValue(name) {
+      const el = form.elements[name];
+      return el ? String(el.value || "").trim() : "";
+    }
+
+    function getOutputs() {
+      return outputChecks.filter(item => item.checked).map(item => item.value);
+    }
+
+    function collectData() {
+      const data = {};
+      fields.forEach(item => data[item.name] = String(item.value || "").trim());
+      data.outputs = getOutputs();
+      data.id = currentId || `REQ-${Date.now()}`;
+      data.status = currentStatus || "draft";
+      data.updatedAt = new Date().toISOString();
+      return data;
+    }
+
+    function listBlock(text) {
+      if (!text) return "- 暂未填写";
+      return text.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => `- ${line}`).join("\n");
+    }
+
+    function paragraph(text) {
+      return text || "暂未填写";
+    }
+
+    function buildPrompt(data) {
+      if (data.category === "主产品文档更新") {
+        return `# 合并新需求到主产品文档
+
+## 文件
+- 主产品文档：${paragraph(data.targetDocument)}
+- 新需求文档：${paragraph(data.sourceDocument)}
+
+## 合并要求
+1. 读取新需求文档的有效需求内容，直接合并到主产品文档中。
+2. 将新需求内容插入到“通用非功能需求”章节之前。
+3. 完整沿用主产品文档现有的标题层级、字体、字号、段落、表格样式和编号规则。
+4. 根据插入位置自动调整章节编号，保证目录、正文编号和后续章节顺序连续。
+5. 不写入需求提交表单、合并流程、处理说明、AI 提示词或其他元数据。
+6. 不重复保留新需求文档中的封面、修订历史和通用模板内容；只保留实际功能需求。
+7. 输出合并后的新版 Word 文档，并检查目录、分页、表格和图片排版。`;
+      }
+
+      return `# 开始新版本迭代
+
+## 版本信息
+- 所属项目：${paragraph(data.project)}
+- 需求编号：${paragraph(data.requirementId)}
+- 需求分类：${paragraph(data.category || "功能需求")}
+- 版本号：${paragraph(data.version)}
+- 版本类型：${paragraph(data.versionType)}
+- 需求名称：${paragraph(data.title)}
+- 所属模块：${paragraph(data.module)}
+- 优先级：${paragraph(data.priority)}
+
+## 需求背景
+${paragraph(data.background)}
+
+## 需求目标
+${paragraph(data.goal)}
+
+## MVP 本期范围
+${listBlock(data.scope)}
+
+## 主要逻辑点
+${listBlock(data.logic)}
+
+## 关键字段 / 数据项
+${listBlock(data.fields)}
+
+## 边界情况
+${listBlock(data.edgeCases)}
+
+${data.project === "BI 数据系统" ? `## BI 数据需求
+### 迭代基线
+- 当前基线版本：${paragraph(data.biBaselineVersion)}
+- 迭代类型：${paragraph(data.biChangeType)}
+
+### 数据域
+${paragraph(data.dataDomain)}
+
+### 指标与计算口径
+${listBlock(data.metricDefinition)}
+
+### 分析维度与筛选条件
+${listBlock(data.dimensions)}
+
+### 必须保留的第一期逻辑
+${listBlock(data.preservedLogic)}
+
+` : ""}## 影响范围
+${listBlock(data.affectedModules)}
+
+## 验收标准
+${listBlock(data.acceptance)}
+
+## 补充说明 / 待确认问题
+${listBlock(data.questions)}
+
+## 希望本次产出
+${data.outputs.length ? data.outputs.map(item => `- ${item}`).join("\n") : "- 暂未选择"}
+
+## 请按以下方式处理
+1. 先不要直接写 HTML 或 PRD。
+2. 请先基于以上需求概述完善产品方案，补充遗漏场景，指出逻辑漏洞和边界风险。
+3. 对每个风险点给出推荐解决方案。
+4. 将需要我确认的问题集中列出，等我确认后再进入下一阶段。`;
+    }
+
+    function updateCategoryFields() {
+      const isDocumentUpdate = categoryField.value === "主产品文档更新";
+      documentFields.hidden = !isDocumentUpdate;
+      standardRequirementFields.hidden = isDocumentUpdate;
+    }
+
+    function updateProjectFields() {
+      const isBiProject = projectField.value.trim() === "BI 数据系统";
+      biRequirementFields.hidden = !isBiProject;
+      const modules = isBiProject
+        ? ["用户数据", "出入金数据", "交易数据", "资金数据", "我的关注", "经营数据", "账户管理", "角色管理", "权限管理"]
+        : ["风控管理", "资金管理", "交易管理", "客户管理", "工作台", "系统管理"];
+      moduleOptions.innerHTML = modules.map(item => `<option value="${item}"></option>`).join("");
+    }
+
+    function updatePreview() {
+      syncBiBaselineVersion();
+      const data = collectData();
+      preview.value = buildPrompt(data);
+      updateMetrics(data);
+    }
+
+    function updateMetrics(data) {
+      const required = data.category === "主产品文档更新"
+        ? ["project", "category", "targetDocument", "sourceDocument"]
+        : data.project === "BI 数据系统"
+          ? ["project", "category", "requirementId", "version", "versionType", "title", "module", "biChangeType", "dataDomain", "metricDefinition", "dimensions", "preservedLogic", "background", "goal", "scope", "logic"]
+          : ["project", "category", "requirementId", "version", "versionType", "title", "background", "goal", "scope", "logic"];
+      const done = required.filter(key => data[key]).length;
+      const percent = Math.round(done / required.length * 100);
+      document.getElementById("metricVersion").textContent = data.version || "未填写";
+      document.getElementById("metricType").textContent = data.project ? `${data.project} · ${data.versionType || "未选类型"}` : (data.versionType || "等待输入");
+      document.getElementById("metricComplete").textContent = `${percent}%`;
+      const drafts = getDrafts();
+      const submittedCount = drafts.filter(item => item.status === "submitted").length;
+      document.getElementById("metricDrafts").textContent = drafts.length;
+      document.getElementById("metricRecordsNote").textContent = `已提交 ${submittedCount} 条`;
+      document.getElementById("statusBadge").textContent = currentStatus === "submitted" ? "已提交" : (percent >= 85 ? "可提交" : "草稿");
+      document.getElementById("statusBadge").className = currentStatus === "submitted" ? "badge submitted" : (percent >= 85 ? "badge minor" : "badge");
+      document.getElementById("metricNext").textContent = percent >= 85 ? "提交/复制" : "补全信息";
+    }
+
+    function persistRequirement(status) {
+      const data = collectData();
+      data.status = status;
+      currentStatus = status;
+      if (!data.project && !data.version && !data.title && !data.sourceDocument) {
+        showToast("至少填写项目、版本号或需求名称后再保存");
+        return;
+      }
+      currentId = data.id;
+      const drafts = getDrafts();
+      const index = drafts.findIndex(item => item.id === currentId);
+      if (index >= 0) {
+        drafts[index] = data;
+      } else {
+        drafts.unshift(data);
+      }
+      setDrafts(drafts.slice(0, 30));
+      renderHistory();
+      updatePreview();
+      showToast(status === "submitted" ? "需求已提交到本地记录" : "草稿已保存");
+    }
+
+    function saveDraft() {
+      persistRequirement("draft");
+    }
+
+    function submitRequirement() {
+      const data = collectData();
+      const required = data.category === "主产品文档更新"
+        ? ["project", "category", "targetDocument", "sourceDocument"]
+        : data.project === "BI 数据系统"
+          ? ["project", "category", "requirementId", "version", "versionType", "title", "module", "biChangeType", "dataDomain", "metricDefinition", "dimensions", "preservedLogic", "background", "goal", "scope", "logic"]
+          : ["project", "category", "requirementId", "version", "versionType", "title", "background", "goal", "scope", "logic"];
+      const missing = required.filter(key => !data[key]);
+      if (missing.length) {
+        showToast("请先补全必填项再提交");
+        return;
+      }
+      persistRequirement("submitted");
+    }
+
+    function loadDraft(id) {
+      const data = getDrafts().find(item => item.id === id);
+      if (!data) return;
+      currentId = data.id;
+      currentStatus = data.status || "draft";
+      fields.forEach(item => {
+        if (Object.prototype.hasOwnProperty.call(data, item.name)) item.value = data[item.name] || "";
+      });
+      outputChecks.forEach(item => {
+        item.checked = Array.isArray(data.outputs) && data.outputs.includes(item.value);
+      });
+      updateCategoryFields();
+      updateProjectFields();
+      updatePreview();
+      showToast("已加载草稿");
+    }
+
+    function deleteDraft(id) {
+      const drafts = getDrafts().filter(item => item.id !== id);
+      setDrafts(drafts);
+      if (currentId === id) {
+        currentId = "";
+        currentStatus = "draft";
+      }
+      renderHistory();
+      updatePreview();
+      showToast("记录已删除");
+    }
+
+    function saveRecordLabels(editForm) {
+      const id = editForm.dataset.id;
+      const drafts = getDrafts();
+      const index = drafts.findIndex(item => item.id === id);
+      if (index < 0) return;
+      const version = editForm.elements.version.value.trim();
+      const title = editForm.elements.title.value.trim();
+      if (!version || !title) {
+        showToast("请填写版本号和需求名称");
+        return;
+      }
+      drafts[index] = { ...drafts[index], version, title, updatedAt: new Date().toISOString() };
+      setDrafts(drafts);
+      if (currentId === id) {
+        form.elements.version.value = version;
+        form.elements.title.value = title;
+      }
+      updatePreview();
+      renderHistory();
+      showToast("版本号和需求名称已更新");
+    }
+
+    function renderHistory() {
+      const list = document.getElementById("historyList");
+      updateProjectFilter();
+      const keyword = recordKeyword.value.trim().toLowerCase();
+      const selectedProject = recordProject.value;
+      const selectedCategory = recordCategory.value;
+      const selectedStatus = recordStatus.value;
+      const drafts = getDrafts().filter(item => {
+        const category = item.category || "功能需求";
+        const haystack = [item.project, item.requirementId, item.relatedRequirements, category, item.version, item.versionType, item.title, item.module, item.owner, item.mergeStage].join(" ").toLowerCase();
+        const keywordMatched = !keyword || haystack.includes(keyword);
+        const projectMatched = !selectedProject || item.project === selectedProject;
+        const categoryMatched = !selectedCategory || category === selectedCategory;
+        const statusMatched = !selectedStatus || (item.status || "draft") === selectedStatus;
+        return keywordMatched && projectMatched && categoryMatched && statusMatched;
+      }).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      if (!drafts.length) {
+        list.innerHTML = '<div class="empty">暂无记录。填写表单后点击“保存草稿”或“提交需求”。</div>';
+        return;
+      }
+      list.innerHTML = drafts.map(item => {
+        const typeClass = item.versionType === "大版本" ? "major" : "minor";
+        const status = item.status || "draft";
+        const category = item.category || "功能需求";
+        const displayVersion = item.version || (category === "主产品文档更新" ? "文档合并" : "未命名版本");
+        const displayTitle = item.title || (category === "主产品文档更新" ? (item.sourceDocument || "未选择新需求文档") : "未命名需求");
+        const date = item.updatedAt ? new Date(item.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "";
+        return `
+          <div class="history-item">
+            <div>
+              <div class="history-title">${escapeHtml(item.project || "未填写项目")} · ${escapeHtml(displayVersion)} · ${escapeHtml(displayTitle)}</div>
+              <div class="history-meta">${escapeHtml(category === "主产品文档更新" ? (item.targetDocument || "主产品文档") : (item.module || "未填写模块"))} · ${date}</div>
+            </div>
+            <div class="actions">
+              <span class="badge ${category === "主产品文档更新" ? "document" : ""}">${escapeHtml(category)}</span>
+              <span class="badge ${typeClass}">${escapeHtml(item.versionType || "草稿")}</span>
+              <span class="badge ${status === "submitted" ? "submitted" : ""}">${status === "submitted" ? "已提交" : "草稿"}</span>
+              <button class="btn small" type="button" data-edit="${escapeHtml(item.id)}">编辑</button>
+              <button class="btn small" type="button" data-load="${escapeHtml(item.id)}">加载</button>
+              <button class="btn small" type="button" data-copy="${item.id}">复制</button>
+              <button class="btn small danger" type="button" data-delete="${escapeHtml(item.id)}">删除</button>
+            </div>
+            <form class="record-edit" data-id="${escapeHtml(item.id)}" hidden>
+              <div class="field"><label>版本号</label><input name="version" value="${escapeHtml(item.version || "")}" required></div>
+              <div class="field"><label>需求名称</label><input name="title" value="${escapeHtml(item.title || "")}" required></div>
+              <div class="actions">
+                <button class="btn small primary" type="submit">保存</button>
+                <button class="btn small" type="button" data-cancel-edit>取消</button>
+              </div>
+            </form>
+          </div>`;
+      }).join("");
+    }
+
+    function updateProjectFilter() {
+      const current = recordProject.value;
+      const projects = Array.from(new Set(getDrafts().map(item => item.project).filter(Boolean))).sort();
+      recordProject.innerHTML = '<option value="">全部项目</option>' + projects.map(project => `<option value="${escapeHtml(project)}">${escapeHtml(project)}</option>`).join("");
+      recordProject.value = projects.includes(current) ? current : "";
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]);
+    }
+
+    async function copyPreview() {
+      updatePreview();
+      try {
+        await navigator.clipboard.writeText(preview.value);
+        showToast("已复制，可直接发给 AI");
+      } catch (error) {
+        preview.focus();
+        preview.select();
+        document.execCommand("copy");
+        showToast("已复制，可直接发给 AI");
+      }
+    }
+
+    async function copySavedPrompt(id) {
+      const data = getDrafts().find(item => item.id === id);
+      if (!data) return;
+      const text = buildPrompt(data);
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("历史记录已复制，可直接发给 AI");
+      } catch (error) {
+        preview.value = text;
+        preview.focus();
+        preview.select();
+        document.execCommand("copy");
+        showToast("历史记录已复制，可直接发给 AI");
+      }
+    }
+
+    function downloadMarkdown() {
+      updatePreview();
+      const data = collectData();
+      const safeName = `${data.version || "未命名版本"}_${data.title || "需求概述"}`.replace(/[\\/:*?"<>|\s]+/g, "_");
+      const blob = new Blob([preview.value], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${safeName}.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Markdown 已导出");
+    }
+
+    function resetForm() {
+      currentId = "";
+      currentStatus = "draft";
+      form.reset();
+      form.elements.priority.value = "P2";
+      form.elements.category.value = "功能需求";
+      const now = new Date();
+      const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("");
+      form.elements.requirementId.value = `REQ-${datePart}-01`;
+      outputChecks.forEach(item => {
+        item.checked = ["完善产品方案", "查漏补缺与逻辑矫正", "需求影响分析"].includes(item.value);
+      });
+      updateCategoryFields();
+      updateProjectFields();
+      updatePreview();
+      showToast("已新建空白需求");
+    }
+
+    fields.forEach(item => item.addEventListener("input", updatePreview));
+    fields.forEach(item => item.addEventListener("change", updatePreview));
+    sourceFile.addEventListener("change", () => {
+      const file = sourceFile.files && sourceFile.files[0];
+      form.elements.sourceDocument.value = file ? file.name : "";
+      updatePreview();
+    });
+    categoryField.addEventListener("change", () => {
+      updateCategoryFields();
+      updatePreview();
+    });
+    projectField.addEventListener("input", () => {
+      updateProjectFields();
+      updatePreview();
+    });
+    projectField.addEventListener("change", () => {
+      updateProjectFields();
+      updatePreview();
+    });
+    outputChecks.forEach(item => item.addEventListener("change", updatePreview));
+
+    document.getElementById("saveBtn").addEventListener("click", saveDraft);
+    document.getElementById("submitBtn").addEventListener("click", submitRequirement);
+    document.getElementById("copyBtn").addEventListener("click", copyPreview);
+    document.getElementById("copyBtn2").addEventListener("click", copyPreview);
+    document.getElementById("formatBtn").addEventListener("click", () => {
+      updatePreview();
+      showToast("预览已刷新");
+    });
+    document.getElementById("downloadBtn").addEventListener("click", downloadMarkdown);
+    document.getElementById("newBtn").addEventListener("click", resetForm);
+    document.getElementById("clearHistoryBtn").addEventListener("click", () => {
+      if (!window.confirm("确认清空所有本地需求记录？")) return;
+      setDrafts([]);
+      renderHistory();
+      updatePreview();
+      showToast("草稿已清空");
+    });
+    document.getElementById("historyList").addEventListener("click", event => {
+      const editId = event.target.getAttribute("data-edit");
+      if (editId) {
+        const editForm = event.target.closest(".history-item").querySelector(".record-edit");
+        editForm.hidden = !editForm.hidden;
+        if (!editForm.hidden) editForm.elements.version.focus();
+        return;
+      }
+      if (event.target.hasAttribute("data-cancel-edit")) {
+        renderHistory();
+        return;
+      }
+      const loadId = event.target.getAttribute("data-load");
+      const copyId = event.target.getAttribute("data-copy");
+      const deleteId = event.target.getAttribute("data-delete");
+      if (loadId) loadDraft(loadId);
+      if (copyId) copySavedPrompt(copyId);
+      if (deleteId) deleteDraft(deleteId);
+    });
+    document.getElementById("historyList").addEventListener("submit", event => {
+      if (!event.target.matches(".record-edit")) return;
+      event.preventDefault();
+      saveRecordLabels(event.target);
+    });
+    recordKeyword.addEventListener("input", renderHistory);
+    recordProject.addEventListener("change", renderHistory);
+    recordCategory.addEventListener("change", renderHistory);
+    recordStatus.addEventListener("change", renderHistory);
+    document.getElementById("resetFilterBtn").addEventListener("click", () => {
+      recordKeyword.value = "";
+      recordProject.value = "";
+      recordCategory.value = "";
+      recordStatus.value = "";
+      renderHistory();
+    });
+
+    document.querySelectorAll(".nav-item[data-page]").forEach(item => {
+      item.addEventListener("click", () => switchPage(item.dataset.page));
+    });
+
+    seedDefaultRecords();
+    if (!form.elements.requirementId.value) {
+      const now = new Date();
+      const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("");
+      form.elements.requirementId.value = `REQ-${datePart}-01`;
+    }
+    updateCategoryFields();
+    updateProjectFields();
+    renderHistory();
+    updatePreview();
+  </script>
+</body>
+</html>
