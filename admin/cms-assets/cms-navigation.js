@@ -26,13 +26,13 @@
     group('Funding', 'wallet', [
       group('Cash Mgmt', null, [
         node('Deposits', '/fund/funding/deposits', { file: 'deposits.html', zh: '入金管理.html' }),
-        node('Withdrawals', '/fund/funding/withdrawals', { file: 'withdrawals.html', zh: '出金管理.html' }),
+        node('Withdrawals', '/fund/funding/withdrawals', (window.CMS_DEMO ? { page: 'shared-withdrawals' } : { file: 'withdrawals.html', zh: '出金管理.html' })),
         node('FX Rates', '/fund/exchange-rates', { page: 'exchange' }),
         node('Gateways', '/fund/funding-channels', { file: 'gateways.html', zh: '通道管理.html' })
       ]),
       group('Balances', null, [
         node('Loss Compensation', '/fund/negative-balance-protection', { page: 'negative' }),
-        node('Ledger', '/fund/fund-flows', { file: 'ledger.html', zh: '资金流水.html' }),
+        node('Ledger', '/fund/fund-flows', (window.CMS_DEMO ? { page: 'shared-ledger' } : { file: 'ledger.html', zh: '资金流水.html' })),
         node('Islamic Account Fee', '/fund/islamic-overdue-fee', { page: 'islamic' }),
         node('Account Dormant Mgmt', '/fund/account-dormant-management', { file: 'account-dormant.html' }),
         node('Funding Adjustment', '/fund/funding-adjustment', { file: 'balance-adjustment.html', zh: '资金管理.html' })
