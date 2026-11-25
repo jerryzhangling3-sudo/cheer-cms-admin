@@ -7,7 +7,7 @@
     'Trade':'交易管理','Trading Information':'交易信息','Funding':'资金管理','Cash Mgmt':'出入金管理','Deposits':'入金管理','Withdrawals':'出金管理','FX Rates':'汇率管理','Gateways':'通道管理',
     'Balances':'资金账户管理','Loss Compensation':'负余额补偿','Ledger':'资金流水','Islamic Account Fee':'伊斯兰账户费用','Account Dormant Mgmt':'休眠账户管理','Funding Adjustment':'资金调整','Providers':'服务商','Cobo':'Cobo','Reconciliation Reports':'对账报表',
     'Operations':'运营管理','Notification':'通知管理','Notification Scenes':'消息场景','Display Settings':'展示设置','Hot Trading':'热门交易','Ad Mgmt':'广告管理','Article Management':'文章管理',
-    'Risk Mgmt':'风险管理','Risk Rules':'风控规则','Risk Limits':'风控限制','Risk Exposure Dashboard':'风险敞口看板','Quote Monitoring':'行情监控',
+    'Suspicious Risk Users':'可疑风险用户','Risk Mgmt':'风险管理','Risk Rules':'风控规则','Risk Limits':'风控限制','Risk Exposure Dashboard':'风险敞口看板','Quote Monitoring':'行情监控',
     'Partner':'代理管理','Applications':'代理申请','Affiliates':'代理管理','Transfer Approval':'划转审核','Rebate Ledger':'返佣流水','Tier Mgmt':'等级管理','Rebate Settings':'返佣设置',
     'Copytrading':'跟单交易','Level Configuration':'等级配置','Master Management':'高手管理','Copy Trading':'跟单管理','Profit Share Ledger':'分润流水','System Logs':'引擎日志'
   };
@@ -50,6 +50,7 @@
     ]),
     group('Risk Mgmt', 'shield', [
       node('Risk Rules', '/risk/rules', { page: 'risk' }),
+      node('Suspicious Risk Users', '/risk/related-users', { file: 'risk-related-users.html' }),
       node('Risk Limits', '/risk/limits', { page: 'risk-limit' }),
       node('Risk Exposure Dashboard', '/risk/exposure-dashboard', { page: 'exposure' }),
       node('Quote Monitoring', '/risk/quote-monitor', { page: 'quote-monitor' })
@@ -152,6 +153,7 @@
       const url = new URL(`cheercms/${target.file}`, location.href.split('#')[0]);
       query.forEach((value, key) => url.searchParams.set(key, value));
       url.searchParams.set('embedded', '1');
+      if(path === '/risk/related-users') url.searchParams.set('liveOnly', '20261125-4');
       url.searchParams.set('v', path === '/copytrading/masters' ? '20261110-master-restrict1' : '20261102-bi1');
       if (frame.src !== url.href) {
         loading.hidden = false; error.hidden = true; frame.hidden = true;
