@@ -5,7 +5,12 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const state={selected:null,query:'',page:1,relationQuery:'',relationPage:1};let marks=[];try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(v))marks=v.filter(x=>x&&typeof x.uid==='string')}catch(_){}
 function clients(){try{return parent.CMS_DEMO.getState().clients}catch(_){return []}}
 // Illustrative current hierarchy for the existing static CMS demo; never mutates its customer profiles.
-function users(){const cs=clients();const ibs=cs.filter(c=>c.ib);return cs.map((c,i)=>{const ix=ibs.findIndex(b=>b.uid===c.uid);let up=c.upline&&cs.find(p=>p.uid===String(c.upline)&&p.ib&&p.uid!==c.uid)?.uid;if(!up){if(c.ib)up=ix>0?ibs[Math.floor((ix-1)/2)]?.uid:null;else up=i%7===0?null:ibs[1+i%Math.max(1,ibs.length-1)]?.uid}return {...c,parent:up,name:c.clientName||c.name||[c.first,c.last].join(' ')}})}
+function users(){const cs=clients();
+ // Three independent demo networks: John / Mia (with Elena) / Lina.
+ const parents={'10938472':null,'10939842':null,'10938603':null,'10939157':'10938472','10940527':'10939842','10941212':'10938603','10941897':'10939157','10938883':'10940527'};
+ const branches=['10939157','10940527','10941212'];
+ return cs.map((c,i)=>({...c,parent:Object.prototype.hasOwnProperty.call(parents,c.uid)?parents[c.uid]:(i%7===0?null:branches[i%3]),name:c.clientName||c.name||[c.first,c.last].join(' ')}))}
+
 function accounts(c){let s={};try{s=JSON.parse(localStorage.getItem('cheer-cms-client-demo-v1')||'{}')}catch(_){}return [{mt5:c.mt5,server:'MT5 Live',type:t('真实','Live')},...(s.accounts?.[c.uid]||[]).filter(a=>!a.demo&&!/demo|模拟/i.test(String(a.server||'')+' '+String(a.group||'')+' '+String(a.type||''))).map(a=>({mt5:a.mt5,server:a.server||'MT5 Live',type:t('真实','Live')}))].filter(a=>a.mt5)}
 function ancestors(id,cs){let out=[],seen=new Set([id]),c=cs.find(c=>c.uid===id);while(c?.parent&&!seen.has(c.parent)){seen.add(c.parent);c=cs.find(p=>p.uid===c.parent);if(c)out.push(c)}return out}
 function descendants(id,cs){const found=[],seen=new Set([id]),queue=[id];for(let i=0;i<queue.length;i++)for(const c of cs.filter(c=>c.parent===queue[i]))if(!seen.has(c.uid)){seen.add(c.uid);found.push(c);queue.push(c.uid)}return found}
