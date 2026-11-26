@@ -153,7 +153,7 @@
       const url = new URL(`cheercms/${target.file}`, location.href.split('#')[0]);
       query.forEach((value, key) => url.searchParams.set(key, value));
       url.searchParams.set('embedded', '1');
-      if(path === '/risk/related-users') url.searchParams.set('liveOnly', '20261125-5');
+      if(path === '/risk/related-users') url.searchParams.set('liveOnly', '20261126-10');
       url.searchParams.set('v', path === '/copytrading/masters' ? '20261110-master-restrict1' : '20261102-bi1');
       if (frame.src !== url.href) {
         loading.hidden = false; error.hidden = true; frame.hidden = true;
@@ -199,6 +199,20 @@
     if (event.origin !== location.origin || event.source !== frame.contentWindow || event.data?.type !== 'cheer-cms-navigate') return;
     if (leaves.has(event.data.path)) location.hash = event.data.path + (event.data.query || '');
   });
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('[data-cc-back]'))return;
+    const saved=window.CMS_RISK_RETURN;
+    const query=new URLSearchParams(location.hash.split('?')[1]||'');
+    if(!saved||!location.hash.startsWith('#/customers/client-list?')||query.get('uid')!==saved.uid)return;
+    event.preventDefault();event.stopImmediatePropagation();window.CMS_RISK_RETURN=null;
+    location.hash='/risk/related-users';
+    requestAnimationFrame(()=>{if(location.hash.startsWith('#/risk/related-users'))saved.restore()});
+  },true);
+  window.addEventListener('hashchange',()=>{
+    const saved=window.CMS_RISK_RETURN;if(!saved)return;
+    const query=new URLSearchParams(location.hash.split('?')[1]||'');
+    if(!location.hash.startsWith('#/customers/client-list?')||query.get('uid')!==saved.uid)window.CMS_RISK_RETURN=null;
+  });
   window.addEventListener('hashchange', route);
   const oldAccount = document.querySelector('.main-account');
   const header = document.createElement('header');
@@ -220,4 +234,5 @@
   window.addEventListener('cms-languagechange', updateLanguage);
   route();
   updateLanguage();
+  document.documentElement.classList.remove('cms-booting');
 })();
