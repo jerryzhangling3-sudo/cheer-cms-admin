@@ -153,7 +153,7 @@
       const url = new URL(`cheercms/${target.file}`, location.href.split('#')[0]);
       query.forEach((value, key) => url.searchParams.set(key, value));
       url.searchParams.set('embedded', '1');
-      if(path === '/risk/related-users') url.searchParams.set('liveOnly', '20261126-10');
+      if(path === '/risk/related-users') url.searchParams.set('liveOnly', '20261127-1');
       url.searchParams.set('v', path === '/copytrading/masters' ? '20261110-master-restrict1' : '20261102-bi1');
       if (frame.src !== url.href) {
         loading.hidden = false; error.hidden = true; frame.hidden = true;
